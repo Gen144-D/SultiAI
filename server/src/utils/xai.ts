@@ -30,7 +30,7 @@ export async function getRealtimeClientSecret(): Promise<RealtimeClientSecret> {
   const res = await fetchWithRetry(`${XAI_API_URL}/v1/realtime/client_secrets`, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${XAI_API_KEY}`,
+      Authorization: `Bearer ${XAI_API_KEY}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({

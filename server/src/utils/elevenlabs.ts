@@ -36,7 +36,9 @@ export interface SignedConversation {
   agent_id: string;
 }
 
-export async function getSignedUrl(agentId: string = ELEVENLABS_AGENT_ID): Promise<SignedConversation> {
+export async function getSignedUrl(
+  agentId: string = ELEVENLABS_AGENT_ID
+): Promise<SignedConversation> {
   if (!ELEVENLABS_API_KEY) throw new Error('ELEVENLABS_API_KEY not configured');
   if (!agentId) throw new Error('ELEVENLABS_AGENT_ID not configured');
 

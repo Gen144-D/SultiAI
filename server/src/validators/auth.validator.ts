@@ -12,11 +12,7 @@ export const signupValidation = validate([
   },
   {
     field: 'email',
-    validators: [
-      validators.required(),
-      validators.string(),
-      validators.email(),
-    ],
+    validators: [validators.required(), validators.string(), validators.email()],
   },
   {
     field: 'password',
@@ -32,17 +28,10 @@ export const signupValidation = validate([
 export const signinValidation = validate([
   {
     field: 'email',
-    validators: [
-      validators.required(),
-      validators.string(),
-      validators.email(),
-    ],
+    validators: [validators.required(), validators.string(), validators.email()],
   },
   {
     field: 'password',
-    validators: [
-      validators.required(),
-      validators.string(),
-    ],
+    validators: [validators.required(), validators.string()],
   },
 ]);

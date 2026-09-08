@@ -1,11 +1,21 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import type { AdminSettings } from "@/types";
-import { useToast } from "@/components/Toast";
-import { useAsync } from "@/hooks/useAsync";
-import { api } from "@/lib/api";
-import { Avatar, Card, CardHeader, ErrorState, LoadingState, RoleBadge, ghostBtn, primaryBtn, selectCls } from "@/components/ui";
+import { useState } from 'react';
+import type { AdminSettings } from '@/types';
+import { useToast } from '@/components/Toast';
+import { useAsync } from '@/hooks/useAsync';
+import { api } from '@/lib/api';
+import {
+  Avatar,
+  Card,
+  CardHeader,
+  ErrorState,
+  LoadingState,
+  RoleBadge,
+  ghostBtn,
+  primaryBtn,
+  selectCls,
+} from '@/components/ui';
 
 function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
   return (
@@ -14,11 +24,11 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
       role="switch"
       aria-checked={checked}
       onClick={() => onChange(!checked)}
-      className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${checked ? "bg-success" : "bg-line"}`}
+      className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${checked ? 'bg-success' : 'bg-line'}`}
     >
       <span
-        className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${checked ? "translate-x-5.5 left-0" : "translate-x-0.5 left-0"}`}
-        style={{ transform: checked ? "translateX(1.375rem)" : "translateX(0.125rem)" }}
+        className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${checked ? 'translate-x-5.5 left-0' : 'translate-x-0.5 left-0'}`}
+        style={{ transform: checked ? 'translateX(1.375rem)' : 'translateX(0.125rem)' }}
       />
     </button>
   );
@@ -35,21 +45,21 @@ export default function AdminSettingsPage() {
   async function handleSave() {
     if (!form) return;
     if (form.dailyXpGoal !== undefined && form.dailyXpGoal < 10) {
-      toast.push("error", "Daily XP goal must be at least 10.");
+      toast.push('error', 'Daily XP goal must be at least 10.');
       return;
     }
     if (form.maxDailyAiRequests !== undefined && form.maxDailyAiRequests < 1) {
-      toast.push("error", "Max AI requests must be at least 1.");
+      toast.push('error', 'Max AI requests must be at least 1.');
       return;
     }
     setSaving(true);
     try {
       await api.updateSettings(form);
-      toast.push("success", "Settings saved.");
+      toast.push('success', 'Settings saved.');
       setForm(null);
       reload();
     } catch (err: any) {
-      toast.push("error", err?.message || "Failed to save settings.");
+      toast.push('error', err?.message || 'Failed to save settings.');
     } finally {
       setSaving(false);
     }
@@ -74,8 +84,13 @@ export default function AdminSettingsPage() {
               Discard
             </button>
           )}
-          <button type="button" className={primaryBtn} onClick={handleSave} disabled={!form || saving}>
-            {saving ? "Saving..." : "Save changes"}
+          <button
+            type="button"
+            className={primaryBtn}
+            onClick={handleSave}
+            disabled={!form || saving}
+          >
+            {saving ? 'Saving...' : 'Save changes'}
           </button>
         </div>
       </div>
@@ -86,10 +101,26 @@ export default function AdminSettingsPage() {
           <div className="space-y-4 p-6">
             {(
               [
-                { key: "maintenanceMode", label: "Maintenance mode", desc: "Blocks user sign-ins during maintenance" },
-                { key: "allowSignups", label: "Allow new signups", desc: "Permit new account registration" },
-                { key: "allowCommunity", label: "Community features", desc: "Posts, comments, and follows" },
-                { key: "requireVerificationForCommunity", label: "Require verified users for community", desc: "Only verified accounts can post" },
+                {
+                  key: 'maintenanceMode',
+                  label: 'Maintenance mode',
+                  desc: 'Blocks user sign-ins during maintenance',
+                },
+                {
+                  key: 'allowSignups',
+                  label: 'Allow new signups',
+                  desc: 'Permit new account registration',
+                },
+                {
+                  key: 'allowCommunity',
+                  label: 'Community features',
+                  desc: 'Posts, comments, and follows',
+                },
+                {
+                  key: 'requireVerificationForCommunity',
+                  label: 'Require verified users for community',
+                  desc: 'Only verified accounts can post',
+                },
               ] as const
             ).map((item) => (
               <div key={item.key} className="flex items-center justify-between gap-4">
@@ -107,11 +138,13 @@ export default function AdminSettingsPage() {
           <CardHeader title="AI configuration" subtitle="Model provider and limits" />
           <div className="space-y-5 p-6">
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-ink">Primary AI provider</label>
+              <label className="mb-1.5 block text-sm font-medium text-ink">
+                Primary AI provider
+              </label>
               <select
                 className={selectCls}
                 value={current.aiProvider}
-                onChange={(e) => set({ aiProvider: e.target.value as AdminSettings["aiProvider"] })}
+                onChange={(e) => set({ aiProvider: e.target.value as AdminSettings['aiProvider'] })}
               >
                 <option value="groq">Groq</option>
                 <option value="openai">OpenAI</option>
@@ -119,7 +152,9 @@ export default function AdminSettingsPage() {
               </select>
             </div>
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-ink">Daily XP goal (per user)</label>
+              <label className="mb-1.5 block text-sm font-medium text-ink">
+                Daily XP goal (per user)
+              </label>
               <input
                 type="number"
                 min={10}
@@ -129,7 +164,9 @@ export default function AdminSettingsPage() {
               />
             </div>
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-ink">Max AI requests / user / day</label>
+              <label className="mb-1.5 block text-sm font-medium text-ink">
+                Max AI requests / user / day
+              </label>
               <input
                 type="number"
                 min={1}
@@ -158,7 +195,9 @@ export default function AdminSettingsPage() {
         </ul>
       </Card>
 
-      <p className="text-xs text-ink-faint">Last updated: {new Date(current.updatedAt).toLocaleString()}</p>
+      <p className="text-xs text-ink-faint">
+        Last updated: {new Date(current.updatedAt).toLocaleString()}
+      </p>
     </div>
   );
 }

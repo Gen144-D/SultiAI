@@ -12,11 +12,10 @@ export async function getSession(sessionId: number, userEmail: string): Promise<
     return session;
   }
 
-  const rows = await (db as any).select()
+  const rows = await (db as any)
+    .select()
     .from(schema.tutorSessions)
-    .where(
-      eq(schema.tutorSessions.sessionId, sessionId)
-    )
+    .where(eq(schema.tutorSessions.sessionId, sessionId))
     .limit(1);
   return rows[0] || null;
 }
@@ -30,7 +29,9 @@ export async function getSessionMessages(sessionId: number, userEmail: string): 
   }
 
   try {
-    return typeof session.messages === 'string' ? JSON.parse(session.messages) : (session.messages || []);
+    return typeof session.messages === 'string'
+      ? JSON.parse(session.messages)
+      : session.messages || [];
   } catch {
     return [];
   }
@@ -42,7 +43,8 @@ export async function createSession(
   now: string
 ): Promise<number> {
   const db = getDb();
-  const rows = await (db as any).select()
+  const rows = await (db as any)
+    .select()
     .from(schema.users)
     .where(eq(schema.users.email, userEmail))
     .limit(1);
@@ -59,7 +61,8 @@ export async function createSession(
     return Number(session._id);
   }
 
-  const result = await (db as any).insert(schema.tutorSessions)
+  const result = await (db as any)
+    .insert(schema.tutorSessions)
     .values({
       userId,
       messages: JSON.stringify(messages),
@@ -84,7 +87,8 @@ export async function updateSession(
   }
 
   const db = getDb();
-  await (db as any).update(schema.tutorSessions)
+  await (db as any)
+    .update(schema.tutorSessions)
     .set({
       messages: JSON.stringify(messages),
       endedAt: now,

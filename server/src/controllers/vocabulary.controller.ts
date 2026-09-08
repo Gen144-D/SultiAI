@@ -50,13 +50,17 @@ export async function reviewWord(req: Request, res: Response): Promise<void> {
     }
 
     const result = await vocabularyIntelligence.reviewWord(userId, word, quality);
-    success(res, {
-      word,
-      ease_factor: result.easeFactor,
-      interval: result.interval,
-      next_review: result.nextReview,
-      repetition_count: result.repetitionCount,
-    }, 'Word reviewed');
+    success(
+      res,
+      {
+        word,
+        ease_factor: result.easeFactor,
+        interval: result.interval,
+        next_review: result.nextReview,
+        repetition_count: result.repetitionCount,
+      },
+      'Word reviewed'
+    );
   } catch (err) {
     logger.error('Review word error', { error: (err as Error).message });
     errors.internal(res, 'Failed to review word');
@@ -111,7 +115,11 @@ export async function toggleFavorite(req: Request, res: Response): Promise<void>
     }
 
     const isFavorite = await vocabularyIntelligence.toggleFavorite(userId, word);
-    success(res, { word, is_favorite: isFavorite }, isFavorite ? 'Added to favorites' : 'Removed from favorites');
+    success(
+      res,
+      { word, is_favorite: isFavorite },
+      isFavorite ? 'Added to favorites' : 'Removed from favorites'
+    );
   } catch (err) {
     logger.error('Toggle favorite error', { error: (err as Error).message });
     errors.internal(res, 'Failed to toggle favorite');

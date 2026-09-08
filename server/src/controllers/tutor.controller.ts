@@ -75,7 +75,8 @@ export async function chat(req: Request, res: Response): Promise<void> {
       req.user!.email
     );
 
-    const { getSessionMessages, createSession, updateSession } = await import('../db/repositories/tutor.repo');
+    const { getSessionMessages, createSession, updateSession } =
+      await import('../db/repositories/tutor.repo');
     let sessionId = session_id;
     let sessionMessages: any[] = [];
 
@@ -98,19 +99,29 @@ export async function chat(req: Request, res: Response): Promise<void> {
     }
 
     try {
-      await upsertProfileFromAnalysis(req.user!.email, result.analysis, message || '', result.reply, session_id);
+      await upsertProfileFromAnalysis(
+        req.user!.email,
+        result.analysis,
+        message || '',
+        result.reply,
+        session_id
+      );
     } catch (err) {
       logger.warn('Profile update error', { error: (err as Error).message });
     }
 
-    success(res, {
-      reply: result.reply,
-      session_id: sessionId,
-      transcription: result.transcription,
-      pronunciation: result.pronunciation,
-      analysis: result.analysis,
-      recommendations: result.recommendations,
-    }, 'Chat response generated');
+    success(
+      res,
+      {
+        reply: result.reply,
+        session_id: sessionId,
+        transcription: result.transcription,
+        pronunciation: result.pronunciation,
+        analysis: result.analysis,
+        recommendations: result.recommendations,
+      },
+      'Chat response generated'
+    );
   } catch (err) {
     logger.error('Tutor chat error', { error: (err as Error).message });
     errors.aiError(res, 'Tutor chat failed');

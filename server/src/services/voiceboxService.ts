@@ -43,10 +43,7 @@ function mapLanguage(language?: string): string {
   return LANGUAGE_MAP[key] || key;
 }
 
-async function voiceboxFetch(
-  endpoint: string,
-  init?: RequestInit
-): Promise<Response> {
+async function voiceboxFetch(endpoint: string, init?: RequestInit): Promise<Response> {
   const headers = new Headers(init?.headers);
   headers.set('X-Voicebox-Client-Id', VOICEBOX_CLIENT_ID);
   return fetch(`${VOICEBOX_URL}${endpoint}`, { ...init, headers });
@@ -110,7 +107,11 @@ export async function voiceboxTranscribe(
   model = VOICEBOX_STT_MODEL
 ): Promise<string> {
   const audioBuffer = Buffer.from(audioBase64, 'base64');
-  const ext = mimeType.includes('wav') ? 'wav' : mimeType.includes('mpeg') || mimeType.includes('mp3') ? 'mp3' : 'm4a';
+  const ext = mimeType.includes('wav')
+    ? 'wav'
+    : mimeType.includes('mpeg') || mimeType.includes('mp3')
+      ? 'mp3'
+      : 'm4a';
 
   const form = new FormData();
   form.append('audio', new Blob([audioBuffer], { type: mimeType }), `recording.${ext}`);

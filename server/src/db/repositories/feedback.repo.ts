@@ -4,7 +4,8 @@ import * as schema from '../schema-sqlite';
 
 export async function getUserIdByEmail(email: string): Promise<number | undefined> {
   const db = getDb();
-  const rows = await (db as any).select()
+  const rows = await (db as any)
+    .select()
     .from(schema.users)
     .where(eq(schema.users.email, email))
     .limit(1);
@@ -18,6 +19,7 @@ export async function submitFeedback(
   reliability: number
 ): Promise<void> {
   const db = getDb();
-  await (db as any).insert(schema.feedback)
+  await (db as any)
+    .insert(schema.feedback)
     .values({ userId, functionality, usability, reliability });
 }

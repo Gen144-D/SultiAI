@@ -7,7 +7,11 @@ import { LearnerProfile } from '../mongodb/learnerProfile.model';
 function parseJsonField(val: any): any {
   if (!val) return [];
   if (typeof val === 'string') {
-    try { return JSON.parse(val); } catch { return []; }
+    try {
+      return JSON.parse(val);
+    } catch {
+      return [];
+    }
   }
   return Array.isArray(val) ? val : [];
 }
@@ -25,7 +29,7 @@ export async function getProfile(userEmail: string): Promise<any> {
   if (isMongoConnected()) {
     let profile = await LearnerProfile.findOne({ userId }).lean();
     if (!profile) {
-      profile = await LearnerProfile.create({ userId }).then(d => d.toObject()) as any;
+      profile = (await LearnerProfile.create({ userId }).then((d) => d.toObject())) as any;
     }
     return {
       level: (profile as any).level || 'beginner',
@@ -38,7 +42,8 @@ export async function getProfile(userEmail: string): Promise<any> {
     };
   }
 
-  const rows = await (db as any).select()
+  const rows = await (db as any)
+    .select()
     .from(schema.learnerProfiles)
     .where(eq(schema.learnerProfiles.userId, userId))
     .limit(1);
@@ -74,7 +79,8 @@ export async function getMistakes(userEmail: string): Promise<any[]> {
 
 export async function getUserIdByEmail(email: string): Promise<number | undefined> {
   const db = getDb();
-  const rows = await (db as any).select()
+  const rows = await (db as any)
+    .select()
     .from(schema.users)
     .where(eq(schema.users.email, email))
     .limit(1);
@@ -91,7 +97,8 @@ export async function getFullProfileByEmail(email: string): Promise<any> {
     return profile;
   }
 
-  const rows = await (db as any).select()
+  const rows = await (db as any)
+    .select()
     .from(schema.learnerProfiles)
     .where(eq(schema.learnerProfiles.userId, userId))
     .limit(1);
@@ -102,16 +109,19 @@ export async function getStats(userId: number): Promise<any> {
   const db = getDb();
   if (isMongoConnected()) {
     const profile = await LearnerProfile.findOne({ userId }).lean();
-    return profile ? {
-      xp: (profile as any).totalXp || 0,
-      coins: (profile as any).coins || 0,
-      hearts: (profile as any).hearts || 5,
-      streak: (profile as any).streak || 0,
-      daily_xp: (profile as any).dailyXp || 0,
-      daily_goal: (profile as any).dailyGoal || 50,
-    } : null;
+    return profile
+      ? {
+          xp: (profile as any).totalXp || 0,
+          coins: (profile as any).coins || 0,
+          hearts: (profile as any).hearts || 5,
+          streak: (profile as any).streak || 0,
+          daily_xp: (profile as any).dailyXp || 0,
+          daily_goal: (profile as any).dailyGoal || 50,
+        }
+      : null;
   }
-  const rows = await (db as any).select()
+  const rows = await (db as any)
+    .select()
     .from(schema.learnerProfiles)
     .where(eq(schema.learnerProfiles.userId, userId))
     .limit(1);
@@ -130,15 +140,18 @@ export async function getStats(userId: number): Promise<any> {
 export async function updateStats(userId: number, data: any): Promise<void> {
   const db = getDb();
   if (isMongoConnected()) {
-    await LearnerProfile.findOneAndUpdate({ userId }, {
-      $set: {
-        ...(data.xp != null && { totalXp: data.xp }),
-        ...(data.coins != null && { coins: data.coins }),
-        ...(data.hearts != null && { hearts: data.hearts }),
-        ...(data.streak != null && { streak: data.streak }),
-        ...(data.daily_xp != null && { dailyXp: data.daily_xp }),
-      },
-    });
+    await LearnerProfile.findOneAndUpdate(
+      { userId },
+      {
+        $set: {
+          ...(data.xp != null && { totalXp: data.xp }),
+          ...(data.coins != null && { coins: data.coins }),
+          ...(data.hearts != null && { hearts: data.hearts }),
+          ...(data.streak != null && { streak: data.streak }),
+          ...(data.daily_xp != null && { dailyXp: data.daily_xp }),
+        },
+      }
+    );
     return;
   }
   const updates: any = {};
@@ -148,7 +161,8 @@ export async function updateStats(userId: number, data: any): Promise<void> {
   if (data.streak != null) updates.streak = data.streak;
   if (data.daily_xp != null) updates.dailyXp = data.daily_xp;
   if (Object.keys(updates).length > 0) {
-    await (db as any).update(schema.learnerProfiles)
+    await (db as any)
+      .update(schema.learnerProfiles)
       .set(updates)
       .where(eq(schema.learnerProfiles.userId, userId));
   }
@@ -160,7 +174,8 @@ export function getLearnerRepo() {
     getStats: (userId: number) => getStats(userId),
     updateStats: (userId: number, data: any) => updateStats(userId, data),
     getLeaderboard: (period: string) => getLeaderboard(period),
-    addDailyReward: (userId: number, reward: { xp: number; coins: number }) => addDailyReward(userId, reward),
+    addDailyReward: (userId: number, reward: { xp: number; coins: number }) =>
+      addDailyReward(userId, reward),
     addXp: (userId: number, amount: number) => addXp(userId, amount),
     addCoins: (userId: number, amount: number) => addCoins(userId, amount),
     getMistakes: (email: string) => getMistakes(email),
@@ -177,15 +192,21 @@ export async function getLeaderboard(period: string): Promise<any[]> {
       .sort({ totalXp: -1 })
       .limit(50)
       .lean()
-      .then((profiles: any) => profiles.map((p: any, i: number) => ({
-        rank: i + 1, id: p.userId,
-        name: p.userName || 'Anonymous',
-        xp: p.totalXp || 0, streak: p.streak || 0,
-        avatar: p.avatar || null,
-      })));
+      .then((profiles: any) =>
+        profiles.map((p: any, i: number) => ({
+          rank: i + 1,
+          id: p.userId,
+          name: p.userName || 'Anonymous',
+          xp: p.totalXp || 0,
+          streak: p.streak || 0,
+          avatar: p.avatar || null,
+        }))
+      );
   }
 
-  const leaders = await getSqliteRaw()!.prepare(`
+  const leaders = await getSqliteRaw()!
+    .prepare(
+      `
     SELECT lp.user_id as id, u.fullname as name, u.username,
            lp.total_xp as xp, lp.streak,
            (SELECT COUNT(*) FROM daily_activity da WHERE da.user_id = lp.user_id AND da.activity_date >= ?) as active_days
@@ -194,22 +215,28 @@ export async function getLeaderboard(period: string): Promise<any[]> {
     WHERE lp.last_active >= ?
     ORDER BY lp.total_xp DESC
     LIMIT 50
-  `).all(since, since);
+  `
+    )
+    .all(since, since);
   return leaders.map((l: any, i: number) => ({ ...l, rank: i + 1 }));
 }
 
-export async function addDailyReward(userId: number, reward: { xp: number; coins: number }): Promise<void> {
+export async function addDailyReward(
+  userId: number,
+  reward: { xp: number; coins: number }
+): Promise<void> {
   const db = getDb();
   const today = new Date().toISOString().split('T')[0];
-  const existing = getSqliteRaw()!.prepare(
-    'SELECT 1 FROM daily_activity WHERE user_id = ? AND activity_date = ?'
-  ).get(userId, today);
+  const existing = getSqliteRaw()!
+    .prepare('SELECT 1 FROM daily_activity WHERE user_id = ? AND activity_date = ?')
+    .get(userId, today);
   if (existing) return; // already claimed today
 
-  getSqliteRaw()!.prepare(
-    'INSERT INTO daily_activity (user_id, activity_date, xp_earned) VALUES (?, ?, ?)'
-  ).run(userId, today, reward.xp);
-  await (db as any).update(schema.learnerProfiles)
+  getSqliteRaw()!
+    .prepare('INSERT INTO daily_activity (user_id, activity_date, xp_earned) VALUES (?, ?, ?)')
+    .run(userId, today, reward.xp);
+  await (db as any)
+    .update(schema.learnerProfiles)
     .set({
       totalXp: sql`total_xp + ${reward.xp}`,
       coins: sql`coins + ${reward.coins}`,
@@ -219,14 +246,16 @@ export async function addDailyReward(userId: number, reward: { xp: number; coins
 
 export async function addXp(userId: number, amount: number): Promise<void> {
   const db = getDb();
-  await (db as any).update(schema.learnerProfiles)
+  await (db as any)
+    .update(schema.learnerProfiles)
     .set({ totalXp: sql`total_xp + ${amount}` })
     .where(eq(schema.learnerProfiles.userId, userId));
 }
 
 export async function addCoins(userId: number, amount: number): Promise<void> {
   const db = getDb();
-  await (db as any).update(schema.learnerProfiles)
+  await (db as any)
+    .update(schema.learnerProfiles)
     .set({ coins: sql`coins + ${amount}` })
     .where(eq(schema.learnerProfiles.userId, userId));
 }
@@ -260,7 +289,11 @@ export async function upsertProfileFromAnalysis(
       if (existing) {
         existing.count = (existing.count || 1) + (nm.count || 1);
       } else {
-        profile.commonMistakes.push({ pattern: nm.pattern, correction: nm.correction, count: nm.count || 1 });
+        profile.commonMistakes.push({
+          pattern: nm.pattern,
+          correction: nm.correction,
+          count: nm.count || 1,
+        });
       }
     }
     profile.commonMistakes.sort((a: any, b: any) => (b.count || 0) - (a.count || 0));
@@ -285,11 +318,13 @@ export async function upsertProfileFromAnalysis(
     return;
   }
 
-  const profileRow: any = await (db as any).select()
-    .from(schema.learnerProfiles)
-    .where(eq(schema.learnerProfiles.userId, userId))
-    .limit(1)
-    .then((r: any[]) => r[0]) || {};
+  const profileRow: any =
+    (await (db as any)
+      .select()
+      .from(schema.learnerProfiles)
+      .where(eq(schema.learnerProfiles.userId, userId))
+      .limit(1)
+      .then((r: any[]) => r[0])) || {};
 
   if (!profileRow.userId) {
     await (db as any).insert(schema.learnerProfiles).values({ userId });
@@ -302,7 +337,11 @@ export async function upsertProfileFromAnalysis(
     if (existing) {
       existing.count = (existing.count || 1) + (nm.count || 1);
     } else {
-      existingMistakes.push({ pattern: nm.pattern, correction: nm.correction, count: nm.count || 1 });
+      existingMistakes.push({
+        pattern: nm.pattern,
+        correction: nm.correction,
+        count: nm.count || 1,
+      });
     }
   }
   existingMistakes.sort((a: any, b: any) => (b.count || 0) - (a.count || 0));
@@ -321,7 +360,8 @@ export async function upsertProfileFromAnalysis(
   const topStrengths = existingStrengths.slice(-10);
   const topWeakAreas = existingWeakAreas.slice(-10);
 
-  await (db as any).update(schema.learnerProfiles)
+  await (db as any)
+    .update(schema.learnerProfiles)
     .set({
       level: analysis.user_level || profileRow.level || 'beginner',
       strengths: safeStringify(topStrengths),

@@ -1,10 +1,10 @@
-import type { Metadata } from "next";
-import PageHero from "@/components/PageHero";
-import ContactForm from "@/components/ContactForm";
+import type { Metadata } from 'next';
+import PageHero from '@/components/PageHero';
+import ContactForm from '@/components/ContactForm';
 
 export const metadata: Metadata = {
-  title: "Contact",
-  description: "Get in touch with the SultiAI team.",
+  title: 'Contact',
+  description: 'Get in touch with the SultiAI team.',
 };
 
 export default function Contact() {

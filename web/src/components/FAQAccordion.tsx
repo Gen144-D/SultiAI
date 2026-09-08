@@ -1,12 +1,8 @@
-"use client";
+'use client';
 
-import { useState } from "react";
+import { useState } from 'react';
 
-export default function FAQAccordion({
-  items,
-}: {
-  items: { question: string; answer: string }[];
-}) {
+export default function FAQAccordion({ items }: { items: { question: string; answer: string }[] }) {
   const [openIndex, setOpenIndex] = useState<number | null>(0);
 
   return (
@@ -17,7 +13,7 @@ export default function FAQAccordion({
           <div
             key={item.question}
             className={`overflow-hidden rounded-2xl border transition-colors ${
-              open ? "border-brand/30 bg-white" : "border-line bg-white"
+              open ? 'border-brand/30 bg-white' : 'border-line bg-white'
             }`}
           >
             <button
@@ -28,7 +24,7 @@ export default function FAQAccordion({
               <span className="text-sm font-semibold text-ink sm:text-base">{item.question}</span>
               <span
                 className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-brand transition-transform ${
-                  open ? "rotate-45 bg-brand-light" : "bg-surface"
+                  open ? 'rotate-45 bg-brand-light' : 'bg-surface'
                 }`}
               >
                 +

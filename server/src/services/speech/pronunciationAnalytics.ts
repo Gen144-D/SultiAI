@@ -47,13 +47,17 @@ export class PronunciationAnalyticsService {
     }
   }
 
-  async getStats(userId: number, period: 'week' | 'month' | 'all' = 'all'): Promise<PronunciationStats> {
+  async getStats(
+    userId: number,
+    period: 'week' | 'month' | 'all' = 'all'
+  ): Promise<PronunciationStats> {
     try {
       const db = getDb();
       const days = period === 'week' ? 7 : period === 'month' ? 30 : 365;
       const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
 
-      const attempts = await (db as any).select()
+      const attempts = await (db as any)
+        .select()
         .from(schema.pronunciationAttempts)
         .where(
           (db as any).and(
@@ -67,8 +71,10 @@ export class PronunciationAnalyticsService {
         return this.getEmptyStats();
       }
 
-      const avgAccuracy = attempts.reduce((sum: number, a: any) => sum + (a.accuracy || 0), 0) / attempts.length;
-      const avgConfidence = attempts.reduce((sum: number, a: any) => sum + (a.confidence || 0), 0) / attempts.length;
+      const avgAccuracy =
+        attempts.reduce((sum: number, a: any) => sum + (a.accuracy || 0), 0) / attempts.length;
+      const avgConfidence =
+        attempts.reduce((sum: number, a: any) => sum + (a.confidence || 0), 0) / attempts.length;
 
       const wordStats: Record<string, { total: number; count: number }> = {};
       const phonemePatterns: Record<string, number> = {};
@@ -93,13 +99,13 @@ export class PronunciationAnalyticsService {
 
       const difficultWords = Object.entries(wordStats)
         .filter(([, s]) => s.total / s.count < 60)
-        .sort((a, b) => (a[1].total / a[1].count) - (b[1].total / b[1].count))
+        .sort((a, b) => a[1].total / a[1].count - b[1].total / b[1].count)
         .slice(0, 5)
         .map(([word]) => word);
 
       const masteredWords = Object.entries(wordStats)
         .filter(([, s]) => s.total / s.count >= 85 && s.count >= 3)
-        .sort((a, b) => (b[1].total / b[1].count) - (a[1].total / a[1].count))
+        .sort((a, b) => b[1].total / b[1].count - a[1].total / a[1].count)
         .slice(0, 5)
         .map(([word]) => word);
 
@@ -122,12 +128,16 @@ export class PronunciationAnalyticsService {
     }
   }
 
-  async getTrend(userId: number, days: number = 30): Promise<Array<{ date: string; avgAccuracy: number; attempts: number }>> {
+  async getTrend(
+    userId: number,
+    days: number = 30
+  ): Promise<Array<{ date: string; avgAccuracy: number; attempts: number }>> {
     try {
       const db = getDb();
       const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
 
-      const attempts = await (db as any).select()
+      const attempts = await (db as any)
+        .select()
         .from(schema.pronunciationAttempts)
         .where(
           (db as any).and(
@@ -162,7 +172,8 @@ export class PronunciationAnalyticsService {
       const midpoint = Date.now() - (days / 2) * 24 * 60 * 60 * 1000;
       const since = new Date(midpoint).toISOString();
 
-      const recent = await (db as any).select()
+      const recent = await (db as any)
+        .select()
         .from(schema.pronunciationAttempts)
         .where(
           (db as any).and(
@@ -171,7 +182,8 @@ export class PronunciationAnalyticsService {
           )
         );
 
-      const older = await (db as any).select()
+      const older = await (db as any)
+        .select()
         .from(schema.pronunciationAttempts)
         .where(
           (db as any).and(
@@ -182,7 +194,8 @@ export class PronunciationAnalyticsService {
 
       if (recent.length === 0 || older.length === 0) return 0;
 
-      const recentAvg = recent.reduce((s: number, a: any) => s + (a.accuracy || 0), 0) / recent.length;
+      const recentAvg =
+        recent.reduce((s: number, a: any) => s + (a.accuracy || 0), 0) / recent.length;
       const olderAvg = older.reduce((s: number, a: any) => s + (a.accuracy || 0), 0) / older.length;
 
       return Math.round((recentAvg - olderAvg) * 10) / 10;

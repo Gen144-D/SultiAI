@@ -1,17 +1,33 @@
-import type { Metadata } from "next";
-import PageHero from "@/components/PageHero";
-import CTASection from "@/components/CTASection";
+import type { Metadata } from 'next';
+import PageHero from '@/components/PageHero';
+import CTASection from '@/components/CTASection';
 
 export const metadata: Metadata = {
-  title: "About",
-  description: "The story and mission behind SultiAI.",
+  title: 'About',
+  description: 'The story and mission behind SultiAI.',
 };
 
 const values = [
-  { icon: "🗣", title: "Language is identity", body: "We believe speaking your language is a form of belonging — and Bisaya deserves to flourish." },
-  { icon: "🎓", title: "Learning by doing", body: "Real conversations beat rote memorization. Our AI makes practice feel natural." },
-  { icon: "🤝", title: "Community-first", body: "Technology preserves what people speak. We build with — not just for — the community." },
-  { icon: "🌱", title: "Accessible to all", body: "A free tier and phone-first design mean anyone can start learning, anywhere." },
+  {
+    icon: '🗣',
+    title: 'Language is identity',
+    body: 'We believe speaking your language is a form of belonging — and Bisaya deserves to flourish.',
+  },
+  {
+    icon: '🎓',
+    title: 'Learning by doing',
+    body: 'Real conversations beat rote memorization. Our AI makes practice feel natural.',
+  },
+  {
+    icon: '🤝',
+    title: 'Community-first',
+    body: 'Technology preserves what people speak. We build with — not just for — the community.',
+  },
+  {
+    icon: '🌱',
+    title: 'Accessible to all',
+    body: 'A free tier and phone-first design mean anyone can start learning, anywhere.',
+  },
 ];
 
 export default function About() {
@@ -51,7 +67,10 @@ export default function About() {
           <h2 className="text-center text-2xl font-bold text-ink">What we believe</h2>
           <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {values.map((v) => (
-              <div key={v.title} className="rounded-3xl border border-line bg-white p-6 text-center">
+              <div
+                key={v.title}
+                className="rounded-3xl border border-line bg-white p-6 text-center"
+              >
                 <span className="text-3xl">{v.icon}</span>
                 <h3 className="mt-3 text-base font-bold text-ink">{v.title}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-ink-soft">{v.body}</p>

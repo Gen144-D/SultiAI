@@ -29,7 +29,10 @@ export const users = pgTable('users', {
 
 export const userSettings = pgTable('user_settings', {
   settingId: serial('setting_id').primaryKey(),
-  userId: integer('user_id').notNull().unique().references(() => users.userId, { onDelete: 'cascade' }),
+  userId: integer('user_id')
+    .notNull()
+    .unique()
+    .references(() => users.userId, { onDelete: 'cascade' }),
   darkMode: integer('dark_mode').default(0),
   speechSpeed: real('speech_speed').default(1.0),
   voiceGender: text('voice_gender').default('neutral'),
@@ -37,7 +40,9 @@ export const userSettings = pgTable('user_settings', {
 
 export const savedPhrases = pgTable('saved_phrases', {
   phraseId: serial('phrase_id').primaryKey(),
-  userId: integer('user_id').notNull().references(() => users.userId, { onDelete: 'cascade' }),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.userId, { onDelete: 'cascade' }),
   phrase: text('phrase').notNull(),
   language: text('language'),
   category: text('category'),
@@ -46,7 +51,9 @@ export const savedPhrases = pgTable('saved_phrases', {
 
 export const notifications = pgTable('notifications', {
   notifyId: serial('notify_id').primaryKey(),
-  userId: integer('user_id').notNull().references(() => users.userId, { onDelete: 'cascade' }),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.userId, { onDelete: 'cascade' }),
   title: text('title'),
   message: text('message'),
   isRead: integer('is_read').default(0),
@@ -55,7 +62,9 @@ export const notifications = pgTable('notifications', {
 
 export const feedback = pgTable('feedback', {
   feedbackId: serial('feedback_id').primaryKey(),
-  userId: integer('user_id').notNull().references(() => users.userId, { onDelete: 'cascade' }),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.userId, { onDelete: 'cascade' }),
   functionality: integer('functionality').default(0),
   usability: integer('usability').default(0),
   reliability: integer('reliability').default(0),
@@ -65,14 +74,18 @@ export const feedback = pgTable('feedback', {
 
 export const conversations = pgTable('conversations', {
   conversationId: serial('conversation_id').primaryKey(),
-  userId: integer('user_id').notNull().references(() => users.userId, { onDelete: 'cascade' }),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.userId, { onDelete: 'cascade' }),
   title: text('title'),
   createdAt: timestamp('created_at').defaultNow(),
 });
 
 export const conversationMessages = pgTable('conversation_messages', {
   messageId: serial('message_id').primaryKey(),
-  conversationId: integer('conversation_id').notNull().references(() => conversations.conversationId, { onDelete: 'cascade' }),
+  conversationId: integer('conversation_id')
+    .notNull()
+    .references(() => conversations.conversationId, { onDelete: 'cascade' }),
   sender: text('sender').notNull().default('user'),
   message: text('message'),
   translatedMessage: text('translated_message'),
@@ -81,7 +94,9 @@ export const conversationMessages = pgTable('conversation_messages', {
 
 export const speechRecords = pgTable('speech_records', {
   speechId: serial('speech_id').primaryKey(),
-  userId: integer('user_id').notNull().references(() => users.userId, { onDelete: 'cascade' }),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.userId, { onDelete: 'cascade' }),
   audioPath: text('audio_path'),
   recognizedText: text('recognized_text'),
   languageDetected: text('language_detected'),
@@ -91,7 +106,9 @@ export const speechRecords = pgTable('speech_records', {
 
 export const translations = pgTable('translations', {
   translationId: serial('translation_id').primaryKey(),
-  speechId: integer('speech_id').notNull().references(() => speechRecords.speechId, { onDelete: 'cascade' }),
+  speechId: integer('speech_id')
+    .notNull()
+    .references(() => speechRecords.speechId, { onDelete: 'cascade' }),
   sourceLanguage: text('source_language'),
   targetLanguage: text('target_language'),
   translatedText: text('translated_text'),
@@ -99,7 +116,9 @@ export const translations = pgTable('translations', {
 
 export const phraseRecommendations = pgTable('phrase_recommendations', {
   recommendationId: serial('recommendation_id').primaryKey(),
-  speechId: integer('speech_id').notNull().references(() => speechRecords.speechId, { onDelete: 'cascade' }),
+  speechId: integer('speech_id')
+    .notNull()
+    .references(() => speechRecords.speechId, { onDelete: 'cascade' }),
   recommendedPhrase: text('recommended_phrase'),
   intent: text('intent'),
   confidence: real('confidence').default(0),
@@ -115,15 +134,21 @@ export const learningModules = pgTable('learning_modules', {
 
 export const learningProgress = pgTable('learning_progress', {
   progressId: serial('progress_id').primaryKey(),
-  userId: integer('user_id').notNull().references(() => users.userId, { onDelete: 'cascade' }),
-  moduleId: integer('module_id').notNull().references(() => learningModules.moduleId, { onDelete: 'cascade' }),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.userId, { onDelete: 'cascade' }),
+  moduleId: integer('module_id')
+    .notNull()
+    .references(() => learningModules.moduleId, { onDelete: 'cascade' }),
   completionPercent: real('completion_percent').default(0),
   createdAt: timestamp('created_at').defaultNow(),
 });
 
 export const communityPosts = pgTable('community_posts', {
   postId: serial('post_id').primaryKey(),
-  userId: integer('user_id').notNull().references(() => users.userId, { onDelete: 'cascade' }),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.userId, { onDelete: 'cascade' }),
   title: text('title'),
   content: text('content'),
   phrase: text('phrase'),
@@ -137,15 +162,21 @@ export const communityPosts = pgTable('community_posts', {
 
 export const comments = pgTable('comments', {
   commentId: serial('comment_id').primaryKey(),
-  postId: integer('post_id').notNull().references(() => communityPosts.postId, { onDelete: 'cascade' }),
-  userId: integer('user_id').notNull().references(() => users.userId, { onDelete: 'cascade' }),
+  postId: integer('post_id')
+    .notNull()
+    .references(() => communityPosts.postId, { onDelete: 'cascade' }),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.userId, { onDelete: 'cascade' }),
   comment: text('comment'),
   createdAt: timestamp('created_at').defaultNow(),
 });
 
 export const communityReports = pgTable('community_reports', {
   reportId: serial('report_id').primaryKey(),
-  postId: integer('post_id').notNull().references(() => communityPosts.postId, { onDelete: 'cascade' }),
+  postId: integer('post_id')
+    .notNull()
+    .references(() => communityPosts.postId, { onDelete: 'cascade' }),
   reporterId: integer('reporter_id').references(() => users.userId, { onDelete: 'set null' }),
   reason: text('reason'),
   status: text('status').default('open'),
@@ -154,7 +185,10 @@ export const communityReports = pgTable('community_reports', {
 
 export const learnerProfiles = pgTable('learner_profiles', {
   profileId: serial('profile_id').primaryKey(),
-  userId: integer('user_id').notNull().unique().references(() => users.userId, { onDelete: 'cascade' }),
+  userId: integer('user_id')
+    .notNull()
+    .unique()
+    .references(() => users.userId, { onDelete: 'cascade' }),
   level: text('level').default('beginner'),
   strengths: text('strengths'),
   weakAreas: text('weak_areas'),
@@ -187,7 +221,9 @@ export const preservedWords = pgTable('preserved_words', {
 export const verificationRequests = pgTable('verification_requests', {
   requestId: serial('request_id').primaryKey(),
   wordId: integer('word_id').references(() => preservedWords.wordId, { onDelete: 'cascade' }),
-  userId: integer('user_id').notNull().references(() => users.userId, { onDelete: 'cascade' }),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.userId, { onDelete: 'cascade' }),
   audioPath: text('audio_path'),
   recordedText: text('recorded_text'),
   verifierId: integer('verifier_id').references(() => users.userId, { onDelete: 'set null' }),
@@ -200,7 +236,9 @@ export const verificationRequests = pgTable('verification_requests', {
 
 export const tutorSessions = pgTable('tutor_sessions', {
   sessionId: serial('session_id').primaryKey(),
-  userId: integer('user_id').notNull().references(() => users.userId, { onDelete: 'cascade' }),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.userId, { onDelete: 'cascade' }),
   messages: text('messages'),
   summary: text('summary'),
   xpEarned: integer('xp_earned').default(0),
@@ -210,7 +248,9 @@ export const tutorSessions = pgTable('tutor_sessions', {
 
 export const pronunciationAttempts = pgTable('pronunciation_attempts', {
   id: text('id').primaryKey(),
-  userId: integer('user_id').notNull().references(() => users.userId, { onDelete: 'cascade' }),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.userId, { onDelete: 'cascade' }),
   word: text('word').notNull(),
   phoneticExpected: text('phonetic_expected').default(''),
   phoneticHeard: text('phonetic_heard').default(''),
@@ -223,7 +263,9 @@ export const pronunciationAttempts = pgTable('pronunciation_attempts', {
 
 export const vocabularyReviews = pgTable('vocabulary_reviews', {
   id: text('id').primaryKey(),
-  userId: integer('user_id').notNull().references(() => users.userId, { onDelete: 'cascade' }),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.userId, { onDelete: 'cascade' }),
   word: text('word').notNull(),
   translation: text('translation').default(''),
   pronunciation: text('pronunciation').default(''),
@@ -244,7 +286,9 @@ export const vocabularyReviews = pgTable('vocabulary_reviews', {
 
 export const conversationSummaries = pgTable('conversation_summaries', {
   id: text('id').primaryKey(),
-  userId: integer('user_id').notNull().references(() => users.userId, { onDelete: 'cascade' }),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.userId, { onDelete: 'cascade' }),
   summary: text('summary').notNull(),
   topics: text('topics').default('[]'),
   vocabularyLearned: text('vocabulary_learned').default('[]'),
@@ -254,7 +298,9 @@ export const conversationSummaries = pgTable('conversation_summaries', {
 
 export const xpLogs = pgTable('xp_logs', {
   id: text('id').primaryKey(),
-  userId: integer('user_id').notNull().references(() => users.userId, { onDelete: 'cascade' }),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.userId, { onDelete: 'cascade' }),
   amount: integer('amount').notNull(),
   source: text('source').notNull(),
   description: text('description'),
@@ -263,7 +309,9 @@ export const xpLogs = pgTable('xp_logs', {
 
 export const aiRecommendations = pgTable('ai_recommendations', {
   id: text('id').primaryKey(),
-  userId: integer('user_id').notNull().references(() => users.userId, { onDelete: 'cascade' }),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.userId, { onDelete: 'cascade' }),
   recommendationType: text('recommendation_type').notNull(),
   content: text('content').notNull(),
   priority: integer('priority').default(0),
@@ -274,7 +322,9 @@ export const aiRecommendations = pgTable('ai_recommendations', {
 
 export const userSessions = pgTable('user_sessions', {
   id: text('id').primaryKey(),
-  userId: integer('user_id').notNull().references(() => users.userId, { onDelete: 'cascade' }),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.userId, { onDelete: 'cascade' }),
   refreshToken: text('refresh_token').notNull(),
   deviceInfo: text('device_info'),
   ipAddress: text('ip_address'),
@@ -284,7 +334,10 @@ export const userSessions = pgTable('user_sessions', {
 
 export const notificationPreferences = pgTable('notification_preferences', {
   id: serial('id').primaryKey(),
-  userId: integer('user_id').notNull().unique().references(() => users.userId, { onDelete: 'cascade' }),
+  userId: integer('user_id')
+    .notNull()
+    .unique()
+    .references(() => users.userId, { onDelete: 'cascade' }),
   dailyReminder: integer('daily_reminder').default(1),
   dailyReminderHour: integer('daily_reminder_hour').default(9),
   dailyReminderMinute: integer('daily_reminder_minute').default(0),
@@ -298,7 +351,10 @@ export const notificationPreferences = pgTable('notification_preferences', {
 
 export const learningAnalytics = pgTable('learning_analytics', {
   id: serial('id').primaryKey(),
-  userId: integer('user_id').notNull().unique().references(() => users.userId, { onDelete: 'cascade' }),
+  userId: integer('user_id')
+    .notNull()
+    .unique()
+    .references(() => users.userId, { onDelete: 'cascade' }),
   totalSpeakingSeconds: integer('total_speaking_seconds').default(0),
   totalWordsLearned: integer('total_words_learned').default(0),
   totalPronunciationAttempts: integer('total_pronunciation_attempts').default(0),
@@ -310,23 +366,39 @@ export const learningAnalytics = pgTable('learning_analytics', {
   lastCalculated: text('last_calculated'),
 });
 
-export const bookmarks = pgTable('bookmarks', {
-  id: serial('id').primaryKey(),
-  userId: integer('user_id').notNull().references(() => users.userId, { onDelete: 'cascade' }),
-  postId: integer('post_id').notNull().references(() => communityPosts.postId, { onDelete: 'cascade' }),
-  createdAt: timestamp('created_at').defaultNow(),
-}, (table) => ({
-  uniqueUserPost: unique('unique_user_post').on(table.userId, table.postId),
-}));
+export const bookmarks = pgTable(
+  'bookmarks',
+  {
+    id: serial('id').primaryKey(),
+    userId: integer('user_id')
+      .notNull()
+      .references(() => users.userId, { onDelete: 'cascade' }),
+    postId: integer('post_id')
+      .notNull()
+      .references(() => communityPosts.postId, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at').defaultNow(),
+  },
+  (table) => ({
+    uniqueUserPost: unique('unique_user_post').on(table.userId, table.postId),
+  })
+);
 
-export const likes = pgTable('likes', {
-  id: serial('id').primaryKey(),
-  userId: integer('user_id').notNull().references(() => users.userId, { onDelete: 'cascade' }),
-  postId: integer('post_id').notNull().references(() => communityPosts.postId, { onDelete: 'cascade' }),
-  createdAt: timestamp('created_at').defaultNow(),
-}, (table) => ({
-  uniqueUserPost: unique('unique_user_post').on(table.userId, table.postId),
-}));
+export const likes = pgTable(
+  'likes',
+  {
+    id: serial('id').primaryKey(),
+    userId: integer('user_id')
+      .notNull()
+      .references(() => users.userId, { onDelete: 'cascade' }),
+    postId: integer('post_id')
+      .notNull()
+      .references(() => communityPosts.postId, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at').defaultNow(),
+  },
+  (table) => ({
+    uniqueUserPost: unique('unique_user_post').on(table.userId, table.postId),
+  })
+);
 
 export const auditLogs = pgTable('audit_logs', {
   id: serial('id').primaryKey(),
@@ -341,46 +413,68 @@ export const auditLogs = pgTable('audit_logs', {
 
 export const dailyActivity = pgTable('daily_activity', {
   activityId: serial('activity_id').primaryKey(),
-  userId: integer('user_id').notNull().references(() => users.userId, { onDelete: 'cascade' }),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.userId, { onDelete: 'cascade' }),
   activityDate: text('activity_date').notNull(),
   xpEarned: integer('xp_earned').default(0),
 });
 
-export const userAchievements = pgTable('user_achievements', {
-  userAchievementId: serial('user_achievement_id').primaryKey(),
-  userId: integer('user_id').notNull().references(() => users.userId, { onDelete: 'cascade' }),
-  achievementId: text('achievement_id').notNull(),
-  unlockedAt: text('unlocked_at'),
-}, (table) => ({
-  uniqueUserAchievement: unique('unique_user_achievement').on(table.userId, table.achievementId),
-}));
+export const userAchievements = pgTable(
+  'user_achievements',
+  {
+    userAchievementId: serial('user_achievement_id').primaryKey(),
+    userId: integer('user_id')
+      .notNull()
+      .references(() => users.userId, { onDelete: 'cascade' }),
+    achievementId: text('achievement_id').notNull(),
+    unlockedAt: text('unlocked_at'),
+  },
+  (table) => ({
+    uniqueUserAchievement: unique('unique_user_achievement').on(table.userId, table.achievementId),
+  })
+);
 
-export const userBadges = pgTable('user_badges', {
-  userBadgeId: serial('user_badge_id').primaryKey(),
-  userId: integer('user_id').notNull().references(() => users.userId, { onDelete: 'cascade' }),
-  badgeId: text('badge_id').notNull(),
-  earnedAt: text('earned_at'),
-}, (table) => ({
-  uniqueUserBadge: unique('unique_user_badge').on(table.userId, table.badgeId),
-}));
+export const userBadges = pgTable(
+  'user_badges',
+  {
+    userBadgeId: serial('user_badge_id').primaryKey(),
+    userId: integer('user_id')
+      .notNull()
+      .references(() => users.userId, { onDelete: 'cascade' }),
+    badgeId: text('badge_id').notNull(),
+    earnedAt: text('earned_at'),
+  },
+  (table) => ({
+    uniqueUserBadge: unique('unique_user_badge').on(table.userId, table.badgeId),
+  })
+);
 
 export const completedChallenges = pgTable('completed_challenges', {
   id: serial('id').primaryKey(),
-  userId: integer('user_id').notNull().references(() => users.userId, { onDelete: 'cascade' }),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.userId, { onDelete: 'cascade' }),
   challengeId: text('challenge_id').notNull(),
   completedAt: timestamp('completed_at').defaultNow(),
 });
 
 export const follows = pgTable('follows', {
   id: serial('id').primaryKey(),
-  followerId: integer('follower_id').notNull().references(() => users.userId, { onDelete: 'cascade' }),
-  followingId: integer('following_id').notNull().references(() => users.userId, { onDelete: 'cascade' }),
+  followerId: integer('follower_id')
+    .notNull()
+    .references(() => users.userId, { onDelete: 'cascade' }),
+  followingId: integer('following_id')
+    .notNull()
+    .references(() => users.userId, { onDelete: 'cascade' }),
   createdAt: timestamp('created_at').defaultNow(),
 });
 
 export const verifications = pgTable('verifications', {
   id: serial('id').primaryKey(),
-  userId: integer('user_id').notNull().references(() => users.userId, { onDelete: 'cascade' }),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.userId, { onDelete: 'cascade' }),
   verifiedBy: integer('verified_by').references(() => users.userId, { onDelete: 'set null' }),
   status: text('status').default('pending'),
   createdAt: timestamp('created_at').defaultNow(),

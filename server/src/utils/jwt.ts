@@ -6,7 +6,9 @@ const ACCESS_TOKEN_EXPIRY = 15 * 60 * 1000;
 const REFRESH_TOKEN_EXPIRY = 7 * 24 * 60 * 60 * 1000;
 
 // Supabase JWT secret for verifying Supabase-issued tokens
-const SUPABASE_JWT_SECRET = process.env.SUPABASE_JWT_SECRET || 'MCTSVBraL1sk/bLDmSbxNgFkpVMCac8Kgjpcj+UM4DXTGZ1lIIZwN7lfsOsTCedWGObwVUlpQN7SzOqLaNvFAg==';
+const SUPABASE_JWT_SECRET =
+  process.env.SUPABASE_JWT_SECRET ||
+  'MCTSVBraL1sk/bLDmSbxNgFkpVMCac8Kgjpcj+UM4DXTGZ1lIIZwN7lfsOsTCedWGObwVUlpQN7SzOqLaNvFAg==';
 
 function base64url(text: string): string {
   return Buffer.from(text).toString('base64url');
@@ -20,6 +22,9 @@ export interface JwtPayload {
   iat?: number;
   exp?: number;
   type?: 'access' | 'refresh';
+  role?: string;
+  roleId?: number;
+  permissions?: string[];
 }
 
 export interface TokenPair {
@@ -28,35 +33,59 @@ export interface TokenPair {
   expiresIn: number;
 }
 
-export function signToken(payload: { email: string; userId: number }): string {
+export function signToken(payload: {
+  email: string;
+  userId: number;
+  role?: string;
+  roleId?: number;
+  permissions?: string[];
+}): string {
   const header = base64url(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
-  const body = base64url(JSON.stringify({
-    ...payload,
-    iat: Date.now(),
-    exp: Date.now() + ACCESS_TOKEN_EXPIRY,
-    type: 'access',
-  }));
-  const signature = crypto.createHmac('sha256', JWT_SECRET)
+  const body = base64url(
+    JSON.stringify({
+      ...payload,
+      iat: Date.now(),
+      exp: Date.now() + ACCESS_TOKEN_EXPIRY,
+      type: 'access',
+    })
+  );
+  const signature = crypto
+    .createHmac('sha256', JWT_SECRET)
     .update(header + '.' + body)
     .digest('base64url');
   return header + '.' + body + '.' + signature;
 }
 
-export function signRefreshToken(payload: { email: string; userId: number }): string {
+export function signRefreshToken(payload: {
+  email: string;
+  userId: number;
+  role?: string;
+  roleId?: number;
+  permissions?: string[];
+}): string {
   const header = base64url(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
-  const body = base64url(JSON.stringify({
-    ...payload,
-    iat: Date.now(),
-    exp: Date.now() + REFRESH_TOKEN_EXPIRY,
-    type: 'refresh',
-  }));
-  const signature = crypto.createHmac('sha256', JWT_REFRESH_SECRET)
+  const body = base64url(
+    JSON.stringify({
+      ...payload,
+      iat: Date.now(),
+      exp: Date.now() + REFRESH_TOKEN_EXPIRY,
+      type: 'refresh',
+    })
+  );
+  const signature = crypto
+    .createHmac('sha256', JWT_REFRESH_SECRET)
     .update(header + '.' + body)
     .digest('base64url');
   return header + '.' + body + '.' + signature;
 }
 
-export function generateTokenPair(payload: { email: string; userId: number }): TokenPair {
+export function generateTokenPair(payload: {
+  email: string;
+  userId: number;
+  role?: string;
+  roleId?: number;
+  permissions?: string[];
+}): TokenPair {
   return {
     accessToken: signToken(payload),
     refreshToken: signRefreshToken(payload),
@@ -68,7 +97,8 @@ function verifyWithSecret(token: string, secret: string): JwtPayload | null {
   try {
     const parts = token.split('.');
     if (parts.length !== 3) return null;
-    const sig = crypto.createHmac('sha256', secret)
+    const sig = crypto
+      .createHmac('sha256', secret)
       .update(parts[0] + '.' + parts[1])
       .digest('base64url');
     if (sig !== parts[2]) return null;
@@ -94,6 +124,9 @@ export function verifyToken(token: string): JwtPayload | null {
       userId: supabasePayload.userId || 0,
       email: supabasePayload.email || (supabasePayload as any).email || '',
       id: supabasePayload.userId || 0,
+      role: (supabasePayload as any).role,
+      roleId: (supabasePayload as any).roleId,
+      permissions: (supabasePayload as any).permissions,
     };
   }
 
@@ -105,7 +138,8 @@ export function verifyRefreshToken(token: string): JwtPayload | null {
   try {
     const parts = token.split('.');
     if (parts.length !== 3) return null;
-    const sig = crypto.createHmac('sha256', JWT_REFRESH_SECRET)
+    const sig = crypto
+      .createHmac('sha256', JWT_REFRESH_SECRET)
       .update(parts[0] + '.' + parts[1])
       .digest('base64url');
     if (sig !== parts[2]) return null;

@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { createContext, useCallback, useContext, useRef, useState } from "react";
-import type { ReactNode } from "react";
+import { createContext, useCallback, useContext, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 
-type ToastKind = "success" | "error" | "info";
+type ToastKind = 'success' | 'error' | 'info';
 
 interface ToastItem {
   id: number;
@@ -19,7 +19,7 @@ export function useToast() {
   return useContext(ToastContext);
 }
 
-const icons: Record<ToastKind, string> = { success: "✓", error: "✕", info: "ℹ" };
+const icons: Record<ToastKind, string> = { success: '✓', error: '✕', info: 'ℹ' };
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<ToastItem[]>([]);
@@ -39,16 +39,16 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           <div
             key={t.id}
             className={`pointer-events-auto flex items-start gap-2.5 rounded-xl border bg-white px-4 py-3 shadow-lg ${
-              t.kind === "success"
-                ? "border-success/30"
-                : t.kind === "error"
-                  ? "border-danger/30"
-                  : "border-brand/30"
+              t.kind === 'success'
+                ? 'border-success/30'
+                : t.kind === 'error'
+                  ? 'border-danger/30'
+                  : 'border-brand/30'
             }`}
           >
             <span
               className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white ${
-                t.kind === "success" ? "bg-success" : t.kind === "error" ? "bg-danger" : "bg-brand"
+                t.kind === 'success' ? 'bg-success' : t.kind === 'error' ? 'bg-danger' : 'bg-brand'
               }`}
             >
               {icons[t.kind]}

@@ -4,25 +4,33 @@ import * as schema from '../schema-sqlite';
 
 export async function getConversations(userEmail: string): Promise<any[]> {
   const db = getDb();
-  const userSubquery = (db as any).select({ id: schema.users.userId })
+  const userSubquery = (db as any)
+    .select({ id: schema.users.userId })
     .from(schema.users)
     .where(eq(schema.users.email, userEmail));
 
-  const rows = await (db as any).select({
-    conversationId: schema.conversations.conversationId,
-    title: schema.conversations.title,
-    createdAt: schema.conversations.createdAt,
-    sender: schema.conversationMessages.sender,
-    message: schema.conversationMessages.message,
-    translatedMessage: schema.conversationMessages.translatedMessage,
-  })
+  const rows = await (db as any)
+    .select({
+      conversationId: schema.conversations.conversationId,
+      title: schema.conversations.title,
+      createdAt: schema.conversations.createdAt,
+      sender: schema.conversationMessages.sender,
+      message: schema.conversationMessages.message,
+      translatedMessage: schema.conversationMessages.translatedMessage,
+    })
     .from(schema.conversations)
     .leftJoin(
       schema.conversationMessages,
       eq(schema.conversations.conversationId, schema.conversationMessages.conversationId)
     )
     .where(
-      eq(schema.conversations.userId, (db as any).select({ id: schema.users.userId }).from(schema.users).where(eq(schema.users.email, userEmail)))
+      eq(
+        schema.conversations.userId,
+        (db as any)
+          .select({ id: schema.users.userId })
+          .from(schema.users)
+          .where(eq(schema.users.email, userEmail))
+      )
     )
     .orderBy(desc(schema.conversations.createdAt));
 
@@ -48,7 +56,8 @@ export async function getConversations(userEmail: string): Promise<any[]> {
 
 export async function getUserIdByEmail(email: string): Promise<number | undefined> {
   const db = getDb();
-  const rows = await (db as any).select()
+  const rows = await (db as any)
+    .select()
     .from(schema.users)
     .where(eq(schema.users.email, email))
     .limit(1);
@@ -57,15 +66,19 @@ export async function getUserIdByEmail(email: string): Promise<number | undefine
 
 export async function createConversation(userId: number, title: string | null): Promise<number> {
   const db = getDb();
-  const result = await (db as any).insert(schema.conversations)
+  const result = await (db as any)
+    .insert(schema.conversations)
     .values({ userId, title })
     .returning();
   return result[0].conversationId;
 }
 
-export async function addMessages(conversationId: number, messages: { type: string; text: string }[]): Promise<void> {
+export async function addMessages(
+  conversationId: number,
+  messages: { type: string; text: string }[]
+): Promise<void> {
   const db = getDb();
-  const values = messages.map(m => ({
+  const values = messages.map((m) => ({
     conversationId,
     sender: m.type || 'user',
     message: m.text || '',
@@ -77,7 +90,8 @@ export async function deleteConversation(conversationId: number, userEmail: stri
   const db = getDb();
   const userId = await getUserIdByEmail(userEmail);
   if (!userId) return;
-  await (db as any).delete(schema.conversations)
+  await (db as any)
+    .delete(schema.conversations)
     .where(
       and(
         eq(schema.conversations.conversationId, conversationId),

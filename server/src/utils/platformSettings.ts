@@ -34,7 +34,8 @@ export async function getPlatformSettings(): Promise<PlatformSettings> {
 
   try {
     const db = getDb();
-    const rows = await (db as any).select({ details: schema.auditLogs.details })
+    const rows = await (db as any)
+      .select({ details: schema.auditLogs.details })
       .from(schema.auditLogs)
       .where(eq(schema.auditLogs.action, 'update_settings'))
       .orderBy(desc(schema.auditLogs.timestamp))

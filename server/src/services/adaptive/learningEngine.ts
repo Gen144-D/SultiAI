@@ -33,12 +33,22 @@ export class AdaptiveLearningEngine {
     const reasoning: string[] = [];
 
     let lessonDifficulty = state.currentLevel;
-    if (state.compositeScore >= ADAPTIVE_PARAMS.MASTERY_THRESHOLD_UP && state.sessionsAtLevel >= ADAPTIVE_PARAMS.SESSIONS_TO_LEVEL_UP) {
+    if (
+      state.compositeScore >= ADAPTIVE_PARAMS.MASTERY_THRESHOLD_UP &&
+      state.sessionsAtLevel >= ADAPTIVE_PARAMS.SESSIONS_TO_LEVEL_UP
+    ) {
       lessonDifficulty = this.getNextLevel(state.currentLevel);
-      reasoning.push(`Promoted to ${lessonDifficulty} (composite: ${state.compositeScore.toFixed(2)})`);
-    } else if (state.compositeScore <= ADAPTIVE_PARAMS.MASTERY_THRESHOLD_DOWN && state.sessionsAtLevel >= ADAPTIVE_PARAMS.SESSIONS_TO_LEVEL_DOWN) {
+      reasoning.push(
+        `Promoted to ${lessonDifficulty} (composite: ${state.compositeScore.toFixed(2)})`
+      );
+    } else if (
+      state.compositeScore <= ADAPTIVE_PARAMS.MASTERY_THRESHOLD_DOWN &&
+      state.sessionsAtLevel >= ADAPTIVE_PARAMS.SESSIONS_TO_LEVEL_DOWN
+    ) {
       lessonDifficulty = this.getPreviousLevel(state.currentLevel);
-      reasoning.push(`Adjusted to ${lessonDifficulty} (composite: ${state.compositeScore.toFixed(2)})`);
+      reasoning.push(
+        `Adjusted to ${lessonDifficulty} (composite: ${state.compositeScore.toFixed(2)})`
+      );
     }
 
     const suggestedTopics = [...new Set([...weakTopics, ...input.weakAreas])].slice(0, 5);
@@ -73,7 +83,8 @@ export class AdaptiveLearningEngine {
       const db = getDb();
       const now = new Date().toISOString();
 
-      const existing = await (db as any).select()
+      const existing = await (db as any)
+        .select()
         .from(schema.learningProgress)
         .where(
           (db as any).and(
@@ -86,7 +97,8 @@ export class AdaptiveLearningEngine {
       if (existing.length > 0) {
         const current = existing[0];
         const newCompletion = Math.min(100, (current.completionPercent || 0) + accuracy * 0.1);
-        await (db as any).update(schema.learningProgress)
+        await (db as any)
+          .update(schema.learningProgress)
           .set({ completionPercent: newCompletion, updatedAt: now })
           .where((db as any).eq(schema.learningProgress.progressId, current.progressId));
       } else {
@@ -108,7 +120,8 @@ export class AdaptiveLearningEngine {
   async getAdaptiveState(userId: number): Promise<AdaptiveState> {
     try {
       const db = getDb();
-      const profileRows = await (db as any).select()
+      const profileRows = await (db as any)
+        .select()
         .from(schema.learnerProfiles)
         .where((db as any).eq(schema.learnerProfiles.userId, userId))
         .limit(1);
@@ -118,7 +131,8 @@ export class AdaptiveLearningEngine {
         return this.getDefaultState();
       }
 
-      const progressRows = await (db as any).select()
+      const progressRows = await (db as any)
+        .select()
         .from(schema.learningProgress)
         .where((db as any).eq(schema.learningProgress.userId, userId));
 
@@ -137,12 +151,17 @@ export class AdaptiveLearningEngine {
   }
 
   private calculateTopicMasteries(progressRows: any[]): TopicMastery[] {
-    const topics: Record<string, { attempts: number; totalScore: number; lastPracticed: string }> = {};
+    const topics: Record<string, { attempts: number; totalScore: number; lastPracticed: string }> =
+      {};
 
     for (const row of progressRows) {
       const topic = row.topic || 'general';
       if (!topics[topic]) {
-        topics[topic] = { attempts: 0, totalScore: 0, lastPracticed: row.updatedAt || row.createdAt || '' };
+        topics[topic] = {
+          attempts: 0,
+          totalScore: 0,
+          lastPracticed: row.updatedAt || row.createdAt || '',
+        };
       }
       topics[topic].attempts++;
       topics[topic].totalScore += row.completionPercent || 0;
@@ -163,8 +182,10 @@ export class AdaptiveLearningEngine {
   private calculateCompositeScore(topicMasteries: TopicMastery[], profile: any): number {
     if (topicMasteries.length === 0) return 0.5;
 
-    const avgMastery = topicMasteries.reduce((sum, t) => sum + (t.avgScore / 100), 0) / topicMasteries.length;
-    const avgAttempts = topicMasteries.reduce((sum, t) => sum + t.attempts, 0) / topicMasteries.length;
+    const avgMastery =
+      topicMasteries.reduce((sum, t) => sum + t.avgScore / 100, 0) / topicMasteries.length;
+    const avgAttempts =
+      topicMasteries.reduce((sum, t) => sum + t.attempts, 0) / topicMasteries.length;
     const experienceFactor = Math.min(1, avgAttempts / 10);
 
     return avgMastery * 0.6 + experienceFactor * 0.4;
@@ -182,7 +203,8 @@ export class AdaptiveLearningEngine {
       const db = getDb();
       const now = new Date().toISOString();
 
-      const due = await (db as any).select()
+      const due = await (db as any)
+        .select()
         .from(schema.vocabularyReviews)
         .where(
           (db as any).and(
@@ -220,7 +242,8 @@ export class AdaptiveLearningEngine {
   private async getModuleId(topic: string): Promise<number> {
     try {
       const db = getDb();
-      const modules = await (db as any).select()
+      const modules = await (db as any)
+        .select()
         .from(schema.learningModules)
         .where((db as any).like(schema.learningModules.moduleTitle, `%${topic}%`))
         .limit(1);

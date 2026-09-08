@@ -5,35 +5,140 @@ import { getSqliteRaw } from '../db/connection';
 const router = Router();
 
 const ACHIEVEMENTS = [
-  { id: 'first_100_xp', title: 'First Steps', description: 'Earn 100 XP', icon: 'star', xpReward: 50, coinReward: 20 },
-  { id: 'thousand_xp', title: 'Century', description: 'Earn 1,000 XP', icon: 'trophy', xpReward: 200, coinReward: 100 },
-  { id: 'five_thousand_xp', title: 'Dedicated', description: 'Earn 5,000 XP', icon: 'diamond', xpReward: 500, coinReward: 250 },
-  { id: 'streak_3', title: 'Getting Started', description: '3-day streak', icon: 'sparkles', xpReward: 50, coinReward: 30 },
-  { id: 'streak_7', title: 'Consistent', description: '7-day streak', icon: 'calendar', xpReward: 100, coinReward: 50 },
-  { id: 'streak_30', title: 'Unstoppable', description: '30-day streak', icon: 'crown', xpReward: 500, coinReward: 200 },
-  { id: 'daily_goal', title: 'Goal Crusher', description: 'Reach daily goal', icon: 'target', xpReward: 50, coinReward: 25 },
-  { id: 'first_lesson', title: 'First Lesson', description: 'Complete your first lesson', icon: 'school', xpReward: 30, coinReward: 15 },
-  { id: 'voice_pioneer', title: 'Voice Pioneer', description: 'Try voice practice', icon: 'mic', xpReward: 20, coinReward: 10 },
-  { id: 'community_member', title: 'Community Member', description: 'Join the community', icon: 'people', xpReward: 25, coinReward: 10 },
+  {
+    id: 'first_100_xp',
+    title: 'First Steps',
+    description: 'Earn 100 XP',
+    icon: 'star',
+    xpReward: 50,
+    coinReward: 20,
+  },
+  {
+    id: 'thousand_xp',
+    title: 'Century',
+    description: 'Earn 1,000 XP',
+    icon: 'trophy',
+    xpReward: 200,
+    coinReward: 100,
+  },
+  {
+    id: 'five_thousand_xp',
+    title: 'Dedicated',
+    description: 'Earn 5,000 XP',
+    icon: 'diamond',
+    xpReward: 500,
+    coinReward: 250,
+  },
+  {
+    id: 'streak_3',
+    title: 'Getting Started',
+    description: '3-day streak',
+    icon: 'sparkles',
+    xpReward: 50,
+    coinReward: 30,
+  },
+  {
+    id: 'streak_7',
+    title: 'Consistent',
+    description: '7-day streak',
+    icon: 'calendar',
+    xpReward: 100,
+    coinReward: 50,
+  },
+  {
+    id: 'streak_30',
+    title: 'Unstoppable',
+    description: '30-day streak',
+    icon: 'crown',
+    xpReward: 500,
+    coinReward: 200,
+  },
+  {
+    id: 'daily_goal',
+    title: 'Goal Crusher',
+    description: 'Reach daily goal',
+    icon: 'target',
+    xpReward: 50,
+    coinReward: 25,
+  },
+  {
+    id: 'first_lesson',
+    title: 'First Lesson',
+    description: 'Complete your first lesson',
+    icon: 'school',
+    xpReward: 30,
+    coinReward: 15,
+  },
+  {
+    id: 'voice_pioneer',
+    title: 'Voice Pioneer',
+    description: 'Try voice practice',
+    icon: 'mic',
+    xpReward: 20,
+    coinReward: 10,
+  },
+  {
+    id: 'community_member',
+    title: 'Community Member',
+    description: 'Join the community',
+    icon: 'people',
+    xpReward: 25,
+    coinReward: 10,
+  },
 ];
 
 const BADGES = [
-  { id: 'native_speaker', title: 'Native Speaker', description: 'Verified native Bisaya speaker', icon: 'shield-checkmark', color: '#10B981' },
-  { id: 'top_contributor', title: 'Top Contributor', description: 'Helped the most in the community', icon: 'trophy', color: '#FFD700' },
-  { id: 'teacher', title: 'Teacher', description: 'Helped 10+ learners improve', icon: 'school', color: '#1E6F9F' },
-  { id: 'early_adopter', title: 'Early Adopter', description: 'Joined in the first month', icon: 'rocket', color: '#8B5CF6' },
+  {
+    id: 'native_speaker',
+    title: 'Native Speaker',
+    description: 'Verified native Bisaya speaker',
+    icon: 'shield-checkmark',
+    color: '#10B981',
+  },
+  {
+    id: 'top_contributor',
+    title: 'Top Contributor',
+    description: 'Helped the most in the community',
+    icon: 'trophy',
+    color: '#FFD700',
+  },
+  {
+    id: 'teacher',
+    title: 'Teacher',
+    description: 'Helped 10+ learners improve',
+    icon: 'school',
+    color: '#1E6F9F',
+  },
+  {
+    id: 'early_adopter',
+    title: 'Early Adopter',
+    description: 'Joined in the first month',
+    icon: 'rocket',
+    color: '#8B5CF6',
+  },
 ];
 
-function meetsCriterion(id: string, s: { xp: number; streak: number; dailyXp: number; dailyGoal: number }): boolean {
+function meetsCriterion(
+  id: string,
+  s: { xp: number; streak: number; dailyXp: number; dailyGoal: number }
+): boolean {
   switch (id) {
-    case 'first_100_xp': return s.xp >= 100;
-    case 'thousand_xp': return s.xp >= 1000;
-    case 'five_thousand_xp': return s.xp >= 5000;
-    case 'streak_3': return s.streak >= 3;
-    case 'streak_7': return s.streak >= 7;
-    case 'streak_30': return s.streak >= 30;
-    case 'daily_goal': return s.dailyXp >= (s.dailyGoal || 50);
-    default: return false;
+    case 'first_100_xp':
+      return s.xp >= 100;
+    case 'thousand_xp':
+      return s.xp >= 1000;
+    case 'five_thousand_xp':
+      return s.xp >= 5000;
+    case 'streak_3':
+      return s.streak >= 3;
+    case 'streak_7':
+      return s.streak >= 7;
+    case 'streak_30':
+      return s.streak >= 30;
+    case 'daily_goal':
+      return s.dailyXp >= (s.dailyGoal || 50);
+    default:
+      return false;
   }
 }
 
@@ -71,10 +176,14 @@ router.post('/check', authMiddleware, async (req: Request, res: Response) => {
       return;
     }
     const userId = req.user!.userId;
-    const earnedRows = sqlite.prepare('SELECT achievement_id FROM user_achievements WHERE user_id = ?').all(userId) as Array<{ achievement_id: string }>;
+    const earnedRows = sqlite
+      .prepare('SELECT achievement_id FROM user_achievements WHERE user_id = ?')
+      .all(userId) as Array<{ achievement_id: string }>;
     const earnedSet = new Set(earnedRows.map((r) => r.achievement_id));
     const now = new Date().toISOString();
-    const insert = sqlite.prepare('INSERT OR IGNORE INTO user_achievements (user_id, achievement_id, unlocked_at) VALUES (?, ?, ?)');
+    const insert = sqlite.prepare(
+      'INSERT OR IGNORE INTO user_achievements (user_id, achievement_id, unlocked_at) VALUES (?, ?, ?)'
+    );
     const newlyEarned: any[] = [];
     for (const a of ACHIEVEMENTS) {
       if (earnedSet.has(a.id)) continue;

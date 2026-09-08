@@ -1,16 +1,17 @@
-"use client";
+'use client';
 
-import { BarChart, LineChart } from "@/components/ChartCard";
-import { StatCard } from "@/components/StatCard";
-import { Card, CardHeader, ErrorState, LoadingState, StatusBadge } from "@/components/ui";
-import { useAsync } from "@/hooks/useAsync";
-import { api } from "@/lib/api";
+import { BarChart, LineChart } from '@/components/ChartCard';
+import { StatCard } from '@/components/StatCard';
+import { Card, CardHeader, ErrorState, LoadingState, StatusBadge } from '@/components/ui';
+import { useAsync } from '@/hooks/useAsync';
+import { api } from '@/lib/api';
 
 export default function AdminDashboardPage() {
   const { data, loading, error, reload } = useAsync(() => api.getOverview(), []);
 
   if (loading) return <LoadingState label="Loading dashboard..." />;
-  if (error || !data) return <ErrorState message={error ?? "Failed to load dashboard"} onRetry={reload} />;
+  if (error || !data)
+    return <ErrorState message={error ?? 'Failed to load dashboard'} onRetry={reload} />;
 
   const { stats, health, weeklyActive, lessonsTrend, aiTrend } = data;
 
@@ -30,17 +31,62 @@ export default function AdminDashboardPage() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Total users" value={stats.totalUsers.toLocaleString()} delta="+12.4% this month" tone="brand" icon="👥" />
-        <StatCard label="Active today" value={stats.activeToday.toLocaleString()} delta="+8.1% vs yesterday" tone="green" icon="🔥" />
-        <StatCard label="Lessons completed" value={stats.lessonsCompleted.toLocaleString()} delta="+18.7% this month" tone="amber" icon="📚" />
-        <StatCard label="AI requests" value={stats.aiRequests.toLocaleString()} delta={`${stats.aiFailedRequests} failed · ${Math.round((stats.aiFailedRequests / stats.aiRequests) * 100)}%`} tone="violet" icon="🤖" />
+        <StatCard
+          label="Total users"
+          value={stats.totalUsers.toLocaleString()}
+          delta="+12.4% this month"
+          tone="brand"
+          icon="👥"
+        />
+        <StatCard
+          label="Active today"
+          value={stats.activeToday.toLocaleString()}
+          delta="+8.1% vs yesterday"
+          tone="green"
+          icon="🔥"
+        />
+        <StatCard
+          label="Lessons completed"
+          value={stats.lessonsCompleted.toLocaleString()}
+          delta="+18.7% this month"
+          tone="amber"
+          icon="📚"
+        />
+        <StatCard
+          label="AI requests"
+          value={stats.aiRequests.toLocaleString()}
+          delta={`${stats.aiFailedRequests} failed · ${Math.round((stats.aiFailedRequests / stats.aiRequests) * 100)}%`}
+          tone="violet"
+          icon="🤖"
+        />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Weekly active" value={stats.weeklyActive.toLocaleString()} delta={`${((stats.weeklyActive / stats.totalUsers) * 100).toFixed(0)}% of users`} icon="📈" />
-        <StatCard label="Monthly active" value={stats.monthlyActive.toLocaleString()} tone="green" icon="🌙" />
-        <StatCard label="Avg XP / user" value={stats.avgXpPerUser.toLocaleString()} delta="Daily goal: 50 XP" tone="amber" icon="⚡" />
-        <StatCard label="Avg session" value={`${stats.avgSessionMinutes} min`} delta="18-day longest streak" icon="⏱" />
+        <StatCard
+          label="Weekly active"
+          value={stats.weeklyActive.toLocaleString()}
+          delta={`${((stats.weeklyActive / stats.totalUsers) * 100).toFixed(0)}% of users`}
+          icon="📈"
+        />
+        <StatCard
+          label="Monthly active"
+          value={stats.monthlyActive.toLocaleString()}
+          tone="green"
+          icon="🌙"
+        />
+        <StatCard
+          label="Avg XP / user"
+          value={stats.avgXpPerUser.toLocaleString()}
+          delta="Daily goal: 50 XP"
+          tone="amber"
+          icon="⚡"
+        />
+        <StatCard
+          label="Avg session"
+          value={`${stats.avgSessionMinutes} min`}
+          delta="18-day longest streak"
+          icon="⏱"
+        />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -70,17 +116,21 @@ export default function AdminDashboardPage() {
           <CardHeader title="System status" />
           <div className="grid grid-cols-2 gap-3 p-6">
             {[
-              { label: "Database", value: health.db, ok: health.db === "connected" },
-              { label: "API server", value: health.api, ok: health.api === "up" },
-              { label: "Groq AI", value: health.groq, ok: health.groq === "configured" },
-              { label: "Whisper", value: health.whisper, ok: health.whisper === "configured" },
-              { label: "Storage", value: health.storage, ok: health.storage === "up" },
+              { label: 'Database', value: health.db, ok: health.db === 'connected' },
+              { label: 'API server', value: health.api, ok: health.api === 'up' },
+              { label: 'Groq AI', value: health.groq, ok: health.groq === 'configured' },
+              { label: 'Whisper', value: health.whisper, ok: health.whisper === 'configured' },
+              { label: 'Storage', value: health.storage, ok: health.storage === 'up' },
             ].map((s) => (
               <div key={s.label} className="rounded-2xl border border-line bg-surface p-4">
                 <p className="text-xs text-ink-faint">{s.label}</p>
                 <div className="mt-2 flex items-center gap-2">
-                  <span className={`h-2.5 w-2.5 rounded-full ${s.ok ? "bg-success" : "bg-danger"}`} />
-                  <span className={`text-sm font-bold capitalize ${s.ok ? "text-success" : "text-danger"}`}>
+                  <span
+                    className={`h-2.5 w-2.5 rounded-full ${s.ok ? 'bg-success' : 'bg-danger'}`}
+                  />
+                  <span
+                    className={`text-sm font-bold capitalize ${s.ok ? 'text-success' : 'text-danger'}`}
+                  >
                     {s.value}
                   </span>
                 </div>

@@ -1,23 +1,23 @@
-"use client";
+'use client';
 
-import Link from "next/link";
-import { useRouter, usePathname } from "next/navigation";
-import { useState } from "react";
-import type { ReactNode } from "react";
-import { sessionMock, useSession } from "@/lib/mock/session";
-import { useToast } from "./Toast";
-import { Avatar } from "./ui";
+import Link from 'next/link';
+import { useRouter, usePathname } from 'next/navigation';
+import { useState } from 'react';
+import type { ReactNode } from 'react';
+import { sessionMock, useSession } from '@/lib/mock/session';
+import { useToast } from './Toast';
+import { Avatar } from './ui';
 
 const nav = [
-  { href: "/admin", label: "Dashboard", icon: "📊" },
-  { href: "/admin/users", label: "Users", icon: "👥" },
-  { href: "/admin/lessons", label: "Lessons", icon: "📚" },
-  { href: "/admin/community", label: "Community", icon: "💬" },
-  { href: "/admin/ai", label: "AI Usage", icon: "🤖" },
-  { href: "/admin/xp", label: "XP & Rewards", icon: "⚡" },
-  { href: "/admin/feedback", label: "Feedback", icon: "📝" },
-  { href: "/admin/preservation", label: "Preservation", icon: "🏛" },
-  { href: "/admin/settings", label: "Settings", icon: "⚙️" },
+  { href: '/admin', label: 'Dashboard', icon: '📊' },
+  { href: '/admin/users', label: 'Users', icon: '👥' },
+  { href: '/admin/lessons', label: 'Lessons', icon: '📚' },
+  { href: '/admin/community', label: 'Community', icon: '💬' },
+  { href: '/admin/ai', label: 'AI Usage', icon: '🤖' },
+  { href: '/admin/xp', label: 'XP & Rewards', icon: '⚡' },
+  { href: '/admin/feedback', label: 'Feedback', icon: '📝' },
+  { href: '/admin/preservation', label: 'Preservation', icon: '🏛' },
+  { href: '/admin/settings', label: 'Settings', icon: '⚙️' },
 ];
 
 export default function AdminShell({ children }: { children: ReactNode }) {
@@ -26,12 +26,12 @@ export default function AdminShell({ children }: { children: ReactNode }) {
   const toast = useToast();
   const session = useSession();
   const [menuOpen, setMenuOpen] = useState(false);
-  const isLogin = pathname === "/admin/login";
+  const isLogin = pathname === '/admin/login';
 
   async function handleSignOut() {
     await sessionMock.signOut();
-    toast.push("info", "Signed out.");
-    router.push("/admin/login");
+    toast.push('info', 'Signed out.');
+    router.push('/admin/login');
   }
 
   if (isLogin) return <>{children}</>;
@@ -74,13 +74,16 @@ export default function AdminShell({ children }: { children: ReactNode }) {
         <nav className="flex-1 overflow-y-auto px-3 py-4">
           <ul className="space-y-1">
             {nav.map((item) => {
-              const active = item.href === "/admin" ? pathname === "/admin" : pathname.startsWith(item.href);
+              const active =
+                item.href === '/admin' ? pathname === '/admin' : pathname.startsWith(item.href);
               return (
                 <li key={item.href}>
                   <Link
                     href={item.href}
                     className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
-                      active ? "bg-brand-light text-brand-dark" : "text-ink-soft hover:bg-surface hover:text-ink"
+                      active
+                        ? 'bg-brand-light text-brand-dark'
+                        : 'text-ink-soft hover:bg-surface hover:text-ink'
                     }`}
                   >
                     <span className="text-base">{item.icon}</span>
@@ -104,7 +107,16 @@ export default function AdminShell({ children }: { children: ReactNode }) {
               title="Sign out"
               className="flex h-8 w-8 items-center justify-center rounded-lg text-ink-faint transition-colors hover:bg-danger/10 hover:text-danger"
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
                 <path d="M16 17l5-5-5-5M21 12H9" />
               </svg>
@@ -127,7 +139,15 @@ export default function AdminShell({ children }: { children: ReactNode }) {
           aria-label="Toggle menu"
           className="flex h-9 w-9 items-center justify-center rounded-lg text-ink"
         >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+          >
             {menuOpen ? <path d="M6 6l12 12M18 6L6 18" /> : <path d="M4 7h16M4 12h16M4 17h16" />}
           </svg>
         </button>

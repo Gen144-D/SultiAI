@@ -13,6 +13,7 @@ import {
 export { CHARACTER_VOICES, CharacterVoice };
 
 const TTS_CACHE_DIR = path.join(process.cwd(), 'audio-cache');
+const TTS_CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
 const VOICE_LANGUAGE_HINT: Record<string, string> = {
   blessica: 'bisaya',
@@ -60,11 +61,67 @@ async function synthesizeWithMsEdge(
 
 class LocalTTSService {
   private cacheDir: string;
+  private lastEvictionTime = 0;
+  private readonly EVICTION_INTERVAL_MS = 60 * 60 * 1000;
 
   constructor() {
     this.cacheDir = TTS_CACHE_DIR;
     if (!fs.existsSync(this.cacheDir)) {
       fs.mkdirSync(this.cacheDir, { recursive: true });
+    }
+  }
+
+  private evictOldFiles(): void {
+    const now = Date.now();
+    if (now - this.lastEvictionTime < this.EVICTION_INTERVAL_MS) {
+      return;
+    }
+    this.lastEvictionTime = now;
+
+    try {
+      const files = fs.readdirSync(this.cacheDir);
+      let evictedCount = 0;
+      const nowMs = Date.now();
+
+      for (const file of files) {
+        const filePath = path.join(this.cacheDir, file);
+        const stat = fs.statSync(filePath);
+        const ageMs = nowMs - stat.mtimeMs;
+
+        if (ageMs > TTS_CACHE_MAX_AGE_MS) {
+          fs.unlinkSync(filePath);
+          evictedCount++;
+        }
+      }
+
+      if (evictedCount > 0) {
+        console.log(`[TTS] Evicted ${evictedCount} cached audio files older than 7 days`);
+      }
+    } catch (error) {
+      console.warn('[TTS] Cache eviction error:', error);
+    }
+  }
+
+  async getCacheStats(): Promise<{ totalFiles: number; totalSizeBytes: number; oldestFile?: string }> {
+    try {
+      const files = fs.readdirSync(this.cacheDir);
+      let totalSizeBytes = 0;
+      let oldestTime = Date.now();
+      let oldestFile: string | undefined;
+
+      for (const file of files) {
+        const filePath = path.join(this.cacheDir, file);
+        const stat = fs.statSync(filePath);
+        totalSizeBytes += stat.size;
+        if (stat.mtimeMs < oldestTime) {
+          oldestTime = stat.mtimeMs;
+          oldestFile = file;
+        }
+      }
+
+      return { totalFiles: files.length, totalSizeBytes, oldestFile };
+    } catch {
+      return { totalFiles: 0, totalSizeBytes: 0 };
     }
   }
 
@@ -79,13 +136,17 @@ class LocalTTSService {
     pitch?: number,
     language?: string
   ): Promise<{ url: string; cached: boolean; voice: string; provider?: string }> {
+    this.evictOldFiles();
+    
     const voice = CHARACTER_VOICES[voiceKey] || CHARACTER_VOICES.blessica;
     const cleanText = sanitizeSsml(text);
     const lang = language || VOICE_LANGUAGE_HINT[voiceKey] || 'bisaya';
 
     const hash = crypto
       .createHash('sha1')
-      .update(`v2|${voice.voiceName}|${rate ?? voice.rate ?? 1}|${pitch ?? voice.pitch ?? 1}|${lang}|${cleanText}`)
+      .update(
+        `v2|${voice.voiceName}|${rate ?? voice.rate ?? 1}|${pitch ?? voice.pitch ?? 1}|${lang}|${cleanText}`
+      )
       .digest('hex');
 
     let provider = 'msedge-tts';

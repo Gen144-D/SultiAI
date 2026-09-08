@@ -430,7 +430,7 @@ export default function ProfileScreen({ navigation }) {
                       { label: 'Country', value: user?.country },
                       { label: 'Native Language', value: user?.native_language || 'English' },
                       { label: 'Learning', value: user?.target_language || 'Bisaya' },
-                      { label: 'Role', value: user?.role },
+                      { label: 'Role', value: user?.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : null },
                       { label: 'Member Since', value: user?.created_at ? new Date(user.created_at).toLocaleDateString() : null },
                     ].filter(i => i.value).map((item, idx) => (
                       <View key={idx}>

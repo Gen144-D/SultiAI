@@ -1,5 +1,7 @@
 import { Router } from 'express';
 import { adminMiddleware } from '../middleware/admin';
+import { invalidateCache } from '../middleware/cache';
+import { success } from '../utils/apiResponse';
 import {
   getOverview,
   listUsers,
@@ -31,6 +33,10 @@ import {
   verifyPreserved,
   getSettings,
   updateSettings,
+  listRoles,
+  listPermissions,
+  updateRolePermissions,
+  getAuditLogs,
 } from '../controllers/admin.controller';
 
 const router = Router();
@@ -84,5 +90,39 @@ router.post('/preservation/:id', verifyPreserved);
 // Settings
 router.get('/settings', getSettings);
 router.put('/settings', updateSettings);
+
+// RBAC: Roles & Permissions
+router.get('/roles', listRoles);
+router.get('/permissions', listPermissions);
+router.put('/roles/:id/permissions', updateRolePermissions);
+
+// Audit Logs
+router.get('/audit-logs', getAuditLogs);
+
+// Cache Management
+router.post('/cache/invalidate', async (req, res) => {
+  try {
+    const { pattern } = req.body;
+    await invalidateCache(pattern || '*');
+    success(res, { message: 'Cache invalidated', pattern: pattern || '*' });
+  } catch (error) {
+    success(res, { message: 'Cache invalidation failed', error: (error as Error).message });
+  }
+});
+
+router.post('/cache/invalidate/vocabulary', async (_req, res) => {
+  await invalidateCache('vocab:*');
+  success(res, { message: 'Vocabulary cache invalidated' });
+});
+
+router.post('/cache/invalidate/challenges', async (_req, res) => {
+  await invalidateCache('challenges:*');
+  success(res, { message: 'Challenges cache invalidated' });
+});
+
+router.post('/cache/invalidate/analytics', async (_req, res) => {
+  await invalidateCache('analytics:*');
+  success(res, { message: 'Analytics cache invalidated' });
+});
 
 export default router;

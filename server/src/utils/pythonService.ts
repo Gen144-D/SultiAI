@@ -57,7 +57,7 @@ export async function scoreWithPython(
   audioBase64: string,
   expectedText: string,
   language: string = 'ceb',
-  filename: string = 'recording.m4a',
+  filename: string = 'recording.m4a'
 ): Promise<PythonPronunciationResult | null> {
   try {
     const formData = new URLSearchParams();
@@ -92,7 +92,7 @@ export async function scoreWithPython(
  */
 export async function textToPhonemes(
   text: string,
-  language: string = 'ceb',
+  language: string = 'ceb'
 ): Promise<{ phonemes: string[]; inventory: string[] } | null> {
   try {
     const res = await fetch(`${PYTHON_URL}/phonemes`, {

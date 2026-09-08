@@ -11,7 +11,9 @@ router.get('/learning', authMiddleware, async (req: AuthRequest, res: Response) 
   try {
     const { getDb } = await import('../db/connection');
     const db = getDb();
-    const stats = db.prepare(`
+    const stats = db
+      .prepare(
+        `
       SELECT
         COALESCE(SUM(lp.completion_percent), 0) as total_progress,
         COUNT(DISTINCT lm.module_id) as modules_started,
@@ -20,7 +22,9 @@ router.get('/learning', authMiddleware, async (req: AuthRequest, res: Response) 
       FROM learning_modules lm
       LEFT JOIN learning_progress lp ON lp.module_id = lm.module_id AND lp.user_id = ?
       WHERE lp.user_id = ?
-    `).get(req.user!.id, req.user!.id);
+    `
+      )
+      .get(req.user!.id, req.user!.id);
     res.json(stats);
   } catch (err) {
     res.status(500).json({ error: 'Failed to load analytics' });
@@ -32,13 +36,17 @@ router.get('/weekly', authMiddleware, async (req: AuthRequest, res: Response) =>
     const { getDb } = await import('../db/connection');
     const db = getDb();
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-    const sessions = db.prepare(`
+    const sessions = db
+      .prepare(
+        `
       SELECT DATE(created_at) as date, COUNT(*) as sessions, COALESCE(SUM(xp_earned), 0) as xp
       FROM tutor_sessions
       WHERE user_id = ? AND created_at >= ?
       GROUP BY DATE(created_at)
       ORDER BY date
-    `).all(req.user!.id, sevenDaysAgo);
+    `
+      )
+      .all(req.user!.id, sevenDaysAgo);
     res.json(sessions);
   } catch (err) {
     res.status(500).json({ error: 'Failed to load weekly progress' });
@@ -49,13 +57,17 @@ router.get('/streak', authMiddleware, async (req: AuthRequest, res: Response) =>
   try {
     const { getDb } = await import('../db/connection');
     const db = getDb();
-    const sessions = db.prepare(`
+    const sessions = db
+      .prepare(
+        `
       SELECT DISTINCT DATE(created_at) as date
       FROM tutor_sessions
       WHERE user_id = ?
       ORDER BY date DESC
       LIMIT 60
-    `).all(req.user!.id) as any[];
+    `
+      )
+      .all(req.user!.id) as any[];
 
     const dates = sessions.map((s: any) => s.date);
     let streak = 0;

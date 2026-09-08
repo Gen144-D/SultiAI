@@ -47,7 +47,19 @@ export function UserProvider({ children }) {
               native_language: u.user_metadata?.native_language,
               target_language: u.user_metadata?.target_language,
             }),
-          }).catch(() => {}); // fire-and-forget, don't block UI
+          })
+            .then(res => res.json())
+            .then(data => {
+              if (data?.success && data?.data?.user) {
+                const serverUser = data.data.user;
+                setUser(prev => prev ? {
+                  ...prev,
+                  role: serverUser.role || prev.role || 'user',
+                  permissions: serverUser.permissions || prev.permissions || [],
+                } : prev);
+              }
+            })
+            .catch(() => {}); // fire-and-forget, don't block UI
         }
       }
     });
@@ -256,9 +268,19 @@ export function UserProvider({ children }) {
     }
   }, []);
 
+  // Role helper functions
+  const isAdmin = user?.role === 'admin';
+  const isModerator = user?.role === 'moderator' || isAdmin;
+  const hasPermission = useCallback((permission) => {
+    if (!user) return false;
+    if (user.role === 'admin') return true;
+    return user.permissions?.includes(permission) || false;
+  }, [user]);
+
   return (
     <UserContext.Provider value={{
       user, session, loading, authError, level,
+      isAdmin, isModerator, hasPermission,
       refreshLevel, signIn, signInWithGoogle, signUp, signOut, refreshProfile,
     }}>
       {children}

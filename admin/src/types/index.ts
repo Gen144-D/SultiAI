@@ -1,20 +1,20 @@
-export type SystemStatus = "healthy" | "degraded" | "down";
+export type SystemStatus = 'healthy' | 'degraded' | 'down';
 
-export type UserRole = "user" | "admin" | "moderator";
+export type UserRole = 'user' | 'admin' | 'moderator';
 
-export type UserStatus = "pending" | "approved" | "rejected" | "banned" | "suspended" | "active";
+export type UserStatus = 'pending' | 'approved' | 'rejected' | 'banned' | 'suspended' | 'active';
 
-export type ModuleDifficulty = "beginner" | "intermediate" | "advanced";
+export type ModuleDifficulty = 'beginner' | 'intermediate' | 'advanced';
 
-export type ReportStatus = "open" | "resolved" | "dismissed";
+export type ReportStatus = 'open' | 'resolved' | 'dismissed';
 
-export type VerificationStatus = "pending" | "approved" | "rejected";
+export type VerificationStatus = 'pending' | 'approved' | 'rejected';
 
 export interface AdminSession {
   id: string;
   name: string;
   email: string;
-  provider: "google" | "email";
+  provider: 'google' | 'email';
   role: UserRole;
   avatar: string;
   signedInAt: string;
@@ -36,11 +36,11 @@ export interface OverviewStats {
 
 export interface SystemHealth {
   status: SystemStatus;
-  db: "connected" | "error";
-  api: "up" | "down";
-  groq: "configured" | "not_set" | "error";
-  whisper: "configured" | "not_set" | "error";
-  storage: "up" | "down";
+  db: 'connected' | 'error';
+  api: 'up' | 'down';
+  groq: 'configured' | 'not_set' | 'error';
+  whisper: 'configured' | 'not_set' | 'error';
+  storage: 'up' | 'down';
   lastChecked: string;
 }
 
@@ -99,9 +99,9 @@ export interface UserDetail extends AdminUser {
 
 export interface UserFilters {
   search: string;
-  role: UserRole | "all";
-  status: UserStatus | "all";
-  sort: "xp" | "level" | "recent" | "joined";
+  role: UserRole | 'all';
+  status: UserStatus | 'all';
+  sort: 'xp' | 'level' | 'recent' | 'joined';
 }
 
 export interface LessonModule {
@@ -196,7 +196,7 @@ export interface AdminSettings {
   requireVerificationForCommunity: boolean;
   dailyXpGoal: number;
   maxDailyAiRequests: number;
-  aiProvider: "groq" | "openai" | "auto";
+  aiProvider: 'groq' | 'openai' | 'auto';
   admins: { id: number; name: string; email: string; role: UserRole }[];
   updatedAt: string;
 }

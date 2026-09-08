@@ -16,7 +16,17 @@ router.use(authMiddleware);
 
 router.get('/level', getLevel);
 router.get('/mistakes', getMistakes);
-router.post('/lesson', aiRateLimit, validate([{ field: 'situation', validators: [validators.required(), validators.string(), validators.minLength(3)] }]), generateLesson);
+router.post(
+  '/lesson',
+  aiRateLimit,
+  validate([
+    {
+      field: 'situation',
+      validators: [validators.required(), validators.string(), validators.minLength(3)],
+    },
+  ]),
+  generateLesson
+);
 router.post('/chat', aiRateLimit, chat);
 router.get('/adaptive', aiRateLimit, getAdaptiveRecommendation);
 

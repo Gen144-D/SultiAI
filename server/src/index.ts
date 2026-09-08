@@ -2,7 +2,7 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
-import { connect, closeAll, getDb } from './db/connection';
+import { connect, closeAll, getDb, getDialectName } from './db/connection';
 import { sql } from 'drizzle-orm';
 import { connectMongo, closeMongo } from './db/mongodb/connection';
 import { errorHandler, notFoundHandler } from './middleware/error';
@@ -10,9 +10,14 @@ import { isGroqConfigured } from './utils/groq';
 import { isLocalLLMReady, ensureLocalLLM, getLocalLLMError } from './services/localLLM';
 import { isLocalSTTReady, ensureLocalSTT, getLocalSTTError } from './services/sttService';
 import { env, validateEnv } from './config';
-import { setSecurityHeaders, configureCors } from './middleware/security';
+import { isRedisConfigured, checkRedisHealth } from './config/redis';
+import { initSentry, sentryErrorHandler } from './config/sentry';
+import { helmetMiddleware, configureCors } from './middleware/security';
 import { globalRateLimit } from './middleware/rateLimit';
 import { requestLogger } from './middleware/logging';
+import { sanitizeInput, detectSqlInjection } from './middleware/sanitize';
+import { requestId } from './middleware/requestId';
+import { cacheMiddleware } from './middleware/cache';
 import logger from './utils/logger';
 
 import authRoutes from './routes/auth.routes';
@@ -45,24 +50,77 @@ import { success, errors } from './utils/apiResponse';
 
 const app = express();
 
-app.use(cors({ origin: configureCors, allowedHeaders: ['Content-Type', 'Authorization', 'apikey'], methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'] }));
+initSentry();
+
+app.use(requestId);
+app.use(helmetMiddleware);
+app.use(
+  cors({
+    origin: configureCors,
+    allowedHeaders: ['Content-Type', 'Authorization', 'apikey', 'X-Request-Id'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  })
+);
 app.use(express.json({ limit: env.MAX_REQUEST_SIZE }));
-app.use(setSecurityHeaders);
+app.use(sanitizeInput());
+app.use(detectSqlInjection);
 app.use(requestLogger);
 app.use(globalRateLimit);
 
-app.use('/audio/tts', express.static(path.join(process.cwd(), env.AUDIO_CACHE_DIR)));
+app.use(
+  '/audio/tts',
+  express.static(path.join(process.cwd(), env.AUDIO_CACHE_DIR), {
+    maxAge: '7d',
+    etag: true,
+    lastModified: true,
+    setHeaders: (res, filePath) => {
+      if (filePath.endsWith('.mp3') || filePath.endsWith('.wav') || filePath.endsWith('.ogg')) {
+        res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
+      }
+    },
+  })
+);
 
-app.get('/api/health', (_req, res) => {
-  success(res, {
+app.get('/api/health', async (_req, res) => {
+  const health: Record<string, any> = {
     status: 'ok',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
     groq: isGroqConfigured() ? 'configured' : 'not_set',
     localLLM: isLocalLLMReady() ? 'ready' : 'initializing',
     localLLMError: getLocalLLMError(),
     localSTT: isLocalSTTReady() ? 'ready' : 'initializing',
     localSTTError: getLocalSTTError(),
-    mode: isGroqConfigured() ? 'api' : (isLocalLLMReady() ? 'local' : 'none'),
-  });
+    mode: isGroqConfigured() ? 'api' : isLocalLLMReady() ? 'local' : 'none',
+    redis: isRedisConfigured() ? 'configured' : 'not_set',
+    database: { status: 'unknown', dialect: getDialectName() },
+  };
+
+  try {
+    const db = getDb();
+    const start = Date.now();
+    await db.select().from(sql.raw('1')).limit(1).execute();
+    health.database = { status: 'ok', dialect: getDialectName(), latencyMs: Date.now() - start };
+  } catch (error) {
+    health.database = {
+      status: 'error',
+      dialect: getDialectName(),
+      error: (error as Error).message,
+    };
+    health.status = 'degraded';
+  }
+
+  if (isRedisConfigured()) {
+    const redisHealth = await checkRedisHealth();
+    health.redis = redisHealth;
+    if (redisHealth.status === 'error') {
+      health.status = 'degraded';
+    }
+  }
+
+  const statusCode = health.status === 'ok' ? 200 : 503;
+  res.status(statusCode);
+  success(res, health);
 });
 
 app.use('/api/auth', authRoutes);
@@ -78,10 +136,14 @@ app.use('/api/saved-phrases', phraseRoutes);
 app.use('/api/feedback', feedbackRoutes);
 app.use('/api/game', gameRoutes);
 app.use('/api/achievements', achievementRoutes);
-app.use('/api/vocabulary', vocabularyRoutes);
-app.use('/api/challenges', challengeRoutes);
-app.use('/api/analytics', analyticsRoutes);
-app.use('/api/preservation', preservationRoutes);
+app.use('/api/vocabulary', cacheMiddleware({ ttl: 300, keyPrefix: 'vocab' }), vocabularyRoutes);
+app.use('/api/challenges', cacheMiddleware({ ttl: 60, keyPrefix: 'challenges' }), challengeRoutes);
+app.use('/api/analytics', cacheMiddleware({ ttl: 60, keyPrefix: 'analytics' }), analyticsRoutes);
+app.use(
+  '/api/preservation',
+  cacheMiddleware({ ttl: 120, keyPrefix: 'preservation' }),
+  preservationRoutes
+);
 app.use('/api/ar', arRoutes);
 app.use('/api/whisper', whisperRoutes);
 app.use('/api/agent', agentRoutes);
@@ -106,10 +168,13 @@ app.post('/api/assistant/chat', authMiddleware, async (req, res) => {
     const systemPrompt = character
       ? buildCharacterPrompt(character, `The learner's native language is English.`)
       : buildSultiPrompt('chat', `The learner's native language is English.`);
-    const reply = await groqChat([
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: message },
-    ], { temperature: 0.9, maxTokens: 800 });
+    const reply = await groqChat(
+      [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: message },
+      ],
+      { temperature: 0.9, maxTokens: 800 }
+    );
     success(res, { reply }, 'Chat response generated');
   } catch (err) {
     logger.error('Assistant chat error', { error: (err as Error).message });
@@ -129,11 +194,20 @@ app.post('/api/groq', authMiddleware, async (req, res) => {
       errors.validation(res, 'Messages must be a non-empty array');
       return;
     }
-    const systemPrompt = buildSultiPrompt('chat', `The learner's native language is ${nativeLanguage || 'English'}.`);
-    const reply = await groqChat([
-      { role: 'system', content: systemPrompt },
-      ...messages.map((m: any) => ({ role: m.type === 'user' ? 'user' as const : 'assistant' as const, content: m.text })),
-    ], { temperature: 0.8, maxTokens: 600 });
+    const systemPrompt = buildSultiPrompt(
+      'chat',
+      `The learner's native language is ${nativeLanguage || 'English'}.`
+    );
+    const reply = await groqChat(
+      [
+        { role: 'system', content: systemPrompt },
+        ...messages.map((m: any) => ({
+          role: m.type === 'user' ? ('user' as const) : ('assistant' as const),
+          content: m.text,
+        })),
+      ],
+      { temperature: 0.8, maxTokens: 600 }
+    );
     success(res, { content: reply }, 'Response generated');
   } catch (err) {
     logger.error('Groq error', { error: (err as Error).message });
@@ -142,6 +216,7 @@ app.post('/api/groq', authMiddleware, async (req, res) => {
 });
 
 app.use(notFoundHandler);
+app.use(sentryErrorHandler());
 app.use(errorHandler);
 
 async function start() {
@@ -187,7 +262,9 @@ async function start() {
 
     app.listen(env.PORT, '0.0.0.0', () => {
       logger.info(`Server running on http://localhost:${env.PORT}`);
-      logger.info(`Mode: ${isGroqConfigured() ? 'API (Groq)' : (isLocalLLMReady() ? 'Local LLM' : 'No LLM available')}`);
+      logger.info(
+        `Mode: ${isGroqConfigured() ? 'API (Groq)' : isLocalLLMReady() ? 'Local LLM' : 'No LLM available'}`
+      );
       logger.info(`Environment: ${env.NODE_ENV}`);
     });
   } catch (err) {

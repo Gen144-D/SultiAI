@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+
+# Expo
+.expo/
+web-build/
+
+# Native
+ios/
+android/
+
+# Coverage
+coverage/
+*.lcov
+
+# AI service
+ai-service/.venv/
+ai-service/models/
+ai-service/__pycache__/
+
+# Supabase
+supabase/.temp/
+
+# Misc
+*.log
+*.md
+package-lock.json
+yarn.lock
+pnpm-lock.yaml

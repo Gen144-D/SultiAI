@@ -71,7 +71,11 @@ async function getSubtleCrypto() {
  * Verifies Supabase-issued JWTs using JWKS.
  * Falls back to legacy JWT verification if JWKS fails.
  */
-export async function supabaseAuthMiddleware(req: Request, res: Response, next: NextFunction): Promise<void> {
+export async function supabaseAuthMiddleware(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
 
@@ -95,7 +99,10 @@ export async function supabaseAuthMiddleware(req: Request, res: Response, next: 
       return next();
     }
   } catch (err) {
-    console.warn('[SupabaseAuth] JWKS verification failed, trying legacy JWT:', (err as Error).message);
+    console.warn(
+      '[SupabaseAuth] JWKS verification failed, trying legacy JWT:',
+      (err as Error).message
+    );
   }
 
   // Fall back to legacy JWT verification

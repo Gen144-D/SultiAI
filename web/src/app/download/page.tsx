@@ -1,25 +1,25 @@
-import type { Metadata } from "next";
-import PageHero from "@/components/PageHero";
-import PlayStoreBadge from "@/components/PlayStoreBadge";
-import { api } from "@/lib/api";
+import type { Metadata } from 'next';
+import PageHero from '@/components/PageHero';
+import PlayStoreBadge from '@/components/PlayStoreBadge';
+import { api } from '@/lib/api';
 
 export const metadata: Metadata = {
-  title: "Download",
-  description: "Download SultiAI on Google Play and start learning Bisaya with AI.",
+  title: 'Download',
+  description: 'Download SultiAI on Google Play and start learning Bisaya with AI.',
 };
 
 export default async function Download() {
   const [app, health] = await Promise.all([api.getAppInfo(), api.getHealth()]);
 
   const statusStyles =
-    health.status === "healthy"
-      ? "border-success/30 bg-success/5 text-success"
-      : health.status === "degraded"
-        ? "border-accent/40 bg-accent-light text-brand-dark"
-        : "border-danger/30 bg-danger/5 text-danger";
+    health.status === 'healthy'
+      ? 'border-success/30 bg-success/5 text-success'
+      : health.status === 'degraded'
+        ? 'border-accent/40 bg-accent-light text-brand-dark'
+        : 'border-danger/30 bg-danger/5 text-danger';
 
   const statusLabel =
-    health.status === "healthy" ? "All systems operational" : health.status.toUpperCase();
+    health.status === 'healthy' ? 'All systems operational' : health.status.toUpperCase();
 
   return (
     <>

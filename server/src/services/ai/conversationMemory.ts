@@ -51,7 +51,8 @@ export class ConversationMemoryService {
         Date.now() - CONVERSATION_MEMORY.MEMORY_DECAY_DAYS * 24 * 60 * 60 * 1000
       ).toISOString();
 
-      const records = await (db as any).select()
+      const records = await (db as any)
+        .select()
         .from(schema.conversationSummaries)
         .where(
           (db as any).and(
@@ -112,7 +113,8 @@ export class ConversationMemoryService {
         Date.now() - CONVERSATION_MEMORY.MEMORY_DECAY_DAYS * 24 * 60 * 60 * 1000
       ).toISOString();
 
-      await (db as any).delete(schema.conversationSummaries)
+      await (db as any)
+        .delete(schema.conversationSummaries)
         .where(
           (db as any).and(
             (db as any).eq(schema.conversationSummaries.userId, userId),
@@ -132,12 +134,16 @@ export class ConversationMemoryService {
 
   private estimateDuration(messages: Array<{ role: string; content: string }>): number {
     const wordCount = messages.reduce((sum, m) => sum + m.content.split(/\s+/).length, 0);
-    return Math.round(wordCount / 150 * 60);
+    return Math.round((wordCount / 150) * 60);
   }
 
   private safeParseArray(val: string | null): string[] {
     if (!val) return [];
-    try { return JSON.parse(val); } catch { return []; }
+    try {
+      return JSON.parse(val);
+    } catch {
+      return [];
+    }
   }
 }
 

@@ -1,6 +1,6 @@
-import Link from "next/link";
-import PlayStoreBadge from "./PlayStoreBadge";
-import AppScreenshot from "./AppScreenshot";
+import Link from 'next/link';
+import PlayStoreBadge from './PlayStoreBadge';
+import AppScreenshot from './AppScreenshot';
 
 export default function Hero() {
   return (
@@ -12,7 +12,7 @@ export default function Hero() {
             Now on Google Play
           </span>
           <h1 className="mt-6 text-4xl font-extrabold tracking-tight text-ink sm:text-5xl lg:text-6xl">
-            Learn Bisaya{" "}
+            Learn Bisaya{' '}
             <span className="bg-gradient-to-r from-brand to-brand-dark bg-clip-text text-transparent">
               with AI
             </span>
@@ -33,9 +33,9 @@ export default function Hero() {
           </div>
           <dl className="mt-10 grid grid-cols-3 gap-6 border-t border-line pt-8">
             {[
-              { value: "48k+", label: "Downloads" },
-              { value: "12k+", label: "Learners" },
-              { value: "1.9k", label: "Active today" },
+              { value: '48k+', label: 'Downloads' },
+              { value: '12k+', label: 'Learners' },
+              { value: '1.9k', label: 'Active today' },
             ].map((s) => (
               <div key={s.label}>
                 <dt className="text-2xl font-bold text-brand-dark">{s.value}</dt>

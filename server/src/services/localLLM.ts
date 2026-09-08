@@ -74,10 +74,7 @@ class LocalLLMService {
     return _initError;
   }
 
-  async generate(
-    prompt: string,
-    options: GenerateOptions = {}
-  ): Promise<string> {
+  async generate(prompt: string, options: GenerateOptions = {}): Promise<string> {
     await this.ready;
 
     if (!_model) {
@@ -98,10 +95,7 @@ class LocalLLMService {
     return result?.generated_text || '';
   }
 
-  async chat(
-    messages: ChatMessage[],
-    options: GenerateOptions = {}
-  ): Promise<string> {
+  async chat(messages: ChatMessage[], options: GenerateOptions = {}): Promise<string> {
     await this.ready;
 
     if (!_model) {

@@ -42,6 +42,9 @@ export const env = {
   LOG_LEVEL: getEnv('LOG_LEVEL', 'info'),
   AUDIO_CACHE_DIR: getEnv('AUDIO_CACHE_DIR', './audio-cache'),
   MAX_REQUEST_SIZE: getEnv('MAX_REQUEST_SIZE', '10mb'),
+  UPSTASH_REDIS_REST_URL: getEnv('UPSTASH_REDIS_REST_URL'),
+  UPSTASH_REDIS_REST_TOKEN: getEnv('UPSTASH_REDIS_REST_TOKEN'),
+  SENTRY_DSN: getEnv('SENTRY_DSN'),
 } as const;
 
 export function isProduction(): boolean {

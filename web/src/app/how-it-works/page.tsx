@@ -1,36 +1,44 @@
-import type { Metadata } from "next";
-import PageHero from "@/components/PageHero";
-import CTASection from "@/components/CTASection";
+import type { Metadata } from 'next';
+import PageHero from '@/components/PageHero';
+import CTASection from '@/components/CTASection';
 
 export const metadata: Metadata = {
-  title: "How it Works",
-  description: "See how SultiAI helps you go from first words to real Bisaya conversations.",
+  title: 'How it Works',
+  description: 'See how SultiAI helps you go from first words to real Bisaya conversations.',
 };
 
 const phases = [
   {
-    step: "01",
-    title: "Tell SultiAI about you",
-    body: "Pick your native language and your learning goal. SultiAI calibrates the difficulty, content, and pace to fit you.",
-    points: ["Set your native language", "Choose your learning goal", "Get a personalized plan"],
+    step: '01',
+    title: 'Tell SultiAI about you',
+    body: 'Pick your native language and your learning goal. SultiAI calibrates the difficulty, content, and pace to fit you.',
+    points: ['Set your native language', 'Choose your learning goal', 'Get a personalized plan'],
   },
   {
-    step: "02",
-    title: "Learn through conversation",
-    body: "Chat with the AI tutor, practice your voice, and complete short lessons. Every interaction teaches you something new.",
-    points: ["AI tutor conversations", "Voice practice with feedback", "Daily challenges & flashcards"],
+    step: '02',
+    title: 'Learn through conversation',
+    body: 'Chat with the AI tutor, practice your voice, and complete short lessons. Every interaction teaches you something new.',
+    points: [
+      'AI tutor conversations',
+      'Voice practice with feedback',
+      'Daily challenges & flashcards',
+    ],
   },
   {
-    step: "03",
-    title: "Grow, earn, and connect",
-    body: "Earn XP, build your streak, and join the community. Verify your skills with native speakers as you go.",
-    points: ["XP, levels & badges", "Streaks & leaderboards", "Native speaker verification"],
+    step: '03',
+    title: 'Grow, earn, and connect',
+    body: 'Earn XP, build your streak, and join the community. Verify your skills with native speakers as you go.',
+    points: ['XP, levels & badges', 'Streaks & leaderboards', 'Native speaker verification'],
   },
   {
-    step: "04",
-    title: "Keep Bisaya alive",
-    body: "Contribute phrases to the Living Lexicon and discover the cultural stories behind the words you learn.",
-    points: ["Preserve heritage words", "Explore dialectal variations", "Join the culture community"],
+    step: '04',
+    title: 'Keep Bisaya alive',
+    body: 'Contribute phrases to the Living Lexicon and discover the cultural stories behind the words you learn.',
+    points: [
+      'Preserve heritage words',
+      'Explore dialectal variations',
+      'Join the culture community',
+    ],
   },
 ];
 

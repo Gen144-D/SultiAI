@@ -2,11 +2,7 @@ import { Router } from 'express';
 import { authMiddleware } from '../middleware/auth';
 import { aiRateLimit } from '../middleware/rateLimit';
 import { speechRateLimit } from '../middleware/rateLimit';
-import {
-  recordAttempt,
-  getStats,
-  getTrend,
-} from '../controllers/pronunciation.controller';
+import { recordAttempt, getStats, getTrend } from '../controllers/pronunciation.controller';
 
 const router = Router();
 

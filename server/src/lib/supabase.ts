@@ -58,10 +58,8 @@ export function isSupabaseConfigured(): boolean {
 export async function testSupabaseConnection(): Promise<boolean> {
   try {
     const client = getSupabaseAdmin();
-    const { error } = await client
-      .from('users')
-      .select('count', { count: 'exact', head: true });
-    
+    const { error } = await client.from('users').select('count', { count: 'exact', head: true });
+
     return !error;
   } catch {
     return false;

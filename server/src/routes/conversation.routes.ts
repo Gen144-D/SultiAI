@@ -32,7 +32,12 @@ router.post('/', authMiddleware, async (req: Request, res: Response) => {
     if (messages && Array.isArray(messages)) {
       await addMessages(conversationId, messages);
     }
-    res.json({ id: String(conversationId), title: title || null, messages: messages || [], createdAt: new Date().toISOString() });
+    res.json({
+      id: String(conversationId),
+      title: title || null,
+      messages: messages || [],
+      createdAt: new Date().toISOString(),
+    });
   } catch (err) {
     console.error('Create conversation error:', err);
     res.status(500).json({ error: 'Failed to create conversation' });

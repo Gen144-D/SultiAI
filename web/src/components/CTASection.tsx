@@ -1,4 +1,4 @@
-import PlayStoreBadge from "./PlayStoreBadge";
+import PlayStoreBadge from './PlayStoreBadge';
 
 export default function CTASection() {
   return (
@@ -15,7 +15,9 @@ export default function CTASection() {
         <div className="relative mt-8 flex justify-center">
           <PlayStoreBadge />
         </div>
-        <p className="relative mt-4 text-xs text-white/60">Free to download · Available on Android</p>
+        <p className="relative mt-4 text-xs text-white/60">
+          Free to download · Available on Android
+        </p>
       </div>
     </section>
   );

@@ -1,20 +1,31 @@
-"use client";
+'use client';
 
-import { Avatar, Card, EmptyState, ErrorState, LoadingState, StatusBadge, inputCls } from "@/components/ui";
-import { useToast } from "@/components/Toast";
-import { useAsync } from "@/hooks/useAsync";
-import { api } from "@/lib/api";
-import { downloadCsv } from "@/lib/export";
-import { useState } from "react";
+import {
+  Avatar,
+  Card,
+  EmptyState,
+  ErrorState,
+  LoadingState,
+  StatusBadge,
+  inputCls,
+} from '@/components/ui';
+import { useToast } from '@/components/Toast';
+import { useAsync } from '@/hooks/useAsync';
+import { api } from '@/lib/api';
+import { downloadCsv } from '@/lib/export';
+import { useState } from 'react';
 
 export default function AdminFeedbackPage() {
   const toast = useToast();
   const { data, loading, error, reload } = useAsync(() => api.listFeedback(), []);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState('');
 
   async function handleResolve(id: number, resolved: boolean) {
     await api.resolveFeedback(id);
-    toast.push("success", resolved ? "Feedback marked as unresolved." : "Feedback marked as resolved.");
+    toast.push(
+      'success',
+      resolved ? 'Feedback marked as unresolved.' : 'Feedback marked as resolved.'
+    );
     reload();
   }
 
@@ -22,7 +33,7 @@ export default function AdminFeedbackPage() {
   if (error) return <ErrorState message={error} onRetry={reload} />;
 
   const items = (data ?? []).filter(
-    (f) => f.user.name.toLowerCase().includes(search.toLowerCase()) || String(f.id).includes(search),
+    (f) => f.user.name.toLowerCase().includes(search.toLowerCase()) || String(f.id).includes(search)
   );
 
   return (
@@ -47,11 +58,11 @@ export default function AdminFeedbackPage() {
                     functionality: f.functionality,
                     usability: f.usability,
                     reliability: f.reliability,
-                    comment: f.comment ?? "",
+                    comment: f.comment ?? '',
                     resolved: f.resolved,
                     createdAt: f.createdAt,
                   })),
-                  `sultiai-feedback-${new Date().toISOString().split("T")[0]}.csv`
+                  `sultiai-feedback-${new Date().toISOString().split('T')[0]}.csv`
                 )
               }
               className="rounded-xl border border-line bg-white px-4 py-2.5 text-sm font-semibold text-ink transition-colors hover:border-brand"
@@ -59,7 +70,12 @@ export default function AdminFeedbackPage() {
               Export CSV
             </button>
           )}
-          <input className={`${inputCls} max-w-xs`} placeholder="Search by user..." value={search} onChange={(e) => setSearch(e.target.value)} />
+          <input
+            className={`${inputCls} max-w-xs`}
+            placeholder="Search by user..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
         </div>
       </div>
 
@@ -83,19 +99,21 @@ export default function AdminFeedbackPage() {
                       </p>
                     </div>
                   </div>
-                  <StatusBadge status={f.resolved ? "resolved" : "open"} />
+                  <StatusBadge status={f.resolved ? 'resolved' : 'open'} />
                 </div>
 
                 <div className="mt-5 grid grid-cols-4 gap-3 text-center">
                   {[
-                    { label: "Functionality", value: f.functionality },
-                    { label: "Usability", value: f.usability },
-                    { label: "Reliability", value: f.reliability },
-                    { label: "Average", value: Number(avg) },
+                    { label: 'Functionality', value: f.functionality },
+                    { label: 'Usability', value: f.usability },
+                    { label: 'Reliability', value: f.reliability },
+                    { label: 'Average', value: Number(avg) },
                   ].map((s) => (
                     <div key={s.label} className="rounded-2xl bg-surface px-2 py-3">
                       <p className="text-lg font-extrabold text-brand-dark">
-                        {typeof s.value === "number" && !Number.isInteger(s.value) ? s.value : s.value}
+                        {typeof s.value === 'number' && !Number.isInteger(s.value)
+                          ? s.value
+                          : s.value}
                       </p>
                       <p className="mt-0.5 text-[10px] text-ink-faint">{s.label}</p>
                     </div>
@@ -114,11 +132,11 @@ export default function AdminFeedbackPage() {
                     onClick={() => handleResolve(f.id, f.resolved)}
                     className={`rounded-lg px-3.5 py-2 text-xs font-semibold ${
                       f.resolved
-                        ? "border border-line text-ink-soft hover:border-brand"
-                        : "bg-success/10 text-success hover:bg-success hover:text-white"
+                        ? 'border border-line text-ink-soft hover:border-brand'
+                        : 'bg-success/10 text-success hover:bg-success hover:text-white'
                     }`}
                   >
-                    {f.resolved ? "Reopen" : "Mark resolved"}
+                    {f.resolved ? 'Reopen' : 'Mark resolved'}
                   </button>
                 </div>
               </Card>

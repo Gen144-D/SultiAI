@@ -12,7 +12,15 @@ export async function recordAttempt(req: Request, res: Response): Promise<void> 
       return;
     }
 
-    const { word, phonetic_expected, phonetic_heard, accuracy, confidence, mistakes, lesson_context } = req.body || {};
+    const {
+      word,
+      phonetic_expected,
+      phonetic_heard,
+      accuracy,
+      confidence,
+      mistakes,
+      lesson_context,
+    } = req.body || {};
     if (!word) {
       errors.validation(res, 'Word is required');
       return;

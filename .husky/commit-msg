@@ -1,0 +1,3 @@
+#!/bin/sh
+# Conventional Commits lint
+npx --no -- commitlint --edit ${1}

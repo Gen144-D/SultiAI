@@ -39,7 +39,8 @@ router.post('/token', authMiddleware, async (req, res) => {
 
     if (!isXaiConfigured()) {
       res.status(500).json({
-        error: 'Realtime voice mode requires XAI_API_KEY. Use /api/speech/synthesize for local TTS instead.',
+        error:
+          'Realtime voice mode requires XAI_API_KEY. Use /api/speech/synthesize for local TTS instead.',
       });
       return;
     }

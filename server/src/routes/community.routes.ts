@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { authMiddleware } from '../middleware/auth';
+import { requireRole, requireOwnership } from '../middleware/rbac';
 import { success, errors } from '../utils/apiResponse';
 import {
   getPosts,
@@ -22,16 +23,19 @@ const router = Router();
 router.get('/posts', authMiddleware, async (req: Request, res: Response) => {
   try {
     const posts = await getPosts();
-    success(res, posts.map((p: any) => ({
-      id: p.postId,
-      user_id: p.userId,
-      title: p.title,
-      content: p.content,
-      author_name: p.authorName,
-      author_verified: p.authorVerified || false,
-      created_at: p.createdAt,
-      likes: p.likes || 0,
-    })));
+    success(
+      res,
+      posts.map((p: any) => ({
+        id: p.postId,
+        user_id: p.userId,
+        title: p.title,
+        content: p.content,
+        author_name: p.authorName,
+        author_verified: p.authorVerified || false,
+        created_at: p.createdAt,
+        likes: p.likes || 0,
+      }))
+    );
   } catch (err) {
     errors.internal(res, 'Failed to get posts');
   }
@@ -59,16 +63,19 @@ router.post('/posts', authMiddleware, async (req: Request, res: Response) => {
 router.get('/resources', authMiddleware, async (req: Request, res: Response) => {
   try {
     const resources = await getResources();
-    success(res, resources.map((r: any) => ({
-      id: String(r.postId),
-      phrase: r.phrase,
-      translation: r.translation,
-      category: r.category,
-      title: r.title,
-      content: r.content,
-      created_by: r.authorName,
-      createdAt: r.createdAt,
-    })));
+    success(
+      res,
+      resources.map((r: any) => ({
+        id: String(r.postId),
+        phrase: r.phrase,
+        translation: r.translation,
+        category: r.category,
+        title: r.title,
+        content: r.content,
+        created_by: r.authorName,
+        createdAt: r.createdAt,
+      }))
+    );
   } catch (err) {
     errors.internal(res, 'Failed to get resources');
   }
@@ -101,13 +108,16 @@ router.post('/resources', authMiddleware, async (req: Request, res: Response) =>
 router.get('/posts/:postId/comments', authMiddleware, async (req: Request, res: Response) => {
   try {
     const comments = await getComments(Number(req.params.postId as string));
-    success(res, comments.map((c: any) => ({
-      comment_id: c.commentId,
-      post_id: c.postId,
-      author_name: c.authorName,
-      comment: c.comment,
-      created_at: c.createdAt,
-    })));
+    success(
+      res,
+      comments.map((c: any) => ({
+        comment_id: c.commentId,
+        post_id: c.postId,
+        author_name: c.authorName,
+        comment: c.comment,
+        created_at: c.createdAt,
+      }))
+    );
   } catch (err) {
     errors.internal(res, 'Failed to get comments');
   }
@@ -153,31 +163,43 @@ router.post('/verify', authMiddleware, async (req: Request, res: Response) => {
       recordedText: req.body.text,
       wordId: phrase_id ? parseInt(phrase_id) : undefined,
     });
-    success(res, { request_id: requestId, status: 'pending', message: 'Submitted for native speaker verification' });
+    success(res, {
+      request_id: requestId,
+      status: 'pending',
+      message: 'Submitted for native speaker verification',
+    });
   } catch (err) {
     errors.internal(res, 'Failed to submit verification request');
   }
 });
 
-router.get('/verify/requests', authMiddleware, async (req: Request, res: Response) => {
-  try {
-    const pending = await getPendingVerifications();
-    success(res, pending);
-  } catch (err) {
-    errors.internal(res, 'Failed to get verification requests');
+router.get(
+  '/verify/requests',
+  requireRole('admin', 'moderator'),
+  async (req: Request, res: Response) => {
+    try {
+      const pending = await getPendingVerifications();
+      success(res, pending);
+    } catch (err) {
+      errors.internal(res, 'Failed to get verification requests');
+    }
   }
-});
+);
 
-router.post('/verify/:id/approve', authMiddleware, async (req: Request, res: Response) => {
-  try {
-    const requestId = parseInt(req.params.id);
-    const { score, feedback } = req.body || {};
-    await approveVerification(requestId, req.user!.email, { score, feedback });
-    success(res, { message: 'Verification approved. Thank you for contributing!' });
-  } catch (err) {
-    errors.internal(res, 'Failed to approve verification');
+router.post(
+  '/verify/:id/approve',
+  requireRole('admin', 'moderator'),
+  async (req: Request, res: Response) => {
+    try {
+      const requestId = parseInt(req.params.id as string);
+      const { score, feedback } = req.body || {};
+      await approveVerification(requestId, req.user!.email, { score, feedback });
+      success(res, { message: 'Verification approved. Thank you for contributing!' });
+    } catch (err) {
+      errors.internal(res, 'Failed to approve verification');
+    }
   }
-});
+);
 
 router.get('/verify/stats', authMiddleware, async (req: Request, res: Response) => {
   try {

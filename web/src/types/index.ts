@@ -1,11 +1,11 @@
-export type SystemStatus = "healthy" | "degraded" | "down";
+export type SystemStatus = 'healthy' | 'degraded' | 'down';
 
 export interface HealthReport {
   status: SystemStatus;
   uptimeSeconds: number;
-  db: "connected" | "error";
-  groq: "configured" | "not_set";
-  whisper: "configured" | "not_set";
+  db: 'connected' | 'error';
+  groq: 'configured' | 'not_set';
+  whisper: 'configured' | 'not_set';
   message: string;
 }
 
@@ -13,7 +13,7 @@ export interface AppInfo {
   name: string;
   tagline: string;
   version: string;
-  platform: "android" | "ios" | "web";
+  platform: 'android' | 'ios' | 'web';
   packageName: string;
   playStoreUrl: string;
   sizeMb: number;

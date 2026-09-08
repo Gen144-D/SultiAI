@@ -1,19 +1,19 @@
-"use client";
+'use client';
 
-import { Avatar, Card, EmptyState, ErrorState, LoadingState, StatusBadge } from "@/components/ui";
-import { useToast } from "@/components/Toast";
-import { useAsync } from "@/hooks/useAsync";
-import { api } from "@/lib/api";
-import { downloadCsv } from "@/lib/export";
-import type { PreservedWord } from "@/types";
+import { Avatar, Card, EmptyState, ErrorState, LoadingState, StatusBadge } from '@/components/ui';
+import { useToast } from '@/components/Toast';
+import { useAsync } from '@/hooks/useAsync';
+import { api } from '@/lib/api';
+import { downloadCsv } from '@/lib/export';
+import type { PreservedWord } from '@/types';
 
 export default function AdminPreservationPage() {
   const toast = useToast();
   const { data, loading, error, reload } = useAsync(() => api.listPreserved(), []);
 
-  async function handleVerify(word: PreservedWord, status: PreservedWord["status"]) {
+  async function handleVerify(word: PreservedWord, status: PreservedWord['status']) {
     await api.verifyPreserved(word.id, status);
-    toast.push("success", `"${word.word}" marked as ${status}.`);
+    toast.push('success', `"${word.word}" marked as ${status}.`);
     reload();
   }
 
@@ -21,7 +21,7 @@ export default function AdminPreservationPage() {
   if (error) return <ErrorState message={error} onRetry={reload} />;
 
   const words = data ?? [];
-  const pending = words.filter((w) => w.status === "pending").length;
+  const pending = words.filter((w) => w.status === 'pending').length;
 
   return (
     <div className="space-y-6">
@@ -42,12 +42,12 @@ export default function AdminPreservationPage() {
                   word: w.word,
                   dialect: w.dialect,
                   meaning: w.meaning,
-                  variations: w.variations.join("; "),
+                  variations: w.variations.join('; '),
                   submittedBy: w.submittedBy.name,
                   status: w.status,
                   createdAt: w.createdAt,
                 })),
-                `sultiai-preserved-words-${new Date().toISOString().split("T")[0]}.csv`
+                `sultiai-preserved-words-${new Date().toISOString().split('T')[0]}.csv`
               )
             }
             className="rounded-xl border border-line bg-white px-4 py-2.5 text-sm font-semibold text-ink transition-colors hover:border-brand"
@@ -59,7 +59,10 @@ export default function AdminPreservationPage() {
 
       {words.length === 0 ? (
         <Card>
-          <EmptyState title="No preserved words" description="Community submissions will appear here." />
+          <EmptyState
+            title="No preserved words"
+            description="Community submissions will appear here."
+          />
         </Card>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -76,7 +79,10 @@ export default function AdminPreservationPage() {
 
               <div className="mt-3 flex flex-wrap gap-1.5">
                 {w.variations.map((v) => (
-                  <span key={v} className="rounded-full bg-surface px-2.5 py-1 text-[10px] font-medium text-ink-faint">
+                  <span
+                    key={v}
+                    className="rounded-full bg-surface px-2.5 py-1 text-[10px] font-medium text-ink-faint"
+                  >
                     {v}
                   </span>
                 ))}
@@ -87,18 +93,18 @@ export default function AdminPreservationPage() {
                 <span className="text-xs text-ink-faint">by {w.submittedBy.name}</span>
               </div>
 
-              {w.status === "pending" && (
+              {w.status === 'pending' && (
                 <div className="mt-4 flex gap-2">
                   <button
                     type="button"
-                    onClick={() => handleVerify(w, "approved")}
+                    onClick={() => handleVerify(w, 'approved')}
                     className="flex-1 rounded-lg bg-success/10 py-2 text-xs font-semibold text-success hover:bg-success hover:text-white"
                   >
                     Approve
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleVerify(w, "rejected")}
+                    onClick={() => handleVerify(w, 'rejected')}
                     className="flex-1 rounded-lg bg-danger/10 py-2 text-xs font-semibold text-danger hover:bg-danger hover:text-white"
                   >
                     Reject

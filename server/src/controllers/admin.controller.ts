@@ -34,7 +34,8 @@ function levelToNumber(level: string | null | undefined, totalXp: number): numbe
 
 /** Get user status — now uses the status column on users table */
 async function getUserStatus(db: any, userId: number): Promise<string> {
-  const [row] = await db.select({ status: schema.users.status })
+  const [row] = await db
+    .select({ status: schema.users.status })
     .from(schema.users)
     .where(eq(schema.users.userId, userId))
     .limit(1);
@@ -53,7 +54,9 @@ export async function getOverview(_req: Request, res: Response): Promise<void> {
 
     // Active today
     const today = new Date().toISOString().split('T')[0];
-    const [activeTodayRow] = await (db as any).select({ c: count() }).from(schema.learnerProfiles)
+    const [activeTodayRow] = await (db as any)
+      .select({ c: count() })
+      .from(schema.learnerProfiles)
       .where(eq(schema.learnerProfiles.lastActive, today));
     const activeToday = num(activeTodayRow?.c);
 
@@ -62,32 +65,42 @@ export async function getOverview(_req: Request, res: Response): Promise<void> {
     const lessonsCompleted = num(lessonsRow?.c);
 
     // AI requests (count from xp_logs as proxy)
-    const [aiRow] = await (db as any).select({ c: count() }).from(schema.xpLogs)
+    const [aiRow] = await (db as any)
+      .select({ c: count() })
+      .from(schema.xpLogs)
       .where(eq(schema.xpLogs.source, 'voice_practice'));
     const aiRequests = num(aiRow?.c);
 
     // Weekly active (users active in last 7 days)
     const weekAgo = daysAgo(7);
-    const [weeklyRow] = await (db as any).select({ c: count() }).from(schema.learnerProfiles)
+    const [weeklyRow] = await (db as any)
+      .select({ c: count() })
+      .from(schema.learnerProfiles)
       .where(sql`${schema.learnerProfiles.lastActive} >= ${weekAgo}`);
     const weeklyActive = num(weeklyRow?.c);
 
     // Monthly active
     const monthAgo = daysAgo(30);
-    const [monthlyRow] = await (db as any).select({ c: count() }).from(schema.learnerProfiles)
+    const [monthlyRow] = await (db as any)
+      .select({ c: count() })
+      .from(schema.learnerProfiles)
       .where(sql`${schema.learnerProfiles.lastActive} >= ${monthAgo}`);
     const monthlyActive = num(monthlyRow?.c);
 
     // Avg XP per user
-    const [avgXpRow] = await (db as any).select({
-      avg: sql<number>`coalesce(avg(${schema.learnerProfiles.totalXp}), 0)`,
-    }).from(schema.learnerProfiles);
+    const [avgXpRow] = await (db as any)
+      .select({
+        avg: sql<number>`coalesce(avg(${schema.learnerProfiles.totalXp}), 0)`,
+      })
+      .from(schema.learnerProfiles);
     const avgXpPerUser = Math.round(num(avgXpRow?.avg));
 
     // Avg session
-    const [avgSessionRow] = await (db as any).select({
-      avg: sql<number>`coalesce(avg(${schema.learningAnalytics.avgSessionDuration}), 0)`,
-    }).from(schema.learningAnalytics);
+    const [avgSessionRow] = await (db as any)
+      .select({
+        avg: sql<number>`coalesce(avg(${schema.learningAnalytics.avgSessionDuration}), 0)`,
+      })
+      .from(schema.learningAnalytics);
     const avgSessionMinutes = Math.round(num(avgSessionRow?.avg));
 
     // Weekly active users trend (last 7 days)
@@ -95,7 +108,9 @@ export async function getOverview(_req: Request, res: Response): Promise<void> {
     for (let i = 6; i >= 0; i--) {
       const dayStr = daysAgo(i);
       const dayLabel = new Date(dayStr).toLocaleDateString('en-US', { weekday: 'short' });
-      const [row] = await (db as any).select({ c: count() }).from(schema.learnerProfiles)
+      const [row] = await (db as any)
+        .select({ c: count() })
+        .from(schema.learnerProfiles)
         .where(eq(schema.learnerProfiles.lastActive, dayStr));
       weeklyActiveTrend.push({ label: dayLabel, value: num(row?.c) });
     }
@@ -105,7 +120,9 @@ export async function getOverview(_req: Request, res: Response): Promise<void> {
     for (let i = 6; i >= 0; i--) {
       const dayStr = daysAgo(i);
       const dayLabel = new Date(dayStr).toLocaleDateString('en-US', { weekday: 'short' });
-      const [row] = await (db as any).select({ c: count() }).from(schema.learningProgress)
+      const [row] = await (db as any)
+        .select({ c: count() })
+        .from(schema.learningProgress)
         .where(eq(schema.learningProgress.createdAt, dayStr));
       lessonsTrend.push({ label: dayLabel, value: num(row?.c) });
     }
@@ -115,38 +132,49 @@ export async function getOverview(_req: Request, res: Response): Promise<void> {
     for (let i = 6; i >= 0; i--) {
       const dayStr = daysAgo(i);
       const dayLabel = new Date(dayStr).toLocaleDateString('en-US', { weekday: 'short' });
-      const [row] = await (db as any).select({ c: count() }).from(schema.xpLogs)
-        .where(and(eq(schema.xpLogs.source, 'voice_practice'), sql`date(${schema.xpLogs.timestamp}) = ${dayStr}`));
+      const [row] = await (db as any)
+        .select({ c: count() })
+        .from(schema.xpLogs)
+        .where(
+          and(
+            eq(schema.xpLogs.source, 'voice_practice'),
+            sql`date(${schema.xpLogs.timestamp}) = ${dayStr}`
+          )
+        );
       aiTrend.push({ label: dayLabel, value: num(row?.c) });
     }
 
-    success(res, {
-      stats: {
-        totalUsers,
-        activeToday,
-        weeklyActive,
-        monthlyActive,
-        lessonsCompleted,
-        avgXpPerUser,
-        avgSessionMinutes,
-        aiRequests,
-        aiFailedRequests: 0,
-        communityReports: 0,
-        streakDays: 0,
+    success(
+      res,
+      {
+        stats: {
+          totalUsers,
+          activeToday,
+          weeklyActive,
+          monthlyActive,
+          lessonsCompleted,
+          avgXpPerUser,
+          avgSessionMinutes,
+          aiRequests,
+          aiFailedRequests: 0,
+          communityReports: 0,
+          streakDays: 0,
+        },
+        health: {
+          status: 'healthy',
+          db: 'connected',
+          api: 'up',
+          groq: process.env.GROQ_API_KEY ? 'configured' : 'not_set',
+          whisper: 'configured',
+          storage: 'up',
+          lastChecked: new Date().toISOString(),
+        },
+        weeklyActive: weeklyActiveTrend,
+        lessonsTrend,
+        aiTrend,
       },
-      health: {
-        status: 'healthy',
-        db: 'connected',
-        api: 'up',
-        groq: process.env.GROQ_API_KEY ? 'configured' : 'not_set',
-        whisper: 'configured',
-        storage: 'up',
-        lastChecked: new Date().toISOString(),
-      },
-      weeklyActive: weeklyActiveTrend,
-      lessonsTrend,
-      aiTrend,
-    }, 'Dashboard overview loaded');
+      'Dashboard overview loaded'
+    );
   } catch (err) {
     logger.error('Admin overview error', { error: (err as Error).message });
     errors.internal(res, 'Failed to load dashboard');
@@ -169,10 +197,9 @@ export async function listUsers(req: Request, res: Response): Promise<void> {
     // Build conditions
     const conditions: any[] = [];
     if (search) {
-      conditions.push(or(
-        like(schema.users.fullname, `%${search}%`),
-        like(schema.users.email, `%${search}%`),
-      ));
+      conditions.push(
+        or(like(schema.users.fullname, `%${search}%`), like(schema.users.email, `%${search}%`))
+      );
     }
     if (roleFilter !== 'all') {
       conditions.push(eq(schema.users.role, roleFilter));
@@ -188,22 +215,26 @@ export async function listUsers(req: Request, res: Response): Promise<void> {
     const total = num(totalRow?.c);
 
     // Get users with learner profiles
-    const sortCol = sort === 'xp' ? schema.learnerProfiles.totalXp
-      : sort === 'level' ? schema.learnerProfiles.level
-      : schema.users.createdAt;
+    const sortCol =
+      sort === 'xp'
+        ? schema.learnerProfiles.totalXp
+        : sort === 'level'
+          ? schema.learnerProfiles.level
+          : schema.users.createdAt;
 
-    const rows = await (db as any).select({
-      userId: schema.users.userId,
-      fullname: schema.users.fullname,
-      email: schema.users.email,
-      role: schema.users.role,
-      createdAt: schema.users.createdAt,
-      totalXp: schema.learnerProfiles.totalXp,
-      streak: schema.learnerProfiles.streak,
-      level: schema.learnerProfiles.level,
-      totalSessions: schema.learnerProfiles.totalSessions,
-      lastActive: schema.learnerProfiles.lastActive,
-    })
+    const rows = await (db as any)
+      .select({
+        userId: schema.users.userId,
+        fullname: schema.users.fullname,
+        email: schema.users.email,
+        role: schema.users.role,
+        createdAt: schema.users.createdAt,
+        totalXp: schema.learnerProfiles.totalXp,
+        streak: schema.learnerProfiles.streak,
+        level: schema.learnerProfiles.level,
+        totalSessions: schema.learnerProfiles.totalSessions,
+        lastActive: schema.learnerProfiles.lastActive,
+      })
       .from(schema.users)
       .leftJoin(schema.learnerProfiles, eq(schema.users.userId, schema.learnerProfiles.userId))
       .where(where)
@@ -211,22 +242,24 @@ export async function listUsers(req: Request, res: Response): Promise<void> {
       .limit(perPage)
       .offset(offset);
 
-    const items = await Promise.all(rows.map(async (r: any) => ({
-      id: r.userId,
-      name: r.fullname || 'Unknown',
-      email: r.email,
-      role: r.role || 'user',
-      status: await getUserStatus(db, r.userId),
-      level: levelToNumber(r.level, num(r.totalXp)),
-      xp: num(r.totalXp),
-      streak: num(r.streak),
-      lessons: num(r.totalSessions),
-      verified: false,
-      nativeSpeaker: false,
-      joinedAt: r.createdAt || new Date().toISOString(),
-      lastActive: r.lastActive || r.createdAt || new Date().toISOString(),
-      country: r.country,
-    })));
+    const items = await Promise.all(
+      rows.map(async (r: any) => ({
+        id: r.userId,
+        name: r.fullname || 'Unknown',
+        email: r.email,
+        role: r.role || 'user',
+        status: await getUserStatus(db, r.userId),
+        level: levelToNumber(r.level, num(r.totalXp)),
+        xp: num(r.totalXp),
+        streak: num(r.streak),
+        lessons: num(r.totalSessions),
+        verified: false,
+        nativeSpeaker: false,
+        joinedAt: r.createdAt || new Date().toISOString(),
+        lastActive: r.lastActive || r.createdAt || new Date().toISOString(),
+        country: r.country,
+      }))
+    );
 
     success(res, { items, total, page, perPage }, 'Users loaded');
   } catch (err) {
@@ -240,7 +273,9 @@ export async function getUser(req: Request, res: Response): Promise<void> {
     const db = getDb();
     const userId = Number(req.params.id);
 
-    const rows = await (db as any).select().from(schema.users)
+    const rows = await (db as any)
+      .select()
+      .from(schema.users)
       .where(eq(schema.users.userId, userId))
       .limit(1);
 
@@ -252,48 +287,60 @@ export async function getUser(req: Request, res: Response): Promise<void> {
     const user = rows[0];
 
     // Get learner profile
-    const [profile] = await (db as any).select().from(schema.learnerProfiles)
+    const [profile] = await (db as any)
+      .select()
+      .from(schema.learnerProfiles)
       .where(eq(schema.learnerProfiles.userId, userId))
       .limit(1);
 
     // Get badges
-    const badges = await (db as any).select().from(schema.userBadges)
+    const badges = await (db as any)
+      .select()
+      .from(schema.userBadges)
       .where(eq(schema.userBadges.userId, userId));
 
     // Get pronunciation attempts count
-    const [pronRow] = await (db as any).select({ c: count() }).from(schema.pronunciationAttempts)
+    const [pronRow] = await (db as any)
+      .select({ c: count() })
+      .from(schema.pronunciationAttempts)
       .where(eq(schema.pronunciationAttempts.userId, userId));
 
     // Get feedback count
-    const [feedbackRow] = await (db as any).select({ c: count() }).from(schema.feedback)
+    const [feedbackRow] = await (db as any)
+      .select({ c: count() })
+      .from(schema.feedback)
       .where(eq(schema.feedback.userId, userId));
 
     const userStatus = await getUserStatus(db, userId);
 
-    success(res, {
-      detail: {
-        id: userId,
-        name: user.fullname || 'Unknown',
-        email: user.email,
-        role: user.role || 'user',
-        status: userStatus,
-        level: levelToNumber(profile?.level, num(profile?.totalXp)),
-        xp: num(profile?.totalXp),
-        streak: num(profile?.streak),
-        lessons: num(profile?.totalSessions),
-        verified: (user.isVerified || 0) === 1,
-        nativeSpeaker: false,
-        joinedAt: user.createdAt || new Date().toISOString(),
-        lastActive: profile?.lastActive || user.createdAt || new Date().toISOString(),
-        country: user.country,
-        badges: badges.map((b: any) => b.badgeId),
-        weakAreas: profile?.weakAreas ? JSON.parse(profile.weakAreas) : [],
-        favoriteCategory: profile?.favoriteCategory || 'general',
-        totalCoins: num(profile?.coins),
-        dailyGoal: num(profile?.dailyGoal),
-        feedbackCount: num(feedbackRow?.c),
+    success(
+      res,
+      {
+        detail: {
+          id: userId,
+          name: user.fullname || 'Unknown',
+          email: user.email,
+          role: user.role || 'user',
+          status: userStatus,
+          level: levelToNumber(profile?.level, num(profile?.totalXp)),
+          xp: num(profile?.totalXp),
+          streak: num(profile?.streak),
+          lessons: num(profile?.totalSessions),
+          verified: (user.isVerified || 0) === 1,
+          nativeSpeaker: false,
+          joinedAt: user.createdAt || new Date().toISOString(),
+          lastActive: profile?.lastActive || user.createdAt || new Date().toISOString(),
+          country: user.country,
+          badges: badges.map((b: any) => b.badgeId),
+          weakAreas: profile?.weakAreas ? JSON.parse(profile.weakAreas) : [],
+          favoriteCategory: profile?.favoriteCategory || 'general',
+          totalCoins: num(profile?.coins),
+          dailyGoal: num(profile?.dailyGoal),
+          feedbackCount: num(feedbackRow?.c),
+        },
       },
-    }, 'User loaded');
+      'User loaded'
+    );
   } catch (err) {
     logger.error('Admin get user error', { error: (err as Error).message });
     errors.internal(res, 'Failed to get user');
@@ -311,8 +358,38 @@ export async function updateUserRole(req: Request, res: Response): Promise<void>
       return;
     }
 
-    await (db as any).update(schema.users).set({ role }).where(eq(schema.users.userId, userId));
-    success(res, { id: userId, role }, 'Role updated');
+    // Get current role for audit log
+    const [currentUser] = await (db as any)
+      .select({ role: schema.users.role })
+      .from(schema.users)
+      .where(eq(schema.users.userId, userId))
+      .limit(1);
+    const oldRole = currentUser?.role || 'user';
+
+    // Get role_id from roles table
+    const [roleRow] = await (db as any)
+      .select({ roleId: schema.roles.roleId })
+      .from(schema.roles)
+      .where(eq(schema.roles.name, role))
+      .limit(1);
+    const roleId = roleRow?.roleId || null;
+
+    await (db as any)
+      .update(schema.users)
+      .set({ role, roleId })
+      .where(eq(schema.users.userId, userId));
+
+    // Audit log with old/new role
+    await (db as any).insert(schema.auditLogs).values({
+      userId: req.user?.userId,
+      action: 'change_user_role',
+      resourceType: 'user',
+      resourceId: String(userId),
+      details: JSON.stringify({ oldRole, newRole: role, changedBy: req.user?.userId }),
+      ipAddress: req.ip,
+    });
+
+    success(res, { id: userId, role, oldRole }, 'Role updated');
   } catch (err) {
     logger.error('Admin update role error', { error: (err as Error).message });
     errors.internal(res, 'Failed to update role');
@@ -330,9 +407,7 @@ export async function updateUserStatus(req: Request, res: Response): Promise<voi
       return;
     }
 
-    await (db as any).update(schema.users)
-      .set({ status })
-      .where(eq(schema.users.userId, userId));
+    await (db as any).update(schema.users).set({ status }).where(eq(schema.users.userId, userId));
 
     await (db as any).insert(schema.auditLogs).values({
       userId: req.user?.userId,
@@ -355,7 +430,8 @@ export async function verifyUser(req: Request, res: Response): Promise<void> {
     const userId = Number(req.params.id);
     const { verified } = req.body;
 
-    await (db as any).update(schema.users)
+    await (db as any)
+      .update(schema.users)
       .set({ isVerified: verified ? 1 : 0 })
       .where(eq(schema.users.userId, userId));
 
@@ -390,7 +466,8 @@ export async function createUser(req: Request, res: Response): Promise<void> {
     }
 
     // Check for existing email
-    const existing = await (db as any).select({ userId: schema.users.userId })
+    const existing = await (db as any)
+      .select({ userId: schema.users.userId })
       .from(schema.users)
       .where(eq(schema.users.email, email))
       .limit(1);
@@ -435,12 +512,16 @@ export async function createUser(req: Request, res: Response): Promise<void> {
       details: JSON.stringify({ email, role: role || 'user' }),
     });
 
-    success(res, {
-      id: newUserId,
-      name: fullname,
-      email,
-      role: role || 'user',
-    }, 'User created');
+    success(
+      res,
+      {
+        id: newUserId,
+        name: fullname,
+        email,
+        role: role || 'user',
+      },
+      'User created'
+    );
   } catch (err) {
     logger.error('Admin create user error', { error: (err as Error).message });
     errors.internal(res, 'Failed to create user');
@@ -453,7 +534,8 @@ export async function deleteUser(req: Request, res: Response): Promise<void> {
     const userId = Number(req.params.id);
 
     // Check user exists
-    const rows = await (db as any).select({ userId: schema.users.userId, role: schema.users.role })
+    const rows = await (db as any)
+      .select({ userId: schema.users.userId, role: schema.users.role })
       .from(schema.users)
       .where(eq(schema.users.userId, userId))
       .limit(1);
@@ -465,7 +547,8 @@ export async function deleteUser(req: Request, res: Response): Promise<void> {
 
     // Prevent deleting the last admin
     if (rows[0].role === 'admin') {
-      const [adminCount] = await (db as any).select({ c: count() })
+      const [adminCount] = await (db as any)
+        .select({ c: count() })
         .from(schema.users)
         .where(eq(schema.users.role, 'admin'));
       if (num(adminCount?.c) <= 1) {
@@ -498,16 +581,17 @@ export async function deleteUser(req: Request, res: Response): Promise<void> {
 export async function listPendingUsers(_req: Request, res: Response): Promise<void> {
   try {
     const db = getDb();
-    const rows = await (db as any).select({
-      userId: schema.users.userId,
-      fullname: schema.users.fullname,
-      email: schema.users.email,
-      role: schema.users.role,
-      status: schema.users.status,
-      createdAt: schema.users.createdAt,
-      supabaseId: schema.users.supabaseId,
-      googleId: schema.users.googleId,
-    })
+    const rows = await (db as any)
+      .select({
+        userId: schema.users.userId,
+        fullname: schema.users.fullname,
+        email: schema.users.email,
+        role: schema.users.role,
+        status: schema.users.status,
+        createdAt: schema.users.createdAt,
+        supabaseId: schema.users.supabaseId,
+        googleId: schema.users.googleId,
+      })
       .from(schema.users)
       .where(eq(schema.users.status, 'pending'))
       .orderBy(desc(schema.users.createdAt));
@@ -534,7 +618,8 @@ export async function approveUser(req: Request, res: Response): Promise<void> {
     const db = getDb();
     const userId = Number(req.params.id);
 
-    const rows = await (db as any).select({ userId: schema.users.userId, status: schema.users.status })
+    const rows = await (db as any)
+      .select({ userId: schema.users.userId, status: schema.users.status })
       .from(schema.users)
       .where(eq(schema.users.userId, userId))
       .limit(1);
@@ -544,7 +629,8 @@ export async function approveUser(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    await (db as any).update(schema.users)
+    await (db as any)
+      .update(schema.users)
       .set({ status: 'approved' })
       .where(eq(schema.users.userId, userId));
 
@@ -569,7 +655,8 @@ export async function rejectUser(req: Request, res: Response): Promise<void> {
     const userId = Number(req.params.id);
     const { reason } = req.body || {};
 
-    const rows = await (db as any).select({ userId: schema.users.userId })
+    const rows = await (db as any)
+      .select({ userId: schema.users.userId })
       .from(schema.users)
       .where(eq(schema.users.userId, userId))
       .limit(1);
@@ -579,7 +666,8 @@ export async function rejectUser(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    await (db as any).update(schema.users)
+    await (db as any)
+      .update(schema.users)
       .set({ status: 'rejected' })
       .where(eq(schema.users.userId, userId));
 
@@ -608,7 +696,8 @@ export async function bulkApproveUsers(req: Request, res: Response): Promise<voi
       return;
     }
 
-    await (db as any).update(schema.users)
+    await (db as any)
+      .update(schema.users)
       .set({ status: 'approved' })
       .where(inArray(schema.users.userId, userIds));
 
@@ -664,17 +753,21 @@ export async function createLesson(req: Request, res: Response): Promise<void> {
       language: language || 'Bisaya',
     });
 
-    success(res, {
-      id: result.lastInsertRowid,
-      title,
-      difficulty: difficulty || 'beginner',
-      language: language || 'Bisaya',
-      lessons: 0,
-      completions: 0,
-      avgCompletionPercent: 0,
-      published: true,
-      updatedAt: new Date().toISOString(),
-    }, 'Lesson created');
+    success(
+      res,
+      {
+        id: result.lastInsertRowid,
+        title,
+        difficulty: difficulty || 'beginner',
+        language: language || 'Bisaya',
+        lessons: 0,
+        completions: 0,
+        avgCompletionPercent: 0,
+        published: true,
+        updatedAt: new Date().toISOString(),
+      },
+      'Lesson created'
+    );
   } catch (err) {
     logger.error('Admin create lesson error', { error: (err as Error).message });
     errors.internal(res, 'Failed to create lesson');
@@ -692,7 +785,9 @@ export async function updateLesson(req: Request, res: Response): Promise<void> {
     if (difficulty !== undefined) updates.difficulty = difficulty;
 
     if (Object.keys(updates).length > 0) {
-      await (db as any).update(schema.learningModules).set(updates)
+      await (db as any)
+        .update(schema.learningModules)
+        .set(updates)
         .where(eq(schema.learningModules.moduleId, moduleId));
     }
 
@@ -707,7 +802,9 @@ export async function deleteLesson(req: Request, res: Response): Promise<void> {
   try {
     const db = getDb();
     const moduleId = Number(req.params.id);
-    await (db as any).delete(schema.learningModules).where(eq(schema.learningModules.moduleId, moduleId));
+    await (db as any)
+      .delete(schema.learningModules)
+      .where(eq(schema.learningModules.moduleId, moduleId));
     success(res, null, 'Lesson deleted');
   } catch (err) {
     logger.error('Admin delete lesson error', { error: (err as Error).message });
@@ -720,15 +817,16 @@ export async function deleteLesson(req: Request, res: Response): Promise<void> {
 export async function listPosts(_req: Request, res: Response): Promise<void> {
   try {
     const db = getDb();
-    const rows = await (db as any).select({
-      postId: schema.communityPosts.postId,
-      title: schema.communityPosts.title,
-      content: schema.communityPosts.content,
-      category: schema.communityPosts.category,
-      createdAt: schema.communityPosts.createdAt,
-      userId: schema.communityPosts.userId,
-      userFullname: schema.users.fullname,
-    })
+    const rows = await (db as any)
+      .select({
+        postId: schema.communityPosts.postId,
+        title: schema.communityPosts.title,
+        content: schema.communityPosts.content,
+        category: schema.communityPosts.category,
+        createdAt: schema.communityPosts.createdAt,
+        userId: schema.communityPosts.userId,
+        userFullname: schema.users.fullname,
+      })
       .from(schema.communityPosts)
       .leftJoin(schema.users, eq(schema.communityPosts.userId, schema.users.userId))
       .orderBy(desc(schema.communityPosts.createdAt))
@@ -761,11 +859,16 @@ export async function toggleFeatured(req: Request, res: Response): Promise<void>
     const postId = Number(req.params.id);
     const { featured } = req.body;
 
-    await (db as any).update(schema.communityPosts)
+    await (db as any)
+      .update(schema.communityPosts)
       .set({ isFeatured: featured ? 1 : 0 })
       .where(eq(schema.communityPosts.postId, postId));
 
-    success(res, { id: postId, featured: !!featured }, featured ? 'Post featured' : 'Post unfeatured');
+    success(
+      res,
+      { id: postId, featured: !!featured },
+      featured ? 'Post featured' : 'Post unfeatured'
+    );
   } catch (err) {
     logger.error('Admin toggle featured error', { error: (err as Error).message });
     errors.internal(res, 'Failed to update post');
@@ -809,15 +912,16 @@ export async function deletePost(req: Request, res: Response): Promise<void> {
 export async function listReports(_req: Request, res: Response): Promise<void> {
   try {
     const db = getDb();
-    const rows = await (db as any).select({
-      reportId: schema.communityReports.reportId,
-      postId: schema.communityReports.postId,
-      reporterId: schema.communityReports.reporterId,
-      reason: schema.communityReports.reason,
-      status: schema.communityReports.status,
-      createdAt: schema.communityReports.createdAt,
-      reporterName: schema.users.fullname,
-    })
+    const rows = await (db as any)
+      .select({
+        reportId: schema.communityReports.reportId,
+        postId: schema.communityReports.postId,
+        reporterId: schema.communityReports.reporterId,
+        reason: schema.communityReports.reason,
+        status: schema.communityReports.status,
+        createdAt: schema.communityReports.createdAt,
+        reporterName: schema.users.fullname,
+      })
       .from(schema.communityReports)
       .leftJoin(schema.users, eq(schema.communityReports.reporterId, schema.users.userId))
       .orderBy(desc(schema.communityReports.createdAt))
@@ -850,7 +954,8 @@ export async function updateReportStatus(req: Request, res: Response): Promise<v
       return;
     }
 
-    await (db as any).update(schema.communityReports)
+    await (db as any)
+      .update(schema.communityReports)
       .set({ status })
       .where(eq(schema.communityReports.reportId, reportId));
 
@@ -868,24 +973,32 @@ export async function getAiUsage(_req: Request, res: Response): Promise<void> {
     const db = getDb();
 
     // Voice sessions from xp_logs
-    const [voiceRow] = await (db as any).select({ c: count() }).from(schema.xpLogs)
+    const [voiceRow] = await (db as any)
+      .select({ c: count() })
+      .from(schema.xpLogs)
       .where(eq(schema.xpLogs.source, 'voice_practice'));
 
     // Tutor requests from xp_logs
-    const [tutorRow] = await (db as any).select({ c: count() }).from(schema.xpLogs)
+    const [tutorRow] = await (db as any)
+      .select({ c: count() })
+      .from(schema.xpLogs)
       .where(eq(schema.xpLogs.source, 'lesson'));
 
     // Total tokens estimate
-    const [tokenRow] = await (db as any).select({
-      total: sql<number>`coalesce(sum(${schema.learningAnalytics.totalSpeakingSeconds}), 0)`,
-    }).from(schema.learningAnalytics);
+    const [tokenRow] = await (db as any)
+      .select({
+        total: sql<number>`coalesce(sum(${schema.learningAnalytics.totalSpeakingSeconds}), 0)`,
+      })
+      .from(schema.learningAnalytics);
 
     // Trend (last 7 days)
     const trend = [];
     for (let i = 6; i >= 0; i--) {
       const dayStr = daysAgo(i);
       const dayLabel = new Date(dayStr).toLocaleDateString('en-US', { weekday: 'short' });
-      const [row] = await (db as any).select({ c: count() }).from(schema.xpLogs)
+      const [row] = await (db as any)
+        .select({ c: count() })
+        .from(schema.xpLogs)
         .where(sql`date(${schema.xpLogs.timestamp}) = ${dayStr}`);
       trend.push({ label: dayLabel, value: num(row?.c) });
     }
@@ -896,21 +1009,25 @@ export async function getAiUsage(_req: Request, res: Response): Promise<void> {
     const whisperRequests = 0;
     const total = conversations + tutorRequests + voiceRequests + whisperRequests;
 
-    success(res, {
-      conversations,
-      voiceRequests,
-      whisperRequests,
-      tutorRequests,
-      failedRequests: 0,
-      avgResponseMs: 850,
-      totalTokens: num(tokenRow?.total) * 100 || total * 500,
-      providers: [
-        { name: 'Groq (LLM)', requests: tutorRequests, failed: 0 },
-        { name: 'Voicebox', requests: voiceRequests, failed: 0 },
-        { name: 'Local STT', requests: whisperRequests, failed: 0 },
-      ],
-      trend,
-    }, 'AI usage loaded');
+    success(
+      res,
+      {
+        conversations,
+        voiceRequests,
+        whisperRequests,
+        tutorRequests,
+        failedRequests: 0,
+        avgResponseMs: 850,
+        totalTokens: num(tokenRow?.total) * 100 || total * 500,
+        providers: [
+          { name: 'Groq (LLM)', requests: tutorRequests, failed: 0 },
+          { name: 'Voicebox', requests: voiceRequests, failed: 0 },
+          { name: 'Local STT', requests: whisperRequests, failed: 0 },
+        ],
+        trend,
+      },
+      'AI usage loaded'
+    );
   } catch (err) {
     logger.error('Admin AI usage error', { error: (err as Error).message });
     errors.internal(res, 'Failed to load AI usage');
@@ -923,19 +1040,25 @@ export async function getXpOverview(_req: Request, res: Response): Promise<void>
   try {
     const db = getDb();
 
-    const [totalXpRow] = await (db as any).select({
-      total: sql<number>`coalesce(sum(${schema.xpLogs.amount}), 0)`,
-    }).from(schema.xpLogs);
+    const [totalXpRow] = await (db as any)
+      .select({
+        total: sql<number>`coalesce(sum(${schema.xpLogs.amount}), 0)`,
+      })
+      .from(schema.xpLogs);
 
-    const [avgDailyRow] = await (db as any).select({
-      avg: sql<number>`coalesce(avg(${schema.xpLogs.amount}), 0)`,
-    }).from(schema.xpLogs);
+    const [avgDailyRow] = await (db as any)
+      .select({
+        avg: sql<number>`coalesce(avg(${schema.xpLogs.amount}), 0)`,
+      })
+      .from(schema.xpLogs);
 
     // Level distribution
-    const levelRows = await (db as any).select({
-      level: schema.learnerProfiles.level,
-      c: count(),
-    }).from(schema.learnerProfiles)
+    const levelRows = await (db as any)
+      .select({
+        level: schema.learnerProfiles.level,
+        c: count(),
+      })
+      .from(schema.learnerProfiles)
       .groupBy(schema.learnerProfiles.level);
 
     const levelDistribution = levelRows.map((r: any) => ({
@@ -944,13 +1067,14 @@ export async function getXpOverview(_req: Request, res: Response): Promise<void>
     }));
 
     // Top users
-    const topRows = await (db as any).select({
-      userId: schema.users.userId,
-      fullname: schema.users.fullname,
-      totalXp: schema.learnerProfiles.totalXp,
-      streak: schema.learnerProfiles.streak,
-      level: schema.learnerProfiles.level,
-    })
+    const topRows = await (db as any)
+      .select({
+        userId: schema.users.userId,
+        fullname: schema.users.fullname,
+        totalXp: schema.learnerProfiles.totalXp,
+        streak: schema.learnerProfiles.streak,
+        level: schema.learnerProfiles.level,
+      })
       .from(schema.users)
       .leftJoin(schema.learnerProfiles, eq(schema.users.userId, schema.learnerProfiles.userId))
       .orderBy(desc(schema.learnerProfiles.totalXp))
@@ -964,13 +1088,17 @@ export async function getXpOverview(_req: Request, res: Response): Promise<void>
       streak: num(r.streak),
     }));
 
-    success(res, {
-      totalXpAwarded: num(totalXpRow?.total),
-      avgDailyXp: Math.round(num(avgDailyRow?.avg)),
-      dailyRewardsClaimed: 0,
-      levelDistribution,
-      topUsers,
-    }, 'XP overview loaded');
+    success(
+      res,
+      {
+        totalXpAwarded: num(totalXpRow?.total),
+        avgDailyXp: Math.round(num(avgDailyRow?.avg)),
+        dailyRewardsClaimed: 0,
+        levelDistribution,
+        topUsers,
+      },
+      'XP overview loaded'
+    );
   } catch (err) {
     logger.error('Admin XP overview error', { error: (err as Error).message });
     errors.internal(res, 'Failed to load XP overview');
@@ -982,15 +1110,16 @@ export async function getXpOverview(_req: Request, res: Response): Promise<void>
 export async function listFeedback(_req: Request, res: Response): Promise<void> {
   try {
     const db = getDb();
-    const rows = await (db as any).select({
-      feedbackId: schema.feedback.feedbackId,
-      userId: schema.feedback.userId,
-      functionality: schema.feedback.functionality,
-      usability: schema.feedback.usability,
-      reliability: schema.feedback.reliability,
-      createdAt: schema.feedback.createdAt,
-      userFullname: schema.users.fullname,
-    })
+    const rows = await (db as any)
+      .select({
+        feedbackId: schema.feedback.feedbackId,
+        userId: schema.feedback.userId,
+        functionality: schema.feedback.functionality,
+        usability: schema.feedback.usability,
+        reliability: schema.feedback.reliability,
+        createdAt: schema.feedback.createdAt,
+        userFullname: schema.users.fullname,
+      })
       .from(schema.feedback)
       .leftJoin(schema.users, eq(schema.feedback.userId, schema.users.userId))
       .orderBy(desc(schema.feedback.createdAt))
@@ -1019,11 +1148,16 @@ export async function resolveFeedback(req: Request, res: Response): Promise<void
     const feedbackId = Number(req.params.id);
     const { resolved } = req.body;
 
-    await (db as any).update(schema.feedback)
+    await (db as any)
+      .update(schema.feedback)
       .set({ resolved: resolved ? 1 : 0 })
       .where(eq(schema.feedback.feedbackId, feedbackId));
 
-    success(res, { id: feedbackId, resolved: !!resolved }, resolved ? 'Feedback resolved' : 'Feedback reopened');
+    success(
+      res,
+      { id: feedbackId, resolved: !!resolved },
+      resolved ? 'Feedback resolved' : 'Feedback reopened'
+    );
   } catch (err) {
     logger.error('Admin resolve feedback error', { error: (err as Error).message });
     errors.internal(res, 'Failed to update feedback');
@@ -1035,16 +1169,17 @@ export async function resolveFeedback(req: Request, res: Response): Promise<void
 export async function listPreserved(_req: Request, res: Response): Promise<void> {
   try {
     const db = getDb();
-    const rows = await (db as any).select({
-      wordId: schema.preservedWords.wordId,
-      word: schema.preservedWords.word,
-      dialectalRegion: schema.preservedWords.dialectalRegion,
-      definition: schema.preservedWords.definition,
-      status: schema.preservedWords.status,
-      createdAt: schema.preservedWords.createdAt,
-      submittedBy: schema.preservedWords.submittedBy,
-      userFullname: schema.users.fullname,
-    })
+    const rows = await (db as any)
+      .select({
+        wordId: schema.preservedWords.wordId,
+        word: schema.preservedWords.word,
+        dialectalRegion: schema.preservedWords.dialectalRegion,
+        definition: schema.preservedWords.definition,
+        status: schema.preservedWords.status,
+        createdAt: schema.preservedWords.createdAt,
+        submittedBy: schema.preservedWords.submittedBy,
+        userFullname: schema.users.fullname,
+      })
       .from(schema.preservedWords)
       .leftJoin(schema.users, eq(schema.preservedWords.submittedBy, schema.users.userId))
       .orderBy(desc(schema.preservedWords.createdAt))
@@ -1074,7 +1209,8 @@ export async function verifyPreserved(req: Request, res: Response): Promise<void
     const wordId = Number(req.params.id);
     const { status } = req.body;
 
-    await (db as any).update(schema.preservedWords)
+    await (db as any)
+      .update(schema.preservedWords)
       .set({ status })
       .where(eq(schema.preservedWords.wordId, wordId));
 
@@ -1090,31 +1226,36 @@ export async function verifyPreserved(req: Request, res: Response): Promise<void
 export async function getSettings(_req: Request, res: Response): Promise<void> {
   try {
     const db = getDb();
-    const admins = await (db as any).select({
-      userId: schema.users.userId,
-      fullname: schema.users.fullname,
-      email: schema.users.email,
-      role: schema.users.role,
-    })
+    const admins = await (db as any)
+      .select({
+        userId: schema.users.userId,
+        fullname: schema.users.fullname,
+        email: schema.users.email,
+        role: schema.users.role,
+      })
       .from(schema.users)
       .where(eq(schema.users.role, 'admin'));
 
-    success(res, {
-      maintenanceMode: false,
-      allowSignups: true,
-      allowCommunity: true,
-      requireVerificationForCommunity: false,
-      dailyXpGoal: 50,
-      maxDailyAiRequests: 100,
-      aiProvider: process.env.GROQ_API_KEY ? 'groq' : 'auto',
-      admins: admins.map((a: any) => ({
-        id: a.userId,
-        name: a.fullname,
-        email: a.email,
-        role: a.role,
-      })),
-      updatedAt: new Date().toISOString(),
-    }, 'Settings loaded');
+    success(
+      res,
+      {
+        maintenanceMode: false,
+        allowSignups: true,
+        allowCommunity: true,
+        requireVerificationForCommunity: false,
+        dailyXpGoal: 50,
+        maxDailyAiRequests: 100,
+        aiProvider: process.env.GROQ_API_KEY ? 'groq' : 'auto',
+        admins: admins.map((a: any) => ({
+          id: a.userId,
+          name: a.fullname,
+          email: a.email,
+          role: a.role,
+        })),
+        updatedAt: new Date().toISOString(),
+      },
+      'Settings loaded'
+    );
   } catch (err) {
     logger.error('Admin settings error', { error: (err as Error).message });
     errors.internal(res, 'Failed to load settings');
@@ -1124,7 +1265,15 @@ export async function getSettings(_req: Request, res: Response): Promise<void> {
 export async function updateSettings(req: Request, res: Response): Promise<void> {
   try {
     const db = getDb();
-    const { maintenanceMode, allowSignups, allowCommunity, requireVerificationForCommunity, dailyXpGoal, maxDailyAiRequests, aiProvider } = req.body;
+    const {
+      maintenanceMode,
+      allowSignups,
+      allowCommunity,
+      requireVerificationForCommunity,
+      dailyXpGoal,
+      maxDailyAiRequests,
+      aiProvider,
+    } = req.body;
 
     // Store settings as key-value pairs in audit_logs (or a dedicated settings table)
     const settingsData = {
@@ -1152,5 +1301,156 @@ export async function updateSettings(req: Request, res: Response): Promise<void>
   } catch (err) {
     logger.error('Admin update settings error', { error: (err as Error).message });
     errors.internal(res, 'Failed to update settings');
+  }
+}
+
+// ── RBAC: Roles & Permissions ──────────────────────────────────────
+
+export async function listRoles(_req: Request, res: Response): Promise<void> {
+  try {
+    const db = getDb();
+    const roles = await (db as any).select().from(schema.roles);
+
+    // Fetch permissions for each role
+    const rolesWithPerms = await Promise.all(
+      roles.map(async (role: any) => {
+        const perms = await (db as any)
+          .select({
+            name: schema.permissions.name,
+            resource: schema.permissions.resource,
+            action: schema.permissions.action,
+          })
+          .from(schema.rolePermissions)
+          .innerJoin(
+            schema.permissions,
+            eq(schema.rolePermissions.permissionId, schema.permissions.permissionId)
+          )
+          .where(eq(schema.rolePermissions.roleId, role.roleId));
+
+        return {
+          id: role.roleId,
+          name: role.name,
+          description: role.description,
+          permissions: perms,
+        };
+      })
+    );
+
+    success(res, rolesWithPerms, 'Roles loaded');
+  } catch (err) {
+    logger.error('Admin list roles error', { error: (err as Error).message });
+    errors.internal(res, 'Failed to list roles');
+  }
+}
+
+export async function listPermissions(_req: Request, res: Response): Promise<void> {
+  try {
+    const db = getDb();
+    const perms = await (db as any).select().from(schema.permissions);
+    success(res, perms, 'Permissions loaded');
+  } catch (err) {
+    logger.error('Admin list permissions error', { error: (err as Error).message });
+    errors.internal(res, 'Failed to list permissions');
+  }
+}
+
+export async function updateRolePermissions(req: Request, res: Response): Promise<void> {
+  try {
+    const db = getDb();
+    const roleId = Number(req.params.id);
+    const { permissionIds } = req.body;
+
+    if (!Array.isArray(permissionIds)) {
+      errors.validation(res, 'permissionIds must be an array');
+      return;
+    }
+
+    // Verify role exists
+    const [role] = await (db as any)
+      .select()
+      .from(schema.roles)
+      .where(eq(schema.roles.roleId, roleId))
+      .limit(1);
+
+    if (!role) {
+      errors.notFound(res, 'Role not found');
+      return;
+    }
+
+    // Prevent removing all permissions from admin role
+    if (role.name === 'admin' && permissionIds.length === 0) {
+      errors.validation(res, 'Admin role must have at least one permission');
+      return;
+    }
+
+    // Delete existing permissions
+    await (db as any)
+      .delete(schema.rolePermissions)
+      .where(eq(schema.rolePermissions.roleId, roleId));
+
+    // Insert new permissions
+    for (const permId of permissionIds) {
+      await (db as any).insert(schema.rolePermissions).values({
+        roleId,
+        permissionId: permId,
+      });
+    }
+
+    // Audit log
+    await (db as any).insert(schema.auditLogs).values({
+      userId: req.user?.userId,
+      action: 'update_role_permissions',
+      resourceType: 'role',
+      resourceId: String(roleId),
+      details: JSON.stringify({
+        roleName: role.name,
+        permissionCount: permissionIds.length,
+        changedBy: req.user?.userId,
+      }),
+      ipAddress: req.ip,
+    });
+
+    success(res, { roleId, permissionCount: permissionIds.length }, 'Role permissions updated');
+  } catch (err) {
+    logger.error('Admin update role permissions error', { error: (err as Error).message });
+    errors.internal(res, 'Failed to update role permissions');
+  }
+}
+
+export async function getAuditLogs(req: Request, res: Response): Promise<void> {
+  try {
+    const db = getDb();
+    const { action, userId, page = '1', perPage = '50' } = req.query;
+
+    const pageNum = Math.max(1, Number(page));
+    const limit = Math.min(100, Math.max(1, Number(perPage)));
+    const offset = (pageNum - 1) * limit;
+
+    let query = (db as any).select().from(schema.auditLogs);
+    let countQuery = (db as any).select({ c: count() }).from(schema.auditLogs);
+
+    if (action) {
+      query = query.where(eq(schema.auditLogs.action, action as string));
+      countQuery = countQuery.where(eq(schema.auditLogs.action, action as string));
+    }
+    if (userId) {
+      query = query.where(eq(schema.auditLogs.userId, Number(userId)));
+      countQuery = countQuery.where(eq(schema.auditLogs.userId, Number(userId)));
+    }
+
+    const [totalRow] = await countQuery;
+    const total = totalRow?.c || 0;
+
+    const logs = await query.orderBy(schema.auditLogs.timestamp).limit(limit).offset(offset);
+
+    success(res, logs, 'Audit logs loaded', 200, {
+      page: pageNum,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    });
+  } catch (err) {
+    logger.error('Admin audit logs error', { error: (err as Error).message });
+    errors.internal(res, 'Failed to get audit logs');
   }
 }

@@ -15,7 +15,7 @@ import type {
   UserRole,
   UserStatus,
   XpOverview,
-} from "@/types";
+} from '@/types';
 import {
   clone,
   seedFeedback,
@@ -25,7 +25,7 @@ import {
   seedReports,
   seedUsers,
   userDetails,
-} from "./db";
+} from './db';
 
 const ms = 60 + Math.random() * 220;
 
@@ -47,10 +47,10 @@ let settings: AdminSettings = {
   requireVerificationForCommunity: false,
   dailyXpGoal: 50,
   maxDailyAiRequests: 100,
-  aiProvider: "groq",
+  aiProvider: 'groq',
   admins: [
-    { id: 1, name: "Genesis Diaz", email: "genesis@sultiai.com", role: "admin" },
-    { id: 2, name: "Miguel Santos", email: "miguel@sultiai.com", role: "moderator" },
+    { id: 1, name: 'Genesis Diaz', email: 'genesis@sultiai.com', role: 'admin' },
+    { id: 2, name: 'Miguel Santos', email: 'miguel@sultiai.com', role: 'moderator' },
   ],
   updatedAt: new Date().toISOString(),
 };
@@ -72,17 +72,23 @@ export const mockApi = {
       streakDays: 18,
     };
     const health: SystemHealth = {
-      status: "healthy",
-      db: "connected",
-      api: "up",
-      groq: "configured",
-      whisper: "configured",
-      storage: "up",
+      status: 'healthy',
+      db: 'connected',
+      api: 'up',
+      groq: 'configured',
+      whisper: 'configured',
+      storage: 'up',
       lastChecked: new Date().toISOString(),
     };
-    const week = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-    const weeklyActive = week.map((label, i) => ({ label, value: 1480 + i * 97 + ((i * 37) % 120) }));
-    const lessonsTrend = week.map((label, i) => ({ label, value: 2400 + i * 210 + ((i * 53) % 260) }));
+    const week = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const weeklyActive = week.map((label, i) => ({
+      label,
+      value: 1480 + i * 97 + ((i * 37) % 120),
+    }));
+    const lessonsTrend = week.map((label, i) => ({
+      label,
+      value: 2400 + i * 210 + ((i * 53) % 260),
+    }));
     const aiTrend = week.map((label, i) => ({ label, value: 1900 + i * 240 + ((i * 71) % 300) }));
     return respond({ stats, health, weeklyActive, lessonsTrend, aiTrend });
   },
@@ -92,16 +98,22 @@ export const mockApi = {
     let list = clone(users);
     const q = filters.search.toLowerCase();
     if (q) {
-      list = list.filter((u) => u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q));
+      list = list.filter(
+        (u) => u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)
+      );
     }
-    if (filters.role !== "all") list = list.filter((u) => u.role === filters.role);
-    if (filters.status !== "all") list = list.filter((u) => u.status === filters.status);
+    if (filters.role !== 'all') list = list.filter((u) => u.role === filters.role);
+    if (filters.status !== 'all') list = list.filter((u) => u.status === filters.status);
     list.sort((a, b) => {
       switch (filters.sort) {
-        case "xp": return b.xp - a.xp;
-        case "level": return b.level - a.level;
-        case "recent": return b.lastActive.localeCompare(a.lastActive);
-        default: return b.joinedAt.localeCompare(a.joinedAt);
+        case 'xp':
+          return b.xp - a.xp;
+        case 'level':
+          return b.level - a.level;
+        case 'recent':
+          return b.lastActive.localeCompare(a.lastActive);
+        default:
+          return b.joinedAt.localeCompare(a.joinedAt);
       }
     });
     const total = list.length;
@@ -111,27 +123,27 @@ export const mockApi = {
 
   async getUser(id: number): Promise<UserDetail> {
     const detail = userDetails.get(id);
-    if (!detail) throw new Error("User not found");
+    if (!detail) throw new Error('User not found');
     return respond(clone(detail));
   },
 
   async updateUserRole(id: number, role: UserRole): Promise<AdminUser> {
     const u = users.find((x) => x.id === id);
-    if (!u) throw new Error("User not found");
+    if (!u) throw new Error('User not found');
     u.role = role;
     return respond(clone(u));
   },
 
   async updateUserStatus(id: number, status: UserStatus): Promise<AdminUser> {
     const u = users.find((x) => x.id === id);
-    if (!u) throw new Error("User not found");
+    if (!u) throw new Error('User not found');
     u.status = status;
     return respond(clone(u));
   },
 
   async verifyUser(id: number, verified: boolean): Promise<AdminUser> {
     const u = users.find((x) => x.id === id);
-    if (!u) throw new Error("User not found");
+    if (!u) throw new Error('User not found');
     u.verified = verified;
     return respond(clone(u));
   },
@@ -141,7 +153,9 @@ export const mockApi = {
     return respond(clone(lessons));
   },
 
-  async createLesson(data: Omit<LessonModule, "id" | "completions" | "avgCompletionPercent" | "updatedAt">): Promise<LessonModule> {
+  async createLesson(
+    data: Omit<LessonModule, 'id' | 'completions' | 'avgCompletionPercent' | 'updatedAt'>
+  ): Promise<LessonModule> {
     const lesson: LessonModule = {
       ...data,
       id: Math.max(0, ...lessons.map((l) => l.id)) + 1,
@@ -155,7 +169,7 @@ export const mockApi = {
 
   async updateLesson(id: number, data: Partial<LessonModule>): Promise<LessonModule> {
     const lesson = lessons.find((l) => l.id === id);
-    if (!lesson) throw new Error("Lesson not found");
+    if (!lesson) throw new Error('Lesson not found');
     Object.assign(lesson, data, { updatedAt: new Date().toISOString() });
     return respond(clone(lesson));
   },
@@ -172,14 +186,14 @@ export const mockApi = {
 
   async toggleFeatured(id: number): Promise<CommunityPost> {
     const p = posts.find((x) => x.id === id);
-    if (!p) throw new Error("Post not found");
+    if (!p) throw new Error('Post not found');
     p.featured = !p.featured;
     return respond(clone(p));
   },
 
   async setPostHidden(id: number, hidden: boolean): Promise<CommunityPost> {
     const p = posts.find((x) => x.id === id);
-    if (!p) throw new Error("Post not found");
+    if (!p) throw new Error('Post not found');
     p.hidden = hidden;
     return respond(clone(p));
   },
@@ -196,7 +210,7 @@ export const mockApi = {
 
   async updateReportStatus(id: number, status: ReportStatus): Promise<CommunityReport> {
     const r = reports.find((x) => x.id === id);
-    if (!r) throw new Error("Report not found");
+    if (!r) throw new Error('Report not found');
     r.status = status;
     return respond(clone(r));
   },
@@ -212,11 +226,11 @@ export const mockApi = {
       avgResponseMs: 842,
       totalTokens: 4921000,
       providers: [
-        { name: "Groq", requests: 12480, failed: 141 },
-        { name: "Whisper", requests: 2241, failed: 34 },
-        { name: "TTS", requests: 3700, failed: 28 },
+        { name: 'Groq', requests: 12480, failed: 141 },
+        { name: 'Whisper', requests: 2241, failed: 34 },
+        { name: 'TTS', requests: 3700, failed: 28 },
       ],
-      trend: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((label, i) => ({
+      trend: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((label, i) => ({
         label,
         value: 2100 + i * 240 + ((i * 61) % 280),
       })),
@@ -249,7 +263,7 @@ export const mockApi = {
 
   async resolveFeedback(id: number): Promise<FeedbackItem> {
     const item = feedback.find((f) => f.id === id);
-    if (!item) throw new Error("Feedback not found");
+    if (!item) throw new Error('Feedback not found');
     item.resolved = !item.resolved;
     return respond(clone(item));
   },
@@ -259,9 +273,9 @@ export const mockApi = {
     return respond(clone(preserved));
   },
 
-  async verifyPreserved(id: number, status: PreservedWord["status"]): Promise<PreservedWord> {
+  async verifyPreserved(id: number, status: PreservedWord['status']): Promise<PreservedWord> {
     const word = preserved.find((w) => w.id === id);
-    if (!word) throw new Error("Word not found");
+    if (!word) throw new Error('Word not found');
     word.status = status;
     return respond(clone(word));
   },

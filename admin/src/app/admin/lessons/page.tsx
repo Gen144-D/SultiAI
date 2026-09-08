@@ -1,36 +1,46 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import type { LessonModule, ModuleDifficulty } from "@/types";
-import { ConfirmModal } from "@/components/ConfirmModal";
-import { useToast } from "@/components/Toast";
-import { useAsync } from "@/hooks/useAsync";
-import { api } from "@/lib/api";
-import { Card, EmptyState, ErrorState, LoadingState, StatusBadge, ghostBtn, inputCls, primaryBtn, selectCls } from "@/components/ui";
-import { downloadCsv } from "@/lib/export";
+import { useState } from 'react';
+import type { LessonModule, ModuleDifficulty } from '@/types';
+import { ConfirmModal } from '@/components/ConfirmModal';
+import { useToast } from '@/components/Toast';
+import { useAsync } from '@/hooks/useAsync';
+import { api } from '@/lib/api';
+import {
+  Card,
+  EmptyState,
+  ErrorState,
+  LoadingState,
+  StatusBadge,
+  ghostBtn,
+  inputCls,
+  primaryBtn,
+  selectCls,
+} from '@/components/ui';
+import { downloadCsv } from '@/lib/export';
 
 const difficultyTone: Record<ModuleDifficulty, string> = {
-  beginner: "text-success bg-success/10",
-  intermediate: "text-brand-dark bg-brand-light",
-  advanced: "text-[#b45309] bg-accent-light",
+  beginner: 'text-success bg-success/10',
+  intermediate: 'text-brand-dark bg-brand-light',
+  advanced: 'text-[#b45309] bg-accent-light',
 };
 
 export default function AdminLessonsPage() {
   const toast = useToast();
   const { data, loading, error, reload } = useAsync(() => api.listLessons(), []);
-  const [editing, setEditing] = useState<LessonModule | "new" | null>(null);
+  const [editing, setEditing] = useState<LessonModule | 'new' | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<LessonModule | null>(null);
 
   async function handleTogglePublish(lesson: LessonModule) {
     const updated = await api.updateLesson(lesson.id, { published: !lesson.published });
-    toast.push("success", `"${updated.title}" ${updated.published ? "published" : "unpublished"}.`);
+    toast.push('success', `"${updated.title}" ${updated.published ? 'published' : 'unpublished'}.`);
     reload();
   }
 
   async function handleDelete() {
     if (!deleteTarget) return;
     await api.deleteLesson(deleteTarget.id);
-    toast.push("success", `"${deleteTarget.title}" deleted.`);
+    toast.push('success', `"${deleteTarget.title}" deleted.`);
     setDeleteTarget(null);
     reload();
   }
@@ -59,7 +69,7 @@ export default function AdminLessonsPage() {
                     published: l.published,
                     updatedAt: l.updatedAt,
                   })),
-                  `sultiai-lessons-${new Date().toISOString().split("T")[0]}.csv`
+                  `sultiai-lessons-${new Date().toISOString().split('T')[0]}.csv`
                 )
               }
               className="rounded-xl border border-line bg-white px-4 py-2.5 text-sm font-semibold text-ink transition-colors hover:border-brand"
@@ -67,7 +77,7 @@ export default function AdminLessonsPage() {
               Export CSV
             </button>
           )}
-          <button type="button" className={primaryBtn} onClick={() => setEditing("new")}>
+          <button type="button" className={primaryBtn} onClick={() => setEditing('new')}>
             + New lesson module
           </button>
         </div>
@@ -79,7 +89,10 @@ export default function AdminLessonsPage() {
         <ErrorState message={error} onRetry={reload} />
       ) : !data || data.length === 0 ? (
         <Card>
-          <EmptyState title="No lesson modules yet" description="Create your first module to get started." />
+          <EmptyState
+            title="No lesson modules yet"
+            description="Create your first module to get started."
+          />
         </Card>
       ) : (
         <Card className="overflow-hidden">
@@ -98,28 +111,40 @@ export default function AdminLessonsPage() {
               </thead>
               <tbody>
                 {data.map((lesson) => (
-                  <tr key={lesson.id} className="border-b border-line transition-colors last:border-0 hover:bg-surface/60">
+                  <tr
+                    key={lesson.id}
+                    className="border-b border-line transition-colors last:border-0 hover:bg-surface/60"
+                  >
                     <td className="px-5 py-3.5">
                       <p className="font-semibold text-ink">{lesson.title}</p>
                       <p className="text-xs text-ink-faint">{lesson.language}</p>
                     </td>
                     <td className="px-5 py-3.5">
-                      <span className={`rounded-full px-2.5 py-1 text-xs font-semibold capitalize ${difficultyTone[lesson.difficulty]}`}>
+                      <span
+                        className={`rounded-full px-2.5 py-1 text-xs font-semibold capitalize ${difficultyTone[lesson.difficulty]}`}
+                      >
                         {lesson.difficulty}
                       </span>
                     </td>
                     <td className="px-5 py-3.5 tabular-nums text-ink-soft">{lesson.lessons}</td>
-                    <td className="px-5 py-3.5 tabular-nums text-ink-soft">{lesson.completions.toLocaleString()}</td>
+                    <td className="px-5 py-3.5 tabular-nums text-ink-soft">
+                      {lesson.completions.toLocaleString()}
+                    </td>
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-2">
                         <div className="h-1.5 w-20 overflow-hidden rounded-full bg-line">
-                          <div className="h-full rounded-full bg-success" style={{ width: `${lesson.avgCompletionPercent}%` }} />
+                          <div
+                            className="h-full rounded-full bg-success"
+                            style={{ width: `${lesson.avgCompletionPercent}%` }}
+                          />
                         </div>
-                        <span className="text-xs font-semibold tabular-nums text-ink-soft">{lesson.avgCompletionPercent}%</span>
+                        <span className="text-xs font-semibold tabular-nums text-ink-soft">
+                          {lesson.avgCompletionPercent}%
+                        </span>
                       </div>
                     </td>
                     <td className="px-5 py-3.5">
-                      <StatusBadge status={lesson.published ? "published" : "draft"} />
+                      <StatusBadge status={lesson.published ? 'published' : 'draft'} />
                     </td>
                     <td className="px-5 py-3.5">
                       <div className="flex items-center justify-end gap-1.5">
@@ -128,7 +153,7 @@ export default function AdminLessonsPage() {
                           onClick={() => handleTogglePublish(lesson)}
                           className="rounded-lg border border-line px-2.5 py-1.5 text-xs font-semibold text-ink hover:border-brand"
                         >
-                          {lesson.published ? "Unpublish" : "Publish"}
+                          {lesson.published ? 'Unpublish' : 'Publish'}
                         </button>
                         <button
                           type="button"
@@ -156,10 +181,13 @@ export default function AdminLessonsPage() {
 
       {editing && (
         <LessonModal
-          lesson={editing === "new" ? null : editing}
+          lesson={editing === 'new' ? null : editing}
           onClose={() => setEditing(null)}
           onSaved={() => {
-            toast.push("success", editing === "new" ? "Lesson module created." : "Lesson module updated.");
+            toast.push(
+              'success',
+              editing === 'new' ? 'Lesson module created.' : 'Lesson module updated.'
+            );
             setEditing(null);
             reload();
           }}
@@ -189,8 +217,8 @@ function LessonModal({
 }) {
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState({
-    title: lesson?.title ?? "",
-    difficulty: (lesson?.difficulty ?? "beginner") as ModuleDifficulty,
+    title: lesson?.title ?? '',
+    difficulty: (lesson?.difficulty ?? 'beginner') as ModuleDifficulty,
     lessons: lesson?.lessons ?? 8,
     published: lesson?.published ?? true,
   });
@@ -198,9 +226,9 @@ function LessonModal({
 
   function validate(): boolean {
     const e: typeof errors = {};
-    if (!form.title.trim()) e.title = "Title is required.";
-    else if (form.title.trim().length < 3) e.title = "Title must be at least 3 characters.";
-    if (!form.lessons || form.lessons < 1) e.lessons = "Must have at least 1 lesson.";
+    if (!form.title.trim()) e.title = 'Title is required.';
+    else if (form.title.trim().length < 3) e.title = 'Title must be at least 3 characters.';
+    if (!form.lessons || form.lessons < 1) e.lessons = 'Must have at least 1 lesson.';
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -213,7 +241,7 @@ function LessonModal({
       if (lesson) {
         await api.updateLesson(lesson.id, { ...form, title: form.title.trim() });
       } else {
-        await api.createLesson({ ...form, title: form.title.trim(), language: "Bisaya (Cebuano)" });
+        await api.createLesson({ ...form, title: form.title.trim(), language: 'Bisaya (Cebuano)' });
       }
       onSaved();
     } finally {
@@ -222,21 +250,29 @@ function LessonModal({
   }
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-ink/40 p-4 backdrop-blur-sm" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-[80] flex items-center justify-center bg-ink/40 p-4 backdrop-blur-sm"
+      onClick={onClose}
+    >
       <form
         onSubmit={handleSubmit}
         className="w-full max-w-lg rounded-2xl border border-line bg-white p-7 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 className="text-lg font-bold text-ink">{lesson ? "Edit module" : "New lesson module"}</h3>
+        <h3 className="text-lg font-bold text-ink">
+          {lesson ? 'Edit module' : 'New lesson module'}
+        </h3>
         <div className="mt-5 space-y-4">
           <div>
             <label className="mb-1.5 block text-sm font-medium text-ink">Title</label>
             <input
-              className={`${inputCls} ${errors.title ? "border-danger" : ""}`}
+              className={`${inputCls} ${errors.title ? 'border-danger' : ''}`}
               placeholder="e.g. Greetings & Introductions"
               value={form.title}
-              onChange={(e) => { setForm({ ...form, title: e.target.value }); setErrors((p) => ({ ...p, title: undefined })); }}
+              onChange={(e) => {
+                setForm({ ...form, title: e.target.value });
+                setErrors((p) => ({ ...p, title: undefined }));
+              }}
             />
             {errors.title && <p className="mt-1 text-xs text-danger">{errors.title}</p>}
           </div>
@@ -246,7 +282,9 @@ function LessonModal({
               <select
                 className={selectCls}
                 value={form.difficulty}
-                onChange={(e) => setForm({ ...form, difficulty: e.target.value as ModuleDifficulty })}
+                onChange={(e) =>
+                  setForm({ ...form, difficulty: e.target.value as ModuleDifficulty })
+                }
               >
                 <option value="beginner">Beginner</option>
                 <option value="intermediate">Intermediate</option>
@@ -258,9 +296,12 @@ function LessonModal({
               <input
                 type="number"
                 min={1}
-                className={`${inputCls} ${errors.lessons ? "border-danger" : ""}`}
+                className={`${inputCls} ${errors.lessons ? 'border-danger' : ''}`}
                 value={form.lessons}
-                onChange={(e) => { setForm({ ...form, lessons: Number(e.target.value) }); setErrors((p) => ({ ...p, lessons: undefined })); }}
+                onChange={(e) => {
+                  setForm({ ...form, lessons: Number(e.target.value) });
+                  setErrors((p) => ({ ...p, lessons: undefined }));
+                }}
               />
               {errors.lessons && <p className="mt-1 text-xs text-danger">{errors.lessons}</p>}
             </div>
@@ -280,7 +321,7 @@ function LessonModal({
             Cancel
           </button>
           <button type="submit" className={primaryBtn} disabled={busy}>
-            {busy ? "Saving..." : lesson ? "Save changes" : "Create module"}
+            {busy ? 'Saving...' : lesson ? 'Save changes' : 'Create module'}
           </button>
         </div>
       </form>

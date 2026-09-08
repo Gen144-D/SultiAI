@@ -29,11 +29,17 @@ export class AiPipeline {
       }
 
       const context = await contextManager.buildContext(userEmail, input.session_id);
-      const systemPrompt = contextManager.buildSystemPrompt(context, input.audio ? 'voice' : 'chat');
+      const systemPrompt = contextManager.buildSystemPrompt(
+        context,
+        input.audio ? 'voice' : 'chat'
+      );
 
       const messages = [
         { role: 'system' as const, content: systemPrompt },
-        ...context.sessionHistory.map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content })),
+        ...context.sessionHistory.map((m) => ({
+          role: m.role as 'user' | 'assistant',
+          content: m.content,
+        })),
         { role: 'user' as const, content: text },
       ];
 
@@ -120,10 +126,7 @@ Return ONLY a valid JSON object with: "score" (0-100), "feedback" (string), "pho
     }
   }
 
-  private async generateRecommendations(
-    context: any,
-    analysis: AiAnalysis
-  ): Promise<string[]> {
+  private async generateRecommendations(context: any, analysis: AiAnalysis): Promise<string[]> {
     if (analysis.topics.length === 0) return [];
     return analysis.topics.slice(0, 3);
   }

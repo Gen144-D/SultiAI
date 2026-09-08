@@ -1,3 +1,4 @@
+import helmet from 'helmet';
 import { Request, Response, NextFunction } from 'express';
 import { env } from '../config';
 
@@ -11,14 +12,37 @@ export function setSecurityHeaders(_req: Request, res: Response, next: NextFunct
     'Content-Security-Policy',
     "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' https://api.groq.com"
   );
-  res.setHeader(
-    'Permissions-Policy',
-    'camera=(self), microphone=(self), geolocation=(self)'
-  );
+  res.setHeader('Permissions-Policy', 'camera=(self), microphone=(self), geolocation=(self)');
   next();
 }
 
-export function configureCors(origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void): void {
+export const helmetMiddleware = helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", 'data:', 'https:'],
+      fontSrc: ["'self'"],
+      connectSrc: ["'self'", 'https://api.groq.com'],
+    },
+  },
+  hsts: {
+    maxAge: 31536000,
+    includeSubDomains: true,
+    preload: true,
+  },
+  referrerPolicy: {
+    policy: 'strict-origin-when-cross-origin',
+  },
+  crossOriginEmbedderPolicy: false,
+  crossOriginResourcePolicy: { policy: 'same-site' },
+});
+
+export function configureCors(
+  origin: string | undefined,
+  callback: (err: Error | null, allow?: boolean) => void
+): void {
   if (env.CORS_ORIGINS === '*') {
     callback(null, true);
     return;

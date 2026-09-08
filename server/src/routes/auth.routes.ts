@@ -1,23 +1,58 @@
 import { Router } from 'express';
 import { authRateLimit } from '../middleware/rateLimit';
 import { validate, validators } from '../middleware/validate';
-import { signUp, signIn, refreshToken, signOut, clerkSync, googleSignIn, syncSupabase } from '../controllers/auth.controller';
+import {
+  signUp,
+  signIn,
+  refreshToken,
+  signOut,
+  clerkSync,
+  googleSignIn,
+  syncSupabase,
+} from '../controllers/auth.controller';
 import { createClient } from '@supabase/supabase-js';
 import { success, errors } from '../utils/apiResponse';
 import logger from '../utils/logger';
 
 const router = Router();
 
-router.post('/signup', authRateLimit, validate([
-  { field: 'fullname', validators: [validators.required(), validators.string(), validators.minLength(2), validators.maxLength(100)] },
-  { field: 'email', validators: [validators.required(), validators.string(), validators.email()] },
-  { field: 'password', validators: [validators.required(), validators.string(), validators.minLength(6)] },
-]), signUp);
+router.post(
+  '/signup',
+  authRateLimit,
+  validate([
+    {
+      field: 'fullname',
+      validators: [
+        validators.required(),
+        validators.string(),
+        validators.minLength(2),
+        validators.maxLength(100),
+      ],
+    },
+    {
+      field: 'email',
+      validators: [validators.required(), validators.string(), validators.email()],
+    },
+    {
+      field: 'password',
+      validators: [validators.required(), validators.string(), validators.minLength(6)],
+    },
+  ]),
+  signUp
+);
 
-router.post('/signin', authRateLimit, validate([
-  { field: 'email', validators: [validators.required(), validators.string(), validators.email()] },
-  { field: 'password', validators: [validators.required(), validators.string()] },
-]), signIn);
+router.post(
+  '/signin',
+  authRateLimit,
+  validate([
+    {
+      field: 'email',
+      validators: [validators.required(), validators.string(), validators.email()],
+    },
+    { field: 'password', validators: [validators.required(), validators.string()] },
+  ]),
+  signIn
+);
 
 router.post('/clerk-sync', authRateLimit, clerkSync);
 router.post('/sync-supabase', authRateLimit, syncSupabase);
@@ -71,7 +106,8 @@ router.post('/promote', async (req, res) => {
     const db = getDb();
 
     // Check if any admins exist yet
-    const [adminCount] = await (db as any).select({ c: count() })
+    const [adminCount] = await (db as any)
+      .select({ c: count() })
       .from(schema.users)
       .where(eq(schema.users.role, 'admin'));
 
@@ -83,8 +119,17 @@ router.post('/promote', async (req, res) => {
       return;
     }
 
-    await (db as any).update(schema.users)
-      .set({ role: 'admin', status: 'approved' })
+    // Get admin role_id
+    const adminRole = await (db as any)
+      .select()
+      .from(schema.roles)
+      .where(eq(schema.roles.name, 'admin'))
+      .limit(1);
+    const roleId = adminRole.length > 0 ? adminRole[0].roleId : null;
+
+    await (db as any)
+      .update(schema.users)
+      .set({ role: 'admin', roleId, status: 'approved' })
       .where(eq(schema.users.email, email));
     success(res, null, `User ${email} promoted to admin`);
   } catch (err) {

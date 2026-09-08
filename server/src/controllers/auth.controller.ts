@@ -8,14 +8,32 @@ import { hashPassword, verifyPassword } from '../utils/crypto';
 import { generateTokenPair, verifyRefreshToken } from '../utils/jwt';
 import { success, errors, created } from '../utils/apiResponse';
 import { getPlatformSettings } from '../utils/platformSettings';
+import { getUserRoleInfo } from '../utils/rbac';
 import logger from '../utils/logger';
 
 /** Check if user status allows login */
 function checkUserStatus(status: string | null): { allowed: boolean; message?: string } {
-  if (status === 'pending') return { allowed: false, message: 'Your account is pending admin approval. Please wait for an admin to approve your account.' };
-  if (status === 'rejected') return { allowed: false, message: 'Your account has been rejected. Please contact an administrator.' };
-  if (status === 'banned') return { allowed: false, message: 'Your account has been banned. Please contact an administrator.' };
-  if (status === 'suspended') return { allowed: false, message: 'Your account has been suspended. Please contact an administrator.' };
+  if (status === 'pending')
+    return {
+      allowed: false,
+      message:
+        'Your account is pending admin approval. Please wait for an admin to approve your account.',
+    };
+  if (status === 'rejected')
+    return {
+      allowed: false,
+      message: 'Your account has been rejected. Please contact an administrator.',
+    };
+  if (status === 'banned')
+    return {
+      allowed: false,
+      message: 'Your account has been banned. Please contact an administrator.',
+    };
+  if (status === 'suspended')
+    return {
+      allowed: false,
+      message: 'Your account has been suspended. Please contact an administrator.',
+    };
   return { allowed: true };
 }
 
@@ -36,12 +54,16 @@ export async function signUp(req: Request, res: Response): Promise<void> {
       return;
     }
     if (!settings.allowSignups) {
-      errors.forbidden(res, 'New registrations are currently disabled. Please contact an administrator.');
+      errors.forbidden(
+        res,
+        'New registrations are currently disabled. Please contact an administrator.'
+      );
       return;
     }
 
     const db = getDb();
-    const existing = await (db as any).select()
+    const existing = await (db as any)
+      .select()
       .from(schema.users)
       .where(eq(schema.users.email, email))
       .limit(1);
@@ -62,10 +84,14 @@ export async function signUp(req: Request, res: Response): Promise<void> {
 
     const userId = result.lastInsertRowid;
 
-    created(res, {
-      user: { id: userId, fullname, email, status: 'pending' },
-      message: 'Account created successfully. Your account is pending admin approval.',
-    }, 'Account created — pending admin approval');
+    created(
+      res,
+      {
+        user: { id: userId, fullname, email, status: 'pending' },
+        message: 'Account created successfully. Your account is pending admin approval.',
+      },
+      'Account created — pending admin approval'
+    );
   } catch (err) {
     logger.error('Signup error', { error: (err as Error).message });
     errors.internal(res, 'Failed to create account');
@@ -88,7 +114,8 @@ export async function signIn(req: Request, res: Response): Promise<void> {
     }
 
     const db = getDb();
-    const rows = await (db as any).select()
+    const rows = await (db as any)
+      .select()
       .from(schema.users)
       .where(eq(schema.users.email, email))
       .limit(1);
@@ -111,20 +138,34 @@ export async function signIn(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    const tokens = generateTokenPair({ email: user.email, userId: user.userId });
+    // Fetch role info for JWT
+    const roleInfo = await getUserRoleInfo(user.userId);
+
+    const tokens = generateTokenPair({
+      email: user.email,
+      userId: user.userId,
+      role: roleInfo.role,
+      roleId: roleInfo.roleId || undefined,
+      permissions: roleInfo.permissions,
+    });
     await storeRefreshToken(user.userId, tokens.refreshToken);
 
-    success(res, {
-      user: {
-        id: user.userId,
-        fullname: user.fullname,
-        email: user.email,
-        avatarId: user.avatarId,
-        role: user.role,
-        status: user.status,
+    success(
+      res,
+      {
+        user: {
+          id: user.userId,
+          fullname: user.fullname,
+          email: user.email,
+          avatarId: user.avatarId,
+          role: user.role,
+          status: user.status,
+          permissions: roleInfo.permissions,
+        },
+        ...tokens,
       },
-      ...tokens,
-    }, 'Signed in successfully');
+      'Signed in successfully'
+    );
   } catch (err) {
     logger.error('Signin error', { error: (err as Error).message });
     errors.internal(res, 'Failed to sign in');
@@ -153,7 +194,14 @@ export async function refreshToken(req: Request, res: Response): Promise<void> {
 
     await revokeToken(payload.userId, refresh_token);
 
-    const tokens = generateTokenPair({ email: payload.email, userId: payload.userId });
+    const roleInfo = await getUserRoleInfo(payload.userId);
+    const tokens = generateTokenPair({
+      email: payload.email,
+      userId: payload.userId,
+      role: roleInfo.role,
+      roleId: roleInfo.roleId || undefined,
+      permissions: roleInfo.permissions,
+    });
     await storeRefreshToken(payload.userId, tokens.refreshToken);
 
     success(res, tokens, 'Token refreshed');
@@ -181,21 +229,24 @@ export async function clerkSync(req: Request, res: Response): Promise<void> {
     const db = getDb();
 
     // 1. Try to find existing user by clerk_id first
-    let rows: any[] = await (db as any).select()
+    let rows: any[] = await (db as any)
+      .select()
       .from(schema.users)
       .where(eq(schema.users.clerkId, clerkId))
       .limit(1);
 
     // 2. If not found by clerk_id, try by email
     if (rows.length === 0 && email) {
-      rows = await (db as any).select()
+      rows = await (db as any)
+        .select()
         .from(schema.users)
         .where(eq(schema.users.email, email))
         .limit(1);
 
       // If found by email, link the clerk_id
       if (rows.length > 0) {
-        await (db as any).update(schema.users)
+        await (db as any)
+          .update(schema.users)
           .set({ clerkId })
           .where(eq(schema.users.userId, rows[0].userId));
       }
@@ -210,9 +261,7 @@ export async function clerkSync(req: Request, res: Response): Promise<void> {
       const updates: any = {};
       if (name && name !== rows[0].fullname) updates.fullname = name;
       if (Object.keys(updates).length > 0) {
-        await (db as any).update(schema.users)
-          .set(updates)
-          .where(eq(schema.users.userId, userId));
+        await (db as any).update(schema.users).set(updates).where(eq(schema.users.userId, userId));
       }
 
       // Check status of existing user
@@ -244,21 +293,34 @@ export async function clerkSync(req: Request, res: Response): Promise<void> {
 
     // Issue backend JWT so subsequent API calls work
     const user = rows.length > 0 ? rows[0] : null;
-    const tokens = generateTokenPair({ email: email || `${clerkId}@clerk.sultiai`, userId });
+    const roleInfo = user
+      ? await getUserRoleInfo(user.userId || userId)
+      : { role: 'user', roleId: null, permissions: [] };
+    const tokens = generateTokenPair({
+      email: email || `${clerkId}@clerk.sultiai`,
+      userId,
+      role: roleInfo.role,
+      roleId: roleInfo.roleId || undefined,
+      permissions: roleInfo.permissions,
+    });
     await storeRefreshToken(userId, tokens.refreshToken);
 
-    success(res, {
-      user: {
-        id: userId,
-        fullname: user?.fullname || name || 'User',
-        email: email || user?.email,
-        avatarId: user?.avatarId,
-        role: user?.role,
-        status: user?.status || 'pending',
+    success(
+      res,
+      {
+        user: {
+          id: userId,
+          fullname: user?.fullname || name || 'User',
+          email: email || user?.email,
+          avatarId: user?.avatarId,
+          role: user?.role,
+          status: user?.status || 'pending',
+        },
+        ...tokens,
+        isNewUser,
       },
-      ...tokens,
-      isNewUser,
-    }, isNewUser ? 'Clerk user synced — pending admin approval' : 'Clerk user synced');
+      isNewUser ? 'Clerk user synced — pending admin approval' : 'Clerk user synced'
+    );
   } catch (err) {
     logger.error('Clerk sync error', { error: (err as Error).message });
     errors.internal(res, 'Failed to sync Clerk user');
@@ -305,21 +367,24 @@ export async function googleSignIn(req: Request, res: Response): Promise<void> {
     const db = getDb();
 
     // 1. Try to find existing user by google_id
-    let rows: any[] = await (db as any).select()
+    let rows: any[] = await (db as any)
+      .select()
       .from(schema.users)
       .where(eq(schema.users.googleId, googleId))
       .limit(1);
 
     // 2. If not found by google_id, try by email
     if (rows.length === 0 && userEmail) {
-      rows = await (db as any).select()
+      rows = await (db as any)
+        .select()
         .from(schema.users)
         .where(eq(schema.users.email, userEmail))
         .limit(1);
 
       // Link google_id to existing account
       if (rows.length > 0) {
-        await (db as any).update(schema.users)
+        await (db as any)
+          .update(schema.users)
           .set({ googleId })
           .where(eq(schema.users.userId, rows[0].userId));
       }
@@ -343,9 +408,7 @@ export async function googleSignIn(req: Request, res: Response): Promise<void> {
       if (userName && userName !== rows[0].fullname) updates.fullname = userName;
       if (userAvatar && userAvatar !== rows[0].avatarImage) updates.avatarImage = userAvatar;
       if (Object.keys(updates).length > 0) {
-        await (db as any).update(schema.users)
-          .set(updates)
-          .where(eq(schema.users.userId, userId));
+        await (db as any).update(schema.users).set(updates).where(eq(schema.users.userId, userId));
       }
     } else {
       // New user — create account with pending status
@@ -368,23 +431,37 @@ export async function googleSignIn(req: Request, res: Response): Promise<void> {
       isNewUser = true;
     }
 
-    const tokens = generateTokenPair({ email: userEmail || `${googleId}@google.sultiai`, userId });
+    const roleInfo =
+      rows.length > 0
+        ? await getUserRoleInfo(rows[0].userId || userId)
+        : { role: 'user', roleId: null, permissions: [] };
+    const tokens = generateTokenPair({
+      email: userEmail || `${googleId}@google.sultiai`,
+      userId,
+      role: roleInfo.role,
+      roleId: roleInfo.roleId || undefined,
+      permissions: roleInfo.permissions,
+    });
     await storeRefreshToken(userId, tokens.refreshToken);
 
     const updatedUser = rows.length > 0 ? rows[0] : null;
-    success(res, {
-      user: {
-        id: userId,
-        fullname: userName || updatedUser?.fullname,
-        email: userEmail || updatedUser?.email,
-        avatarId: updatedUser?.avatarId,
-        avatarImage: userAvatar || updatedUser?.avatarImage,
-        role: updatedUser?.role || 'user',
-        status: updatedUser?.status || 'pending',
+    success(
+      res,
+      {
+        user: {
+          id: userId,
+          fullname: userName || updatedUser?.fullname,
+          email: userEmail || updatedUser?.email,
+          avatarId: updatedUser?.avatarId,
+          avatarImage: userAvatar || updatedUser?.avatarImage,
+          role: updatedUser?.role || 'user',
+          status: updatedUser?.status || 'pending',
+        },
+        ...tokens,
+        isNewUser,
       },
-      ...tokens,
-      isNewUser,
-    }, isNewUser ? 'Google sign-in successful — pending admin approval' : 'Google sign-in successful');
+      isNewUser ? 'Google sign-in successful — pending admin approval' : 'Google sign-in successful'
+    );
   } catch (err) {
     logger.error('Google sign-in error', { error: (err as Error).message });
     errors.internal(res, 'Failed to sign in with Google');
@@ -431,21 +508,24 @@ export async function syncSupabase(req: Request, res: Response): Promise<void> {
     const db = getDb();
 
     // 1. Try to find existing user by supabase_id
-    let rows: any[] = await (db as any).select()
+    let rows: any[] = await (db as any)
+      .select()
       .from(schema.users)
       .where(eq(schema.users.supabaseId, supabaseId))
       .limit(1);
 
     // 2. If not found by supabase_id, try by email
     if (rows.length === 0 && email) {
-      rows = await (db as any).select()
+      rows = await (db as any)
+        .select()
         .from(schema.users)
         .where(eq(schema.users.email, email))
         .limit(1);
 
       // If found by email, link the supabase_id
       if (rows.length > 0) {
-        await (db as any).update(schema.users)
+        await (db as any)
+          .update(schema.users)
           .set({ supabaseId })
           .where(eq(schema.users.userId, rows[0].userId));
       }
@@ -460,9 +540,7 @@ export async function syncSupabase(req: Request, res: Response): Promise<void> {
       const updates: any = {};
       if (name && name !== rows[0].fullname) updates.fullname = name;
       if (Object.keys(updates).length > 0) {
-        await (db as any).update(schema.users)
-          .set(updates)
-          .where(eq(schema.users.userId, userId));
+        await (db as any).update(schema.users).set(updates).where(eq(schema.users.userId, userId));
       }
 
       // Check status of existing user
@@ -508,16 +586,22 @@ export async function syncSupabase(req: Request, res: Response): Promise<void> {
 
     const existingUser = rows.length > 0 ? rows[0] : null;
 
-    success(res, {
-      user: {
-        id: userId,
-        fullname: name || existingUser?.fullname || 'User',
-        email: email || existingUser?.email,
-        role: existingUser?.role || 'user',
-        status: existingUser?.status || 'pending',
+    success(
+      res,
+      {
+        user: {
+          id: userId,
+          fullname: name || existingUser?.fullname || 'User',
+          email: email || existingUser?.email,
+          role: existingUser?.role || 'user',
+          status: existingUser?.status || 'pending',
+        },
+        isNewUser,
       },
-      isNewUser,
-    }, isNewUser ? 'Supabase user synced — pending admin approval' : 'Supabase user already exists in local DB');
+      isNewUser
+        ? 'Supabase user synced — pending admin approval'
+        : 'Supabase user already exists in local DB'
+    );
   } catch (err) {
     logger.error('Supabase sync error', { error: (err as Error).message });
     errors.internal(res, 'Failed to sync Supabase user');
@@ -545,12 +629,12 @@ async function storeRefreshToken(userId: number, token: string): Promise<void> {
 async function validateStoredToken(userId: number, token: string): Promise<boolean> {
   try {
     const db = getDb();
-    const rows = await (db as any).select()
+    const rows = await (db as any)
+      .select()
       .from(schema.userSessions)
-      .where(and(
-        eq(schema.userSessions.userId, userId),
-        eq(schema.userSessions.refreshToken, token)
-      ))
+      .where(
+        and(eq(schema.userSessions.userId, userId), eq(schema.userSessions.refreshToken, token))
+      )
       .limit(1);
 
     if (rows.length === 0) return false;
@@ -563,11 +647,11 @@ async function validateStoredToken(userId: number, token: string): Promise<boole
 async function revokeToken(userId: number, token: string): Promise<void> {
   try {
     const db = getDb();
-    await (db as any).delete(schema.userSessions)
-      .where(and(
-        eq(schema.userSessions.userId, userId),
-        eq(schema.userSessions.refreshToken, token)
-      ));
+    await (db as any)
+      .delete(schema.userSessions)
+      .where(
+        and(eq(schema.userSessions.userId, userId), eq(schema.userSessions.refreshToken, token))
+      );
   } catch (err) {
     logger.warn('Failed to revoke token', { error: (err as Error).message });
   }

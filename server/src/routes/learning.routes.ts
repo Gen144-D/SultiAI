@@ -1,6 +1,11 @@
 import { Router, Request, Response } from 'express';
 import { authMiddleware } from '../middleware/auth';
-import { getModules, getProgress, getUserIdByEmail, upsertProgress } from '../db/repositories/learning.repo';
+import {
+  getModules,
+  getProgress,
+  getUserIdByEmail,
+  upsertProgress,
+} from '../db/repositories/learning.repo';
 
 const router = Router();
 

@@ -1,15 +1,15 @@
-"use client";
+'use client';
 
-import Link from "next/link";
-import { useState } from "react";
+import Link from 'next/link';
+import { useState } from 'react';
 
 const links = [
-  { href: "/", label: "Home" },
-  { href: "/features", label: "Features" },
-  { href: "/how-it-works", label: "How it Works" },
-  { href: "/pricing", label: "Pricing" },
-  { href: "/about", label: "About" },
-  { href: "/faq", label: "FAQ" },
+  { href: '/', label: 'Home' },
+  { href: '/features', label: 'Features' },
+  { href: '/how-it-works', label: 'How it Works' },
+  { href: '/pricing', label: 'Pricing' },
+  { href: '/about', label: 'About' },
+  { href: '/faq', label: 'FAQ' },
 ];
 
 export default function Navbar() {
@@ -54,12 +54,16 @@ export default function Navbar() {
           onClick={() => setOpen((v) => !v)}
           className="flex h-10 w-10 items-center justify-center rounded-lg text-ink md:hidden"
         >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-            {open ? (
-              <path d="M6 6l12 12M18 6L6 18" />
-            ) : (
-              <path d="M4 7h16M4 12h16M4 17h16" />
-            )}
+          <svg
+            width="22"
+            height="22"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+          >
+            {open ? <path d="M6 6l12 12M18 6L6 18" /> : <path d="M4 7h16M4 12h16M4 17h16" />}
           </svg>
         </button>
       </nav>

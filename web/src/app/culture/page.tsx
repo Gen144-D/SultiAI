@@ -1,32 +1,32 @@
-import type { Metadata } from "next";
-import PageHero from "@/components/PageHero";
-import CTASection from "@/components/CTASection";
+import type { Metadata } from 'next';
+import PageHero from '@/components/PageHero';
+import CTASection from '@/components/CTASection';
 
 export const metadata: Metadata = {
-  title: "Culture",
-  description: "Why SultiAI exists — the culture and language of the Bisaya people.",
+  title: 'Culture',
+  description: 'Why SultiAI exists — the culture and language of the Bisaya people.',
 };
 
 const facets = [
   {
-    icon: "🏝",
-    title: "The Visayas",
+    icon: '🏝',
+    title: 'The Visayas',
     body: "Bisaya is the lingua franca of the Visayas and much of Mindanao — tens of millions of speakers, and one of the world's great island cultures.",
   },
   {
-    icon: "📜",
-    title: "Heritage words",
-    body: "Every language carries history. Our Living Lexicon captures dialectal variations and words that are slowly disappearing from daily use.",
+    icon: '📜',
+    title: 'Heritage words',
+    body: 'Every language carries history. Our Living Lexicon captures dialectal variations and words that are slowly disappearing from daily use.',
   },
   {
-    icon: "🍲",
-    title: "Ways of speaking",
+    icon: '🍲',
+    title: 'Ways of speaking',
     body: "Politeness levels, honorifics, and context-shifting greetings — Bisaya is a language where the way you speak reflects who you are and who you're with.",
   },
   {
-    icon: "🎶",
-    title: "Language & song",
-    body: "From folk songs to modern Bisrock, music keeps the language alive. We surface these cultural touchpoints inside your lessons.",
+    icon: '🎶',
+    title: 'Language & song',
+    body: 'From folk songs to modern Bisrock, music keeps the language alive. We surface these cultural touchpoints inside your lessons.',
   },
 ];
 
@@ -56,9 +56,9 @@ export default function Culture() {
           <h2 className="text-2xl font-bold">A few words we love</h2>
           <div className="mt-8 grid gap-6 sm:grid-cols-3">
             {[
-              { word: "Inipit", meaning: "A soft, sweet cake — and a term of endearment" },
-              { word: "Padayon", meaning: "Keep going; press on" },
-              { word: "Kinaraan", meaning: "Something traditional or time-honored" },
+              { word: 'Inipit', meaning: 'A soft, sweet cake — and a term of endearment' },
+              { word: 'Padayon', meaning: 'Keep going; press on' },
+              { word: 'Kinaraan', meaning: 'Something traditional or time-honored' },
             ].map((w) => (
               <div key={w.word} className="rounded-2xl bg-white/10 p-5">
                 <p className="text-xl font-bold text-accent">{w.word}</p>

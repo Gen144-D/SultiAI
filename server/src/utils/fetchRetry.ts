@@ -51,7 +51,8 @@ export async function fetchWithRetry(
   const retries = options.retries ?? DEFAULT_RETRIES;
   const baseDelayMs = options.baseDelayMs ?? DEFAULT_BASE_DELAY_MS;
   const maxDelayMs = options.maxDelayMs ?? DEFAULT_MAX_DELAY_MS;
-  const retryOnStatus = options.retryOnStatus ?? ((status: number) => status === 429 || status >= 500);
+  const retryOnStatus =
+    options.retryOnStatus ?? ((status: number) => status === 429 || status >= 500);
 
   let lastErr: unknown = null;
 

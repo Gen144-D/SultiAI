@@ -1,35 +1,35 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { api } from "@/lib/api";
+import { useState } from 'react';
+import { api } from '@/lib/api';
 
-const initial = { name: "", email: "", subject: "", message: "" };
+const initial = { name: '', email: '', subject: '', message: '' };
 
 export default function ContactForm() {
   const [form, setForm] = useState(initial);
-  const [status, setStatus] = useState<"idle" | "sending" | "success" | "error">("idle");
-  const [error, setError] = useState("");
+  const [status, setStatus] = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
+  const [error, setError] = useState('');
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setStatus("sending");
-    setError("");
+    setStatus('sending');
+    setError('');
     try {
       const result = await api.submitContact(form);
       if (result.received) {
-        setStatus("success");
+        setStatus('success');
         setForm(initial);
       }
     } catch (err) {
-      setStatus("error");
-      setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+      setStatus('error');
+      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
     }
   }
 
   const field =
-    "w-full rounded-xl border border-line bg-white px-4 py-3 text-sm text-ink outline-none transition-colors placeholder:text-ink-faint focus:border-brand";
+    'w-full rounded-xl border border-line bg-white px-4 py-3 text-sm text-ink outline-none transition-colors placeholder:text-ink-faint focus:border-brand';
 
-  if (status === "success") {
+  if (status === 'success') {
     return (
       <div className="rounded-2xl border border-success/30 bg-success/5 p-8 text-center">
         <p className="text-3xl">🎉</p>
@@ -39,7 +39,7 @@ export default function ContactForm() {
         </p>
         <button
           type="button"
-          onClick={() => setStatus("idle")}
+          onClick={() => setStatus('idle')}
           className="mt-6 rounded-full bg-brand px-6 py-2.5 text-sm font-semibold text-white hover:opacity-90"
         >
           Send another
@@ -95,7 +95,7 @@ export default function ContactForm() {
         />
       </div>
 
-      {status === "error" && (
+      {status === 'error' && (
         <p className="rounded-xl border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger">
           {error}
         </p>
@@ -103,10 +103,10 @@ export default function ContactForm() {
 
       <button
         type="submit"
-        disabled={status === "sending"}
+        disabled={status === 'sending'}
         className="w-full rounded-full bg-gradient-to-r from-brand to-brand-dark py-3.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
       >
-        {status === "sending" ? "Sending..." : "Send message"}
+        {status === 'sending' ? 'Sending...' : 'Send message'}
       </button>
     </form>
   );

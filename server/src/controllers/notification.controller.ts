@@ -13,7 +13,8 @@ export async function getPreferences(req: Request, res: Response): Promise<void>
     }
 
     const db = getDb();
-    const rows = await (db as any).select()
+    const rows = await (db as any)
+      .select()
       .from(schema.notificationPreferences)
       .where((db as any).eq(schema.notificationPreferences.userId, userId))
       .limit(1);
@@ -71,7 +72,8 @@ export async function updatePreferences(req: Request, res: Response): Promise<vo
     const db = getDb();
     const now = new Date().toISOString();
 
-    const existing = await (db as any).select()
+    const existing = await (db as any)
+      .select()
       .from(schema.notificationPreferences)
       .where((db as any).eq(schema.notificationPreferences.userId, userId))
       .limit(1);
@@ -89,12 +91,12 @@ export async function updatePreferences(req: Request, res: Response): Promise<vo
     };
 
     if (existing.length > 0) {
-      await (db as any).update(schema.notificationPreferences)
+      await (db as any)
+        .update(schema.notificationPreferences)
         .set(values)
         .where((db as any).eq(schema.notificationPreferences.userId, userId));
     } else {
-      await (db as any).insert(schema.notificationPreferences)
-        .values({ userId, ...values });
+      await (db as any).insert(schema.notificationPreferences).values({ userId, ...values });
     }
 
     success(res, values, 'Preferences updated');

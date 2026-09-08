@@ -1,0 +1,75 @@
+# Dependencies
+node_modules/
+server/node_modules/
+web/node_modules/
+admin/node_modules/
+.ai-service/.venv/
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+web-build/
+
+# Expo
+.expo/
+expo-env.d.ts
+.metro-health-check*
+
+# Native
+ios/
+android/
+.kotlin/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+*.md
+docs/
+evaluation/
+LICENSE
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Test coverage
+coverage/
+*.lcov
+
+# AI service
+ai-service/__pycache__/
+ai-service/*.pyc
+ai-service/.venv/
+ai-service/ffmpeg-*/
+ai-service/models/
+ai-service/test_audio.wav
+
+# Supabase
+supabase/.temp/
+
+# Logs
+*.log
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak

@@ -52,12 +52,29 @@
     "web": "expo start --web",
     "server": "npm run start --prefix server",
     "server:dev": "npm run dev --prefix server",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "prepare": "husky"
   },
   "private": true,
   "devDependencies": {
+    "@commitlint/cli": "^21.2.2",
+    "@commitlint/config-conventional": "^21.2.2",
     "eslint": "^9.39.5",
     "eslint-config-expo": "~57.0.2",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.4.1",
+    "prettier": "^3.3.3",
     "typescript": "~6.0.3"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,yml,yaml}": [
+      "prettier --write"
+    ]
   }
 }

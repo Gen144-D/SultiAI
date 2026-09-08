@@ -1,10 +1,7 @@
 import { Router } from 'express';
 import { authMiddleware } from '../middleware/auth';
 import { aiRateLimit } from '../middleware/rateLimit';
-import {
-  getStudyPlan,
-  getPersonalizedGreeting,
-} from '../controllers/recommendation.controller';
+import { getStudyPlan, getPersonalizedGreeting } from '../controllers/recommendation.controller';
 
 const router = Router();
 

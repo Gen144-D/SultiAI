@@ -57,7 +57,8 @@ export const logger = {
     if (shouldLog('info')) {
       const level = statusCode >= 400 ? 'warn' : 'info';
       getFileStream(level).write(
-        formatMessage(level, `${method} ${path} ${statusCode}`, { duration: `${durationMs}ms` }) + '\n'
+        formatMessage(level, `${method} ${path} ${statusCode}`, { duration: `${durationMs}ms` }) +
+          '\n'
       );
     }
   },

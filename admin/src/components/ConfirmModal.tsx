@@ -1,13 +1,13 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { dangerBtn, ghostBtn } from "./ui";
+import { useState } from 'react';
+import { dangerBtn, ghostBtn } from './ui';
 
 export function ConfirmModal({
   open,
   title,
   message,
-  confirmLabel = "Confirm",
+  confirmLabel = 'Confirm',
   danger = true,
   onConfirm,
   onClose,
@@ -32,7 +32,10 @@ export function ConfirmModal({
   }
 
   return (
-    <div className="fixed inset-0 z-[90] flex items-center justify-center bg-ink/40 p-4 backdrop-blur-sm" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-[90] flex items-center justify-center bg-ink/40 p-4 backdrop-blur-sm"
+      onClick={onClose}
+    >
       <div
         className="w-full max-w-md rounded-2xl border border-line bg-white p-7 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
@@ -47,11 +50,15 @@ export function ConfirmModal({
           </button>
           <button
             type="button"
-            className={danger ? dangerBtn : "inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-brand to-brand-dark px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90"}
+            className={
+              danger
+                ? dangerBtn
+                : 'inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-brand to-brand-dark px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90'
+            }
             onClick={handle}
             disabled={busy}
           >
-            {busy ? "Working..." : confirmLabel}
+            {busy ? 'Working...' : confirmLabel}
           </button>
         </div>
       </div>

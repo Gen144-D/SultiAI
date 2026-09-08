@@ -55,7 +55,7 @@ export class RecommendationEngine {
       }
       return "Ready to practice Bisaya today? Let's start with some useful phrases!";
     } catch {
-      return "Ready to practice Bisaya today?";
+      return 'Ready to practice Bisaya today?';
     }
   }
 
@@ -100,7 +100,8 @@ export class RecommendationEngine {
     try {
       const db = getDb();
       const now = new Date().toISOString();
-      const due = await (db as any).select()
+      const due = await (db as any)
+        .select()
         .from(schema.vocabularyReviews)
         .where(
           (db as any).and(
@@ -118,7 +119,8 @@ export class RecommendationEngine {
   private async getWeakAreas(userId: number): Promise<string[]> {
     try {
       const db = getDb();
-      const rows = await (db as any).select()
+      const rows = await (db as any)
+        .select()
         .from(schema.learnerProfiles)
         .where((db as any).eq(schema.learnerProfiles.userId, userId))
         .limit(1);
@@ -126,7 +128,11 @@ export class RecommendationEngine {
       if (rows.length === 0) return [];
       const profile = rows[0];
       if (profile.weakAreas) {
-        try { return JSON.parse(profile.weakAreas); } catch { return []; }
+        try {
+          return JSON.parse(profile.weakAreas);
+        } catch {
+          return [];
+        }
       }
       return [];
     } catch {
@@ -137,7 +143,8 @@ export class RecommendationEngine {
   private async getRecentMistakes(userId: number): Promise<string[]> {
     try {
       const db = getDb();
-      const rows = await (db as any).select()
+      const rows = await (db as any)
+        .select()
         .from(schema.learnerProfiles)
         .where((db as any).eq(schema.learnerProfiles.userId, userId))
         .limit(1);
@@ -148,7 +155,9 @@ export class RecommendationEngine {
         try {
           const mistakes = JSON.parse(profile.commonMistakes);
           return Array.isArray(mistakes) ? mistakes.slice(0, 5).map((m: any) => m.pattern) : [];
-        } catch { return []; }
+        } catch {
+          return [];
+        }
       }
       return [];
     } catch {
@@ -165,7 +174,9 @@ export class RecommendationEngine {
   private getDefaultPlan(): StudyPlan {
     return {
       dailyGoal: 50,
-      lessons: [{ topic: 'greetings', difficulty: 'beginner', reason: 'Start with basics', priority: 1 }],
+      lessons: [
+        { topic: 'greetings', difficulty: 'beginner', reason: 'Start with basics', priority: 1 },
+      ],
       reviewWords: [],
       practiceAreas: ['pronunciation'],
       estimatedMinutes: 15,

@@ -30,5 +30,7 @@ export function normalizeUser(supabaseUser) {
     target_language: meta.target_language || 'Bisaya',
     country: meta.country || '',
     avatar: meta.avatar_url || meta.avatar || '',
+    role: meta.role || 'user',
+    permissions: meta.permissions || [],
   };
 }

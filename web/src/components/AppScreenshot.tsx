@@ -12,16 +12,16 @@ export default function AppScreenshot() {
 
           <div className="space-y-3 px-3 pb-4 pt-2">
             <div className="rounded-2xl bg-gradient-to-br from-brand to-brand-dark p-4 text-white">
-            <p className="text-[10px] uppercase tracking-wide text-white/70">Daily challenge</p>
-            <p className="mt-1 text-sm font-bold">&ldquo;Unsa imong pangalan?&rdquo;</p>
+              <p className="text-[10px] uppercase tracking-wide text-white/70">Daily challenge</p>
+              <p className="mt-1 text-sm font-bold">&ldquo;Unsa imong pangalan?&rdquo;</p>
               <p className="mt-2 inline-block rounded-full bg-white/20 px-2.5 py-1 text-[10px] font-semibold">
                 +25 XP
               </p>
             </div>
 
             {[
-              { icon: "🗣", label: "AI Tutor", w: "w-24", color: "bg-white" },
-              { icon: "🎙", label: "Voice Mode", w: "w-24", color: "bg-white" },
+              { icon: '🗣', label: 'AI Tutor', w: 'w-24', color: 'bg-white' },
+              { icon: '🎙', label: 'Voice Mode', w: 'w-24', color: 'bg-white' },
             ].map((c) => (
               <div
                 key={c.label}
@@ -43,7 +43,7 @@ export default function AppScreenshot() {
                 {[1, 2, 3, 4, 5, 6, 7].map((d) => (
                   <span
                     key={d}
-                    className={`h-6 flex-1 rounded-md ${d <= 5 ? "bg-accent" : "bg-line"}`}
+                    className={`h-6 flex-1 rounded-md ${d <= 5 ? 'bg-accent' : 'bg-line'}`}
                   />
                 ))}
               </div>

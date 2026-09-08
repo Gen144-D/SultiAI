@@ -37,7 +37,7 @@ describe('AdaptiveLearningEngine', () => {
 
     it('should demote when mastery falls below threshold', () => {
       const mastery = 0.35;
-      const threshold = 0.40;
+      const threshold = 0.4;
       expect(mastery).toBeLessThan(threshold);
     });
 
@@ -59,8 +59,8 @@ describe('PronunciationAnalyticsService', () => {
 
     it('should identify difficult words below threshold', () => {
       const wordStats = {
-        'kumusta': [90, 85, 88],
-        'salamat': [50, 45, 55],
+        kumusta: [90, 85, 88],
+        salamat: [50, 45, 55],
       };
       const threshold = 60;
       const difficult = Object.entries(wordStats)
@@ -71,13 +71,17 @@ describe('PronunciationAnalyticsService', () => {
 
     it('should identify mastered words above threshold with min attempts', () => {
       const wordStats = {
-        'kumusta': [90, 85, 88, 92],
-        'salamat': [90, 85],
+        kumusta: [90, 85, 88, 92],
+        salamat: [90, 85],
       };
       const threshold = 85;
       const minAttempts = 3;
       const mastered = Object.entries(wordStats)
-        .filter(([, scores]) => scores.reduce((s, sc) => s + sc, 0) / scores.length >= threshold && scores.length >= minAttempts)
+        .filter(
+          ([, scores]) =>
+            scores.reduce((s, sc) => s + sc, 0) / scores.length >= threshold &&
+            scores.length >= minAttempts
+        )
         .map(([word]) => word);
       expect(mastered).toEqual(['kumusta']);
     });

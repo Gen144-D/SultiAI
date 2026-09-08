@@ -25,14 +25,10 @@ class LocalSTTService {
         fs.mkdirSync(MODELS_DIR, { recursive: true });
       }
 
-      _model = await pipeline(
-        'automatic-speech-recognition' as PipelineType,
-        WHISPER_MODEL,
-        {
-          quantized: true,
-          cache_dir: MODELS_DIR,
-        }
-      );
+      _model = await pipeline('automatic-speech-recognition' as PipelineType, WHISPER_MODEL, {
+        quantized: true,
+        cache_dir: MODELS_DIR,
+      });
       _initError = null;
     } catch (err: any) {
       _initError = err.message || String(err);
@@ -66,7 +62,10 @@ class LocalSTTService {
     });
 
     if (Array.isArray(result)) {
-      return result.map((r: any) => r?.text || '').join('').trim();
+      return result
+        .map((r: any) => r?.text || '')
+        .join('')
+        .trim();
     }
     return result?.text || '';
   }

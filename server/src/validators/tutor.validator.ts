@@ -3,24 +3,17 @@ import { validate, validators } from '../middleware/validate';
 export const chatValidation = validate([
   {
     field: 'message',
-    validators: [
-      validators.string(),
-      validators.maxLength(2000),
-    ],
+    validators: [validators.string(), validators.maxLength(2000)],
     optional: true,
   },
   {
     field: 'audio',
-    validators: [
-      validators.string(),
-    ],
+    validators: [validators.string()],
     optional: true,
   },
   {
     field: 'session_id',
-    validators: [
-      validators.string(),
-    ],
+    validators: [validators.string()],
     optional: true,
   },
 ]);

@@ -14,7 +14,16 @@ const router = Router();
 
 router.post('/submit', authMiddleware, async (req: Request, res: Response) => {
   try {
-    const { word, definition, partOfSpeech, dialectalRegion, bisayaExample, englishExample, pronunciationGuide, source } = req.body || {};
+    const {
+      word,
+      definition,
+      partOfSpeech,
+      dialectalRegion,
+      bisayaExample,
+      englishExample,
+      pronunciationGuide,
+      source,
+    } = req.body || {};
     if (!word) {
       res.status(400).json({ error: 'Word is required' });
       return;
@@ -34,7 +43,11 @@ router.post('/submit', authMiddleware, async (req: Request, res: Response) => {
       pronunciationGuide,
       source,
     });
-    res.json({ wordId, message: 'Word submitted for review. Thank you for contributing to the Bisaya living lexicon!' });
+    res.json({
+      wordId,
+      message:
+        'Word submitted for review. Thank you for contributing to the Bisaya living lexicon!',
+    });
   } catch (err) {
     console.error('Submit word error:', err);
     res.status(500).json({ error: 'Failed to submit word' });

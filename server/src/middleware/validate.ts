@@ -46,15 +46,19 @@ export const validators = {
     return null;
   },
 
-  minLength: (min: number): ValidatorFn => (value) => {
-    if (isString(value) && value.length < min) return `Must be at least ${min} characters`;
-    return null;
-  },
+  minLength:
+    (min: number): ValidatorFn =>
+    (value) => {
+      if (isString(value) && value.length < min) return `Must be at least ${min} characters`;
+      return null;
+    },
 
-  maxLength: (max: number): ValidatorFn => (value) => {
-    if (isString(value) && value.length > max) return `Must be at most ${max} characters`;
-    return null;
-  },
+  maxLength:
+    (max: number): ValidatorFn =>
+    (value) => {
+      if (isString(value) && value.length > max) return `Must be at most ${max} characters`;
+      return null;
+    },
 
   email: (): ValidatorFn => (value) => {
     if (isPresent(value) && isString(value)) {
@@ -64,12 +68,14 @@ export const validators = {
     return null;
   },
 
-  oneOf: (allowed: string[]): ValidatorFn => (value) => {
-    if (isPresent(value) && !allowed.includes(value as string)) {
-      return `Must be one of: ${allowed.join(', ')}`;
-    }
-    return null;
-  },
+  oneOf:
+    (allowed: string[]): ValidatorFn =>
+    (value) => {
+      if (isPresent(value) && !allowed.includes(value as string)) {
+        return `Must be one of: ${allowed.join(', ')}`;
+      }
+      return null;
+    },
 };
 
 export function validate(validators: FieldValidator[]) {

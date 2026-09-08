@@ -1,17 +1,18 @@
-"use client";
+'use client';
 
-import { BarChart } from "@/components/ChartCard";
-import { StatCard } from "@/components/StatCard";
-import { Avatar, Card, CardHeader, ErrorState, LoadingState } from "@/components/ui";
-import { useAsync } from "@/hooks/useAsync";
-import { api } from "@/lib/api";
-import { downloadCsv } from "@/lib/export";
+import { BarChart } from '@/components/ChartCard';
+import { StatCard } from '@/components/StatCard';
+import { Avatar, Card, CardHeader, ErrorState, LoadingState } from '@/components/ui';
+import { useAsync } from '@/hooks/useAsync';
+import { api } from '@/lib/api';
+import { downloadCsv } from '@/lib/export';
 
 export default function AdminXpPage() {
   const { data, loading, error, reload } = useAsync(() => api.getXpOverview(), []);
 
   if (loading) return <LoadingState label="Loading XP data..." />;
-  if (error || !data) return <ErrorState message={error ?? "Failed to load XP data"} onRetry={reload} />;
+  if (error || !data)
+    return <ErrorState message={error ?? 'Failed to load XP data'} onRetry={reload} />;
 
   return (
     <div className="space-y-6">
@@ -31,7 +32,7 @@ export default function AdminXpPage() {
                 xp: u.xp,
                 streak: u.streak,
               })),
-              `sultiai-top-learners-${new Date().toISOString().split("T")[0]}.csv`
+              `sultiai-top-learners-${new Date().toISOString().split('T')[0]}.csv`
             )
           }
           className="rounded-xl border border-line bg-white px-4 py-2.5 text-sm font-semibold text-ink transition-colors hover:border-brand"
@@ -41,9 +42,25 @@ export default function AdminXpPage() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard label="Total XP awarded" value={data.totalXpAwarded.toLocaleString()} delta="All-time" icon="⚡" />
-        <StatCard label="Avg daily XP" value={data.avgDailyXp.toLocaleString()} tone="amber" delta="Last 7 days" icon="📈" />
-        <StatCard label="Daily rewards claimed" value={data.dailyRewardsClaimed.toLocaleString()} tone="green" icon="🎁" />
+        <StatCard
+          label="Total XP awarded"
+          value={data.totalXpAwarded.toLocaleString()}
+          delta="All-time"
+          icon="⚡"
+        />
+        <StatCard
+          label="Avg daily XP"
+          value={data.avgDailyXp.toLocaleString()}
+          tone="amber"
+          delta="Last 7 days"
+          icon="📈"
+        />
+        <StatCard
+          label="Daily rewards claimed"
+          value={data.dailyRewardsClaimed.toLocaleString()}
+          tone="green"
+          icon="🎁"
+        />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -59,17 +76,21 @@ export default function AdminXpPage() {
           <ul className="divide-y divide-line">
             {data.topUsers.map((u, i) => (
               <li key={u.id} className="flex items-center gap-4 px-6 py-3.5">
-                <span className={`w-6 text-center text-sm font-extrabold ${i === 0 ? "text-accent" : "text-ink-faint"}`}>
+                <span
+                  className={`w-6 text-center text-sm font-extrabold ${i === 0 ? 'text-accent' : 'text-ink-faint'}`}
+                >
                   {i + 1}
                 </span>
                 <Avatar name={u.name} />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold text-ink">{u.name}</p>
                   <p className="text-xs text-ink-faint">
-                    Level {u.level} · {u.streak > 0 ? `${u.streak}-day streak` : "no streak"}
+                    Level {u.level} · {u.streak > 0 ? `${u.streak}-day streak` : 'no streak'}
                   </p>
                 </div>
-                <span className="text-sm font-bold tabular-nums text-brand-dark">{u.xp.toLocaleString()} XP</span>
+                <span className="text-sm font-bold tabular-nums text-brand-dark">
+                  {u.xp.toLocaleString()} XP
+                </span>
               </li>
             ))}
           </ul>

@@ -1,28 +1,38 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import type { AdminUser, UserDetail, UserFilters, UserRole } from "@/types";
-import { Avatar, Card, EmptyState, ErrorState, LoadingState, RoleBadge, StatusBadge, inputCls, selectCls } from "@/components/ui";
-import { useAsync } from "@/hooks/useAsync";
-import { useToast } from "@/components/Toast";
-import { api } from "@/lib/api";
-import { ConfirmModal } from "@/components/ConfirmModal";
-import { downloadCsv } from "@/lib/export";
+import { useState, useEffect } from 'react';
+import type { AdminUser, UserDetail, UserFilters, UserRole } from '@/types';
+import {
+  Avatar,
+  Card,
+  EmptyState,
+  ErrorState,
+  LoadingState,
+  RoleBadge,
+  StatusBadge,
+  inputCls,
+  selectCls,
+} from '@/components/ui';
+import { useAsync } from '@/hooks/useAsync';
+import { useToast } from '@/components/Toast';
+import { api } from '@/lib/api';
+import { ConfirmModal } from '@/components/ConfirmModal';
+import { downloadCsv } from '@/lib/export';
 
 const PER_PAGE = 10;
 
 const defaultFilters: UserFilters = {
-  search: "",
-  role: "all",
-  status: "all",
-  sort: "recent",
+  search: '',
+  role: 'all',
+  status: 'all',
+  sort: 'recent',
 };
 
-type UsersTab = "all" | "pending";
+type UsersTab = 'all' | 'pending';
 
 export default function AdminUsersPage() {
   const toast = useToast();
-  const [tab, setTab] = useState<UsersTab>("all");
+  const [tab, setTab] = useState<UsersTab>('all');
   const [filters, setFilters] = useState<UserFilters>(defaultFilters);
   const [page, setPage] = useState(1);
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -38,12 +48,12 @@ export default function AdminUsersPage() {
 
   const { data, loading, error, reload } = useAsync(
     () => api.listUsers(filters, page, PER_PAGE),
-    [filters, page],
+    [filters, page]
   );
 
   const detail = useAsync<{ detail: UserDetail } | null>(
     () => (selectedId ? api.getUser(selectedId) : Promise.resolve(null)),
-    [selectedId],
+    [selectedId]
   );
 
   async function loadPendingUsers() {
@@ -53,14 +63,14 @@ export default function AdminUsersPage() {
       const res = await api.listPendingUsers();
       setPendingUsers(res.items || []);
     } catch (err: any) {
-      setPendingError(err?.message || "Failed to load pending users");
+      setPendingError(err?.message || 'Failed to load pending users');
     } finally {
       setPendingLoading(false);
     }
   }
 
   useEffect(() => {
-    if (tab === "pending") loadPendingUsers();
+    if (tab === 'pending') loadPendingUsers();
   }, [tab]);
 
   function updateFilters(patch: Partial<UserFilters>) {
@@ -70,33 +80,36 @@ export default function AdminUsersPage() {
 
   async function handleRoleChange(id: number, role: UserRole) {
     await api.updateUserRole(id, role);
-    toast.push("success", `Role updated to ${role}.`);
+    toast.push('success', `Role updated to ${role}.`);
     reload();
   }
 
   async function handleBan(u: AdminUser, ban: boolean) {
-    await api.updateUserStatus(u.id, ban ? "banned" : "approved");
-    toast.push(ban ? "error" : "success", ban ? `${u.name} has been banned.` : `${u.name} has been reactivated.`);
+    await api.updateUserStatus(u.id, ban ? 'banned' : 'approved');
+    toast.push(
+      ban ? 'error' : 'success',
+      ban ? `${u.name} has been banned.` : `${u.name} has been reactivated.`
+    );
     setBanTarget(null);
     reload();
   }
 
   async function handleApprove(u: AdminUser) {
     await api.approveUser(u.id);
-    toast.push("success", `${u.name} has been approved.`);
+    toast.push('success', `${u.name} has been approved.`);
     loadPendingUsers();
   }
 
   async function handleReject(u: AdminUser) {
     await api.rejectUser(u.id);
-    toast.push("info", `${u.name} has been rejected.`);
+    toast.push('info', `${u.name} has been rejected.`);
     loadPendingUsers();
   }
 
   async function handleBulkApprove() {
     if (selectedPending.size === 0) return;
     await api.bulkApproveUsers(Array.from(selectedPending));
-    toast.push("success", `${selectedPending.size} users approved.`);
+    toast.push('success', `${selectedPending.size} users approved.`);
     setSelectedPending(new Set());
     loadPendingUsers();
   }
@@ -120,7 +133,7 @@ export default function AdminUsersPage() {
 
   async function handleVerify(id: number, verified: boolean) {
     await api.verifyUser(id, verified);
-    toast.push("success", verified ? "Marked as verified." : "Verification removed.");
+    toast.push('success', verified ? 'Marked as verified.' : 'Verification removed.');
     reload();
     if (selectedId === id) detail.reload();
   }
@@ -128,23 +141,28 @@ export default function AdminUsersPage() {
   async function handleDelete(u: AdminUser) {
     try {
       await api.deleteUser(u.id);
-      toast.push("success", `${u.name} has been deleted permanently.`);
+      toast.push('success', `${u.name} has been deleted permanently.`);
       setDeleteTarget(null);
       if (selectedId === u.id) setSelectedId(null);
       reload();
     } catch (err: any) {
-      toast.push("error", err?.message || "Failed to delete user.");
+      toast.push('error', err?.message || 'Failed to delete user.');
     }
   }
 
-  async function handleCreateUser(data: { fullname: string; email: string; password: string; role: UserRole }) {
+  async function handleCreateUser(data: {
+    fullname: string;
+    email: string;
+    password: string;
+    role: UserRole;
+  }) {
     try {
       await api.createUser(data);
-      toast.push("success", `User "${data.fullname}" created successfully.`);
+      toast.push('success', `User "${data.fullname}" created successfully.`);
       setShowCreateModal(false);
       reload();
     } catch (err: any) {
-      toast.push("error", err?.message || "Failed to create user.");
+      toast.push('error', err?.message || 'Failed to create user.');
     }
   }
 
@@ -155,7 +173,9 @@ export default function AdminUsersPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-extrabold text-ink">Users</h1>
-          <p className="mt-1 text-sm text-ink-soft">{data?.total.toLocaleString() ?? "0"} accounts total</p>
+          <p className="mt-1 text-sm text-ink-soft">
+            {data?.total.toLocaleString() ?? '0'} accounts total
+          </p>
         </div>
         <div className="flex items-center gap-3">
           {data && data.items.length > 0 && (
@@ -176,7 +196,7 @@ export default function AdminUsersPage() {
                     joinedAt: u.joinedAt,
                     lastActive: u.lastActive,
                   })),
-                  `sultiai-users-${new Date().toISOString().split("T")[0]}.csv`
+                  `sultiai-users-${new Date().toISOString().split('T')[0]}.csv`
                 )
               }
               className="rounded-xl border border-line bg-white px-4 py-2.5 text-sm font-semibold text-ink transition-colors hover:border-brand"
@@ -198,29 +218,31 @@ export default function AdminUsersPage() {
       <div className="flex gap-1 rounded-xl border border-line bg-surface p-1">
         <button
           type="button"
-          onClick={() => setTab("all")}
+          onClick={() => setTab('all')}
           className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors ${
-            tab === "all" ? "bg-white text-ink shadow-sm" : "text-ink-soft hover:text-ink"
+            tab === 'all' ? 'bg-white text-ink shadow-sm' : 'text-ink-soft hover:text-ink'
           }`}
         >
           All Users
         </button>
         <button
           type="button"
-          onClick={() => setTab("pending")}
+          onClick={() => setTab('pending')}
           className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors ${
-            tab === "pending" ? "bg-white text-ink shadow-sm" : "text-ink-soft hover:text-ink"
+            tab === 'pending' ? 'bg-white text-ink shadow-sm' : 'text-ink-soft hover:text-ink'
           }`}
         >
           Pending Approvals
           {pendingUsers.length > 0 && (
-            <span className="ml-2 rounded-full bg-warning px-2 py-0.5 text-xs text-white">{pendingUsers.length}</span>
+            <span className="ml-2 rounded-full bg-warning px-2 py-0.5 text-xs text-white">
+              {pendingUsers.length}
+            </span>
           )}
         </button>
       </div>
 
       {/* Pending Approvals Tab */}
-      {tab === "pending" && (
+      {tab === 'pending' && (
         <>
           {pendingLoading ? (
             <LoadingState />
@@ -228,7 +250,10 @@ export default function AdminUsersPage() {
             <ErrorState message={pendingError} onRetry={loadPendingUsers} />
           ) : pendingUsers.length === 0 ? (
             <Card>
-              <EmptyState title="No pending approvals" description="All user accounts have been reviewed." />
+              <EmptyState
+                title="No pending approvals"
+                description="All user accounts have been reviewed."
+              />
             </Card>
           ) : (
             <Card className="overflow-hidden">
@@ -241,7 +266,9 @@ export default function AdminUsersPage() {
                     className="h-4 w-4 rounded border-line"
                   />
                   <span className="text-ink-soft">
-                    {selectedPending.size > 0 ? `${selectedPending.size} selected` : `${pendingUsers.length} pending`}
+                    {selectedPending.size > 0
+                      ? `${selectedPending.size} selected`
+                      : `${pendingUsers.length} pending`}
                   </span>
                 </label>
                 {selectedPending.size > 0 && (
@@ -267,7 +294,10 @@ export default function AdminUsersPage() {
                   </thead>
                   <tbody>
                     {pendingUsers.map((u) => (
-                      <tr key={u.id} className="border-b border-line transition-colors last:border-0 hover:bg-surface/60">
+                      <tr
+                        key={u.id}
+                        className="border-b border-line transition-colors last:border-0 hover:bg-surface/60"
+                      >
                         <td className="px-5 py-3.5">
                           <input
                             type="checkbox"
@@ -280,14 +310,18 @@ export default function AdminUsersPage() {
                           <div className="flex items-center gap-3">
                             <Avatar name={u.name} />
                             <span className="min-w-0">
-                              <span className="block truncate font-semibold text-ink">{u.name}</span>
-                              <span className="block truncate text-xs text-ink-faint">{u.email}</span>
+                              <span className="block truncate font-semibold text-ink">
+                                {u.name}
+                              </span>
+                              <span className="block truncate text-xs text-ink-faint">
+                                {u.email}
+                              </span>
                             </span>
                           </div>
                         </td>
                         <td className="px-5 py-3.5">
                           <span className="rounded-full bg-surface px-2.5 py-1 text-xs font-medium text-ink-soft capitalize">
-                            {(u as any).authProvider || "email"}
+                            {(u as any).authProvider || 'email'}
                           </span>
                         </td>
                         <td className="px-5 py-3.5 text-xs text-ink-soft">
@@ -322,7 +356,7 @@ export default function AdminUsersPage() {
       )}
 
       {/* All Users Tab */}
-      {tab === "all" && (
+      {tab === 'all' && (
         <>
           <Card className="p-5">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
@@ -336,7 +370,7 @@ export default function AdminUsersPage() {
                 <select
                   className={selectCls}
                   value={filters.role}
-                  onChange={(e) => updateFilters({ role: e.target.value as UserFilters["role"] })}
+                  onChange={(e) => updateFilters({ role: e.target.value as UserFilters['role'] })}
                 >
                   <option value="all">All roles</option>
                   <option value="admin">Admins</option>
@@ -346,7 +380,9 @@ export default function AdminUsersPage() {
                 <select
                   className={selectCls}
                   value={filters.status}
-                  onChange={(e) => updateFilters({ status: e.target.value as UserFilters["status"] })}
+                  onChange={(e) =>
+                    updateFilters({ status: e.target.value as UserFilters['status'] })
+                  }
                 >
                   <option value="all">All statuses</option>
                   <option value="approved">Approved</option>
@@ -358,7 +394,7 @@ export default function AdminUsersPage() {
                 <select
                   className={selectCls}
                   value={filters.sort}
-                  onChange={(e) => updateFilters({ sort: e.target.value as UserFilters["sort"] })}
+                  onChange={(e) => updateFilters({ sort: e.target.value as UserFilters['sort'] })}
                 >
                   <option value="recent">Recently active</option>
                   <option value="xp">Highest XP</option>
@@ -375,7 +411,10 @@ export default function AdminUsersPage() {
             <ErrorState message={error} onRetry={reload} />
           ) : !data || data.items.length === 0 ? (
             <Card>
-              <EmptyState title="No users found" description="Try adjusting your search or filters." />
+              <EmptyState
+                title="No users found"
+                description="Try adjusting your search or filters."
+              />
             </Card>
           ) : (
             <Card className="overflow-hidden">
@@ -395,15 +434,24 @@ export default function AdminUsersPage() {
                   </thead>
                   <tbody>
                     {data.items.map((u) => (
-                      <tr key={u.id} className="border-b border-line transition-colors last:border-0 hover:bg-surface/60">
+                      <tr
+                        key={u.id}
+                        className="border-b border-line transition-colors last:border-0 hover:bg-surface/60"
+                      >
                         <td className="px-5 py-3.5">
-                          <button type="button" onClick={() => setSelectedId(u.id)} className="flex items-center gap-3 text-left">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedId(u.id)}
+                            className="flex items-center gap-3 text-left"
+                          >
                             <Avatar name={u.name} />
                             <span className="min-w-0">
                               <span className="block truncate font-semibold text-ink">
                                 {u.name} {u.nativeSpeaker && <span title="Native speaker">🇵🇭</span>}
                               </span>
-                              <span className="block truncate text-xs text-ink-faint">{u.email}</span>
+                              <span className="block truncate text-xs text-ink-faint">
+                                {u.email}
+                              </span>
                             </span>
                           </button>
                         </td>
@@ -414,9 +462,13 @@ export default function AdminUsersPage() {
                           <StatusBadge status={u.status} />
                         </td>
                         <td className="px-5 py-3.5 font-semibold text-ink">{u.level}</td>
-                        <td className="px-5 py-3.5 tabular-nums text-ink-soft">{(u.xp ?? 0).toLocaleString()}</td>
+                        <td className="px-5 py-3.5 tabular-nums text-ink-soft">
+                          {(u.xp ?? 0).toLocaleString()}
+                        </td>
                         <td className="px-5 py-3.5">
-                          {(u.streak ?? 0) > 0 && <span className="font-semibold text-accent">🔥 {u.streak}d</span>}
+                          {(u.streak ?? 0) > 0 && (
+                            <span className="font-semibold text-accent">🔥 {u.streak}d</span>
+                          )}
                         </td>
                         <td className="px-5 py-3.5 tabular-nums text-ink-soft">{u.lessons ?? 0}</td>
                         <td className="px-5 py-3.5">
@@ -435,12 +487,12 @@ export default function AdminUsersPage() {
                               type="button"
                               onClick={() => setBanTarget(u)}
                               className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold ${
-                                u.status === "banned"
-                                  ? "bg-success/10 text-success hover:bg-success hover:text-white"
-                                  : "bg-danger/10 text-danger hover:bg-danger hover:text-white"
+                                u.status === 'banned'
+                                  ? 'bg-success/10 text-success hover:bg-success hover:text-white'
+                                  : 'bg-danger/10 text-danger hover:bg-danger hover:text-white'
                               }`}
                             >
-                              {u.status === "banned" ? "Unban" : "Ban"}
+                              {u.status === 'banned' ? 'Unban' : 'Ban'}
                             </button>
                             <button
                               type="button"
@@ -460,7 +512,8 @@ export default function AdminUsersPage() {
 
               <div className="flex items-center justify-between border-t border-line px-5 py-3.5">
                 <p className="text-xs text-ink-faint">
-                  Showing {(page - 1) * PER_PAGE + 1}–{Math.min(page * PER_PAGE, data.total)} of {data.total}
+                  Showing {(page - 1) * PER_PAGE + 1}–{Math.min(page * PER_PAGE, data.total)} of{' '}
+                  {data.total}
                 </p>
                 <div className="flex items-center gap-2">
                   <button
@@ -500,22 +553,19 @@ export default function AdminUsersPage() {
       )}
 
       {showCreateModal && (
-        <CreateUserModal
-          onClose={() => setShowCreateModal(false)}
-          onCreate={handleCreateUser}
-        />
+        <CreateUserModal onClose={() => setShowCreateModal(false)} onCreate={handleCreateUser} />
       )}
 
       <ConfirmModal
         open={!!banTarget}
-        title={banTarget?.status === "banned" ? "Reactivate user" : `Ban ${banTarget?.name}?`}
+        title={banTarget?.status === 'banned' ? 'Reactivate user' : `Ban ${banTarget?.name}?`}
         message={
-          banTarget?.status === "banned"
+          banTarget?.status === 'banned'
             ? "This will restore the user's account and remove the ban."
-            : "The user will lose access to SultiAI. Their data remains preserved for reactivation."
+            : 'The user will lose access to SultiAI. Their data remains preserved for reactivation.'
         }
-        confirmLabel={banTarget?.status === "banned" ? "Reactivate" : "Ban user"}
-        onConfirm={() => banTarget && handleBan(banTarget, banTarget.status !== "banned")}
+        confirmLabel={banTarget?.status === 'banned' ? 'Reactivate' : 'Ban user'}
+        onConfirm={() => banTarget && handleBan(banTarget, banTarget.status !== 'banned')}
         onClose={() => setBanTarget(null)}
       />
 
@@ -538,21 +588,23 @@ function CreateUserModal({
   onClose: () => void;
   onCreate: (data: { fullname: string; email: string; password: string; role: UserRole }) => void;
 }) {
-  const [fullname, setFullname] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [role, setRole] = useState<UserRole>("user");
+  const [fullname, setFullname] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [role, setRole] = useState<UserRole>('user');
   const [busy, setBusy] = useState(false);
-  const [errors, setErrors] = useState<{ fullname?: string; email?: string; password?: string }>({});
+  const [errors, setErrors] = useState<{ fullname?: string; email?: string; password?: string }>(
+    {}
+  );
 
   function validate(): boolean {
     const e: typeof errors = {};
-    if (!fullname.trim()) e.fullname = "Name is required.";
-    else if (fullname.trim().length < 2) e.fullname = "Name must be at least 2 characters.";
-    if (!email.trim()) e.email = "Email is required.";
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) e.email = "Enter a valid email address.";
-    if (!password) e.password = "Password is required.";
-    else if (password.length < 6) e.password = "Password must be at least 6 characters.";
+    if (!fullname.trim()) e.fullname = 'Name is required.';
+    else if (fullname.trim().length < 2) e.fullname = 'Name must be at least 2 characters.';
+    if (!email.trim()) e.email = 'Email is required.';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) e.email = 'Enter a valid email address.';
+    if (!password) e.password = 'Password is required.';
+    else if (password.length < 6) e.password = 'Password must be at least 6 characters.';
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -576,8 +628,21 @@ function CreateUserModal({
             <h2 className="text-lg font-bold text-ink">Create User</h2>
             <p className="mt-1 text-xs text-ink-faint">Add a new user account to the platform.</p>
           </div>
-          <button type="button" onClick={onClose} className="text-ink-faint hover:text-ink" aria-label="Close">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-ink-faint hover:text-ink"
+            aria-label="Close"
+          >
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            >
               <path d="M6 6l12 12M18 6L6 18" />
             </svg>
           </button>
@@ -585,40 +650,57 @@ function CreateUserModal({
 
         <form onSubmit={handleSubmit} className="space-y-5 p-6">
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wide text-ink-faint">Full name</label>
+            <label className="block text-xs font-bold uppercase tracking-wide text-ink-faint">
+              Full name
+            </label>
             <input
               type="text"
               value={fullname}
-              onChange={(e) => { setFullname(e.target.value); setErrors((p) => ({ ...p, fullname: undefined })); }}
-              className={`${inputCls} mt-2 ${errors.fullname ? "border-danger" : ""}`}
+              onChange={(e) => {
+                setFullname(e.target.value);
+                setErrors((p) => ({ ...p, fullname: undefined }));
+              }}
+              className={`${inputCls} mt-2 ${errors.fullname ? 'border-danger' : ''}`}
               placeholder="e.g. Juan Dela Cruz"
             />
             {errors.fullname && <p className="mt-1 text-xs text-danger">{errors.fullname}</p>}
           </div>
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wide text-ink-faint">Email</label>
+            <label className="block text-xs font-bold uppercase tracking-wide text-ink-faint">
+              Email
+            </label>
             <input
               type="email"
               value={email}
-              onChange={(e) => { setEmail(e.target.value); setErrors((p) => ({ ...p, email: undefined })); }}
-              className={`${inputCls} mt-2 ${errors.email ? "border-danger" : ""}`}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                setErrors((p) => ({ ...p, email: undefined }));
+              }}
+              className={`${inputCls} mt-2 ${errors.email ? 'border-danger' : ''}`}
               placeholder="user@example.com"
             />
             {errors.email && <p className="mt-1 text-xs text-danger">{errors.email}</p>}
           </div>
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wide text-ink-faint">Password</label>
+            <label className="block text-xs font-bold uppercase tracking-wide text-ink-faint">
+              Password
+            </label>
             <input
               type="password"
               value={password}
-              onChange={(e) => { setPassword(e.target.value); setErrors((p) => ({ ...p, password: undefined })); }}
-              className={`${inputCls} mt-2 ${errors.password ? "border-danger" : ""}`}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                setErrors((p) => ({ ...p, password: undefined }));
+              }}
+              className={`${inputCls} mt-2 ${errors.password ? 'border-danger' : ''}`}
               placeholder="Min 6 characters"
             />
             {errors.password && <p className="mt-1 text-xs text-danger">{errors.password}</p>}
           </div>
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wide text-ink-faint">Role</label>
+            <label className="block text-xs font-bold uppercase tracking-wide text-ink-faint">
+              Role
+            </label>
             <select
               value={role}
               onChange={(e) => setRole(e.target.value as UserRole)}
@@ -642,7 +724,7 @@ function CreateUserModal({
               disabled={busy}
               className="flex-1 rounded-xl bg-gradient-to-r from-brand to-brand-dark px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
             >
-              {busy ? "Creating..." : "Create User"}
+              {busy ? 'Creating...' : 'Create User'}
             </button>
           </div>
         </form>
@@ -686,8 +768,21 @@ function UserDrawer({
                   </div>
                 </div>
               </div>
-              <button type="button" onClick={onClose} className="text-ink-faint hover:text-ink" aria-label="Close">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <button
+                type="button"
+                onClick={onClose}
+                className="text-ink-faint hover:text-ink"
+                aria-label="Close"
+              >
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                >
                   <path d="M6 6l12 12M18 6L6 18" />
                 </svg>
               </button>
@@ -696,12 +791,12 @@ function UserDrawer({
             <div className="space-y-6 p-6">
               <div className="grid grid-cols-2 gap-3">
                 {[
-                  { label: "Level", value: user.level ?? "beginner" },
-                  { label: "XP", value: (user.xp ?? 0).toLocaleString() },
-                  { label: "Streak", value: `${user.streak ?? 0} days` },
-                  { label: "Lessons", value: user.lessons ?? 0 },
-                  { label: "Coins", value: (user.totalCoins ?? 0).toLocaleString() },
-                  { label: "Daily goal", value: `${user.dailyGoal ?? 50} XP` },
+                  { label: 'Level', value: user.level ?? 'beginner' },
+                  { label: 'XP', value: (user.xp ?? 0).toLocaleString() },
+                  { label: 'Streak', value: `${user.streak ?? 0} days` },
+                  { label: 'Lessons', value: user.lessons ?? 0 },
+                  { label: 'Coins', value: (user.totalCoins ?? 0).toLocaleString() },
+                  { label: 'Daily goal', value: `${user.dailyGoal ?? 50} XP` },
                 ].map((s) => (
                   <div key={s.label} className="rounded-2xl border border-line bg-surface p-4">
                     <p className="text-xs text-ink-faint">{s.label}</p>
@@ -717,7 +812,10 @@ function UserDrawer({
                     <span className="text-xs text-ink-faint">No badges yet</span>
                   )}
                   {(user.badges ?? []).map((b) => (
-                    <span key={b} className="rounded-full bg-brand-light px-3 py-1 text-xs font-semibold text-brand-dark">
+                    <span
+                      key={b}
+                      className="rounded-full bg-brand-light px-3 py-1 text-xs font-semibold text-brand-dark"
+                    >
                       {b}
                     </span>
                   ))}
@@ -725,13 +823,18 @@ function UserDrawer({
               </div>
 
               <div>
-                <h3 className="text-xs font-bold uppercase tracking-wide text-ink-faint">Weak areas</h3>
+                <h3 className="text-xs font-bold uppercase tracking-wide text-ink-faint">
+                  Weak areas
+                </h3>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {(user.weakAreas ?? []).length === 0 && (
                     <span className="text-xs text-ink-faint">None identified</span>
                   )}
                   {(user.weakAreas ?? []).map((w) => (
-                    <span key={w} className="rounded-full bg-accent-light px-3 py-1 text-xs font-semibold text-[#b45309]">
+                    <span
+                      key={w}
+                      className="rounded-full bg-accent-light px-3 py-1 text-xs font-semibold text-[#b45309]"
+                    >
                       {w}
                     </span>
                   ))}
@@ -741,8 +844,8 @@ function UserDrawer({
               <div className="rounded-2xl border border-line p-4">
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-semibold text-ink">Native speaker</p>
-                  <span className={user.nativeSpeaker ? "text-success" : "text-ink-faint"}>
-                    {user.nativeSpeaker ? "✓ Verified" : "Not marked"}
+                  <span className={user.nativeSpeaker ? 'text-success' : 'text-ink-faint'}>
+                    {user.nativeSpeaker ? '✓ Verified' : 'Not marked'}
                   </span>
                 </div>
                 <div className="mt-3 flex items-center justify-between">
@@ -751,10 +854,10 @@ function UserDrawer({
                     type="button"
                     onClick={() => onVerify(user.id, !user.verified)}
                     className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${
-                      user.verified ? "bg-danger/10 text-danger" : "bg-success/10 text-success"
+                      user.verified ? 'bg-danger/10 text-danger' : 'bg-success/10 text-success'
                     }`}
                   >
-                    {user.verified ? "Remove verification" : "Verify account"}
+                    {user.verified ? 'Remove verification' : 'Verify account'}
                   </button>
                 </div>
               </div>
@@ -775,7 +878,7 @@ function UserDrawer({
               <div className="rounded-2xl bg-surface p-4 text-xs text-ink-soft">
                 <p>Joined: {new Date(user.joinedAt).toLocaleDateString()}</p>
                 <p className="mt-1">Last active: {new Date(user.lastActive).toLocaleString()}</p>
-                <p className="mt-1">Favorite category: {user.favoriteCategory ?? "general"}</p>
+                <p className="mt-1">Favorite category: {user.favoriteCategory ?? 'general'}</p>
                 <p className="mt-1">Feedback submitted: {user.feedbackCount ?? 0}</p>
               </div>
             </div>

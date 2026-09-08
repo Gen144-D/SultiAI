@@ -12,9 +12,7 @@ export class ContextManager {
     try {
       const profile = await getFullProfileByEmail(userEmail);
 
-      const sessionHistory = sessionId
-        ? await this.getSessionHistory(sessionId, userEmail)
-        : [];
+      const sessionHistory = sessionId ? await this.getSessionHistory(sessionId, userEmail) : [];
 
       const longTermMemory = profile
         ? await conversationMemory.getRelevantContext(profile.userId)
@@ -89,7 +87,9 @@ export class ContextManager {
     parts.push(`The learner is at the ${context.userLevel} level.`);
 
     if (context.weakAreas.length > 0) {
-      parts.push(`Their weak areas are: ${context.weakAreas.join(', ')}. Focus extra attention on these.`);
+      parts.push(
+        `Their weak areas are: ${context.weakAreas.join(', ')}. Focus extra attention on these.`
+      );
     }
 
     if (context.commonMistakes.length > 0) {
@@ -106,7 +106,9 @@ export class ContextManager {
         .slice(0, 3)
         .map((m) => m.content);
       if (topTopics.length > 0) {
-        parts.push(`The learner frequently practices: ${topTopics.join(', ')}. Reference these when relevant.`);
+        parts.push(
+          `The learner frequently practices: ${topTopics.join(', ')}. Reference these when relevant.`
+        );
       }
     }
 
@@ -122,7 +124,9 @@ export class ContextManager {
     parts.push(`\nTeaching approach:\n${this.getDifficultyInstructions(difficulty)}`);
 
     if (mode === 'voice') {
-      parts.push(`\nVoice mode: Keep responses concise (2-3 sentences max). Use phonetic pronunciation guides.`);
+      parts.push(
+        `\nVoice mode: Keep responses concise (2-3 sentences max). Use phonetic pronunciation guides.`
+      );
     }
 
     return parts.join('\n\n');

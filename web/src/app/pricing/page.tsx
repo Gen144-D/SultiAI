@@ -1,10 +1,10 @@
-import type { Metadata } from "next";
-import PageHero from "@/components/PageHero";
-import PricingCard from "@/components/PricingCard";
-import CTASection from "@/components/CTASection";
+import type { Metadata } from 'next';
+import PageHero from '@/components/PageHero';
+import PricingCard from '@/components/PricingCard';
+import CTASection from '@/components/CTASection';
 
 export const metadata: Metadata = {
-  title: "Pricing",
+  title: 'Pricing',
   description: "SultiAI pricing — start free, upgrade to Premium when you're ready.",
 };
 

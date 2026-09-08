@@ -1,19 +1,19 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import type { CommunityPost, CommunityReport } from "@/types";
-import { ConfirmModal } from "@/components/ConfirmModal";
-import { useToast } from "@/components/Toast";
-import { useAsync } from "@/hooks/useAsync";
-import { api } from "@/lib/api";
-import { Avatar, Card, EmptyState, ErrorState, LoadingState, StatusBadge } from "@/components/ui";
-import { downloadCsv } from "@/lib/export";
+import { useState } from 'react';
+import type { CommunityPost, CommunityReport } from '@/types';
+import { ConfirmModal } from '@/components/ConfirmModal';
+import { useToast } from '@/components/Toast';
+import { useAsync } from '@/hooks/useAsync';
+import { api } from '@/lib/api';
+import { Avatar, Card, EmptyState, ErrorState, LoadingState, StatusBadge } from '@/components/ui';
+import { downloadCsv } from '@/lib/export';
 
-type Tab = "posts" | "reports";
+type Tab = 'posts' | 'reports';
 
 export default function AdminCommunityPage() {
   const toast = useToast();
-  const [tab, setTab] = useState<Tab>("posts");
+  const [tab, setTab] = useState<Tab>('posts');
   const [deleteTarget, setDeleteTarget] = useState<CommunityPost | null>(null);
 
   const posts = useAsync(() => api.listPosts(), []);
@@ -21,28 +21,31 @@ export default function AdminCommunityPage() {
 
   async function handleFeature(p: CommunityPost) {
     const updated = await api.toggleFeatured(p.id);
-    toast.push("success", updated.featured ? "Post featured." : "Post unfeatured.");
+    toast.push('success', updated.featured ? 'Post featured.' : 'Post unfeatured.');
     posts.reload();
   }
 
   async function handleHide(p: CommunityPost) {
     const updated = await api.setPostHidden(p.id, !p.hidden);
-    toast.push("success", updated.hidden ? "Post hidden from community." : "Post made visible again.");
+    toast.push(
+      'success',
+      updated.hidden ? 'Post hidden from community.' : 'Post made visible again.'
+    );
     posts.reload();
   }
 
   async function handleDelete() {
     if (!deleteTarget) return;
     await api.deletePost(deleteTarget.id);
-    toast.push("success", "Post removed.");
+    toast.push('success', 'Post removed.');
     setDeleteTarget(null);
     posts.reload();
     reports.reload();
   }
 
-  async function handleReportStatus(r: CommunityReport, status: CommunityReport["status"]) {
+  async function handleReportStatus(r: CommunityReport, status: CommunityReport['status']) {
     await api.updateReportStatus(r.id, status);
-    toast.push("success", `Report #${r.id} marked ${status}.`);
+    toast.push('success', `Report #${r.id} marked ${status}.`);
     reports.reload();
   }
 
@@ -71,7 +74,7 @@ export default function AdminCommunityPage() {
                     hidden: p.hidden,
                     createdAt: p.createdAt,
                   })),
-                  `sultiai-community-posts-${new Date().toISOString().split("T")[0]}.csv`
+                  `sultiai-community-posts-${new Date().toISOString().split('T')[0]}.csv`
                 )
               }
               className="rounded-xl border border-line bg-white px-4 py-2.5 text-sm font-semibold text-ink transition-colors hover:border-brand"
@@ -83,26 +86,28 @@ export default function AdminCommunityPage() {
       </div>
 
       <div className="inline-flex rounded-xl border border-line bg-white p-1">
-        {(["posts", "reports"] as Tab[]).map((t) => (
+        {(['posts', 'reports'] as Tab[]).map((t) => (
           <button
             key={t}
             type="button"
             onClick={() => setTab(t)}
             className={`rounded-lg px-5 py-2 text-sm font-semibold capitalize transition-colors ${
-              tab === t ? "bg-gradient-to-r from-brand to-brand-dark text-white" : "text-ink-soft hover:text-ink"
+              tab === t
+                ? 'bg-gradient-to-r from-brand to-brand-dark text-white'
+                : 'text-ink-soft hover:text-ink'
             }`}
           >
             {t}
-            {t === "reports" && reports.data && (
+            {t === 'reports' && reports.data && (
               <span className="ml-1.5 rounded-full bg-danger/15 px-1.5 text-xs text-danger">
-                {reports.data.filter((r) => r.status === "open").length}
+                {reports.data.filter((r) => r.status === 'open').length}
               </span>
             )}
           </button>
         ))}
       </div>
 
-      {tab === "posts" ? (
+      {tab === 'posts' ? (
         <PostsTable
           loading={posts.loading}
           error={posts.error}
@@ -176,7 +181,10 @@ function PostsTable({
           </thead>
           <tbody>
             {data.map((p) => (
-              <tr key={p.id} className={`border-b border-line last:border-0 ${p.hidden ? "bg-danger/5" : "hover:bg-surface/60"}`}>
+              <tr
+                key={p.id}
+                className={`border-b border-line last:border-0 ${p.hidden ? 'bg-danger/5' : 'hover:bg-surface/60'}`}
+              >
                 <td className="px-5 py-3.5">
                   <p className="max-w-[260px] truncate font-semibold text-ink">
                     {p.featured && <span className="mr-1.5 text-accent">★</span>}
@@ -193,7 +201,9 @@ function PostsTable({
                 </td>
                 <td className="px-5 py-3.5">
                   {p.reports > 0 ? (
-                    <span className="rounded-full bg-danger/10 px-2.5 py-1 text-xs font-semibold text-danger">{p.reports}</span>
+                    <span className="rounded-full bg-danger/10 px-2.5 py-1 text-xs font-semibold text-danger">
+                      {p.reports}
+                    </span>
                   ) : (
                     <span className="text-xs text-ink-faint">0</span>
                   )}
@@ -211,17 +221,17 @@ function PostsTable({
                       type="button"
                       onClick={() => onFeature(p)}
                       className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold ${
-                        p.featured ? "bg-line text-ink-soft" : "bg-accent-light text-[#b45309]"
+                        p.featured ? 'bg-line text-ink-soft' : 'bg-accent-light text-[#b45309]'
                       }`}
                     >
-                      {p.featured ? "Unfeature" : "Feature"}
+                      {p.featured ? 'Unfeature' : 'Feature'}
                     </button>
                     <button
                       type="button"
                       onClick={() => onHide(p)}
                       className="rounded-lg border border-line px-2.5 py-1.5 text-xs font-semibold text-ink hover:border-brand"
                     >
-                      {p.hidden ? "Show" : "Hide"}
+                      {p.hidden ? 'Show' : 'Hide'}
                     </button>
                     <button
                       type="button"
@@ -252,7 +262,7 @@ function ReportsTable({
   error: string | null;
   data: CommunityReport[] | null;
   onReload: () => void;
-  onStatus: (r: CommunityReport, status: CommunityReport["status"]) => void;
+  onStatus: (r: CommunityReport, status: CommunityReport['status']) => void;
 }) {
   if (loading) return <LoadingState />;
   if (error) return <ErrorState message={error} onRetry={onReload} />;
@@ -291,16 +301,16 @@ function ReportsTable({
                   <div className="flex items-center justify-end gap-1.5">
                     <button
                       type="button"
-                      disabled={r.status === "resolved"}
-                      onClick={() => onStatus(r, "resolved")}
+                      disabled={r.status === 'resolved'}
+                      onClick={() => onStatus(r, 'resolved')}
                       className="rounded-lg bg-success/10 px-2.5 py-1.5 text-xs font-semibold text-success disabled:opacity-40"
                     >
                       Resolve
                     </button>
                     <button
                       type="button"
-                      disabled={r.status === "dismissed"}
-                      onClick={() => onStatus(r, "dismissed")}
+                      disabled={r.status === 'dismissed'}
+                      onClick={() => onStatus(r, 'dismissed')}
                       className="rounded-lg border border-line px-2.5 py-1.5 text-xs font-semibold text-ink disabled:opacity-40"
                     >
                       Dismiss

@@ -13,10 +13,13 @@ export interface ITutorSession extends Document {
   endedAt?: Date;
 }
 
-const TutorMessageSchema = new Schema<ITutorMessage>({
-  role: { type: String, enum: ['user', 'assistant'], required: true },
-  content: { type: String, required: true },
-}, { _id: false });
+const TutorMessageSchema = new Schema<ITutorMessage>(
+  {
+    role: { type: String, enum: ['user', 'assistant'], required: true },
+    content: { type: String, required: true },
+  },
+  { _id: false }
+);
 
 const TutorSessionSchema = new Schema<ITutorSession>({
   userId: { type: Number, required: true, index: true },

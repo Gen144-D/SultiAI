@@ -1,63 +1,63 @@
-import Hero from "@/components/Hero";
-import FeatureCard from "@/components/FeatureCard";
-import SectionHeading from "@/components/SectionHeading";
-import CTASection from "@/components/CTASection";
-import Link from "next/link";
+import Hero from '@/components/Hero';
+import FeatureCard from '@/components/FeatureCard';
+import SectionHeading from '@/components/SectionHeading';
+import CTASection from '@/components/CTASection';
+import Link from 'next/link';
 
 const features = [
   {
-    icon: "🤖",
-    title: "SULTI AI Tutor",
+    icon: '🤖',
+    title: 'SULTI AI Tutor',
     description:
-      "Chat with an adaptive AI tutor that corrects your Bisaya in real time and tracks your common mistakes.",
+      'Chat with an adaptive AI tutor that corrects your Bisaya in real time and tracks your common mistakes.',
   },
   {
-    icon: "🎙",
-    title: "Voice Mode",
+    icon: '🎙',
+    title: 'Voice Mode',
     description:
-      "Practice speaking with voice-driven conversations and get pronunciation feedback instantly.",
+      'Practice speaking with voice-driven conversations and get pronunciation feedback instantly.',
   },
   {
-    icon: "🌏",
-    title: "AR Cultural Scenarios",
+    icon: '🌏',
+    title: 'AR Cultural Scenarios',
     description:
-      "Point your camera at everyday objects to learn the Bisaya words right in your real environment.",
+      'Point your camera at everyday objects to learn the Bisaya words right in your real environment.',
   },
   {
-    icon: "❤️",
-    title: "Community",
+    icon: '❤️',
+    title: 'Community',
     description:
-      "Connect with native speakers, share phrases, and get your speaking verified by the community.",
+      'Connect with native speakers, share phrases, and get your speaking verified by the community.',
   },
   {
-    icon: "⚡",
-    title: "XP & Rewards",
+    icon: '⚡',
+    title: 'XP & Rewards',
     description:
-      "Level up with streaks, daily challenges, badges, and a leaderboard that keeps you motivated.",
+      'Level up with streaks, daily challenges, badges, and a leaderboard that keeps you motivated.',
   },
   {
-    icon: "🏛",
-    title: "Cultural Discovery",
+    icon: '🏛',
+    title: 'Cultural Discovery',
     description:
-      "Explore the Living Lexicon — dialectal variations and heritage words preserved for the future.",
+      'Explore the Living Lexicon — dialectal variations and heritage words preserved for the future.',
   },
 ];
 
 const steps = [
   {
-    step: "01",
-    title: "Download",
-    description: "Install SultiAI on your Android device from Google Play.",
+    step: '01',
+    title: 'Download',
+    description: 'Install SultiAI on your Android device from Google Play.',
   },
   {
-    step: "02",
-    title: "Practice daily",
-    description: "Learn with the AI tutor, voice mode, and bite-sized lessons.",
+    step: '02',
+    title: 'Practice daily',
+    description: 'Learn with the AI tutor, voice mode, and bite-sized lessons.',
   },
   {
-    step: "03",
-    title: "Speak with confidence",
-    description: "Join the community, earn XP, and keep Bisaya alive.",
+    step: '03',
+    title: 'Speak with confidence',
+    description: 'Join the community, earn XP, and keep Bisaya alive.',
   },
 ];
 
@@ -123,11 +123,14 @@ export default function Home() {
         />
         <div className="mt-12 grid gap-6 md:grid-cols-3">
           {[
-            { value: "4,200+", label: "Community posts" },
-            { value: "1,800+", label: "Preserved words" },
-            { value: "900+", label: "Native speakers" },
+            { value: '4,200+', label: 'Community posts' },
+            { value: '1,800+', label: 'Preserved words' },
+            { value: '900+', label: 'Native speakers' },
           ].map((s) => (
-            <div key={s.label} className="rounded-3xl bg-gradient-to-br from-brand-light to-white p-6 text-center">
+            <div
+              key={s.label}
+              className="rounded-3xl bg-gradient-to-br from-brand-light to-white p-6 text-center"
+            >
               <p className="text-3xl font-extrabold text-brand-dark">{s.value}</p>
               <p className="mt-2 text-sm text-ink-soft">{s.label}</p>
             </div>

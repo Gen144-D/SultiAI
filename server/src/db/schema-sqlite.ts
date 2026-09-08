@@ -6,6 +6,30 @@ export const avatars = sqliteTable('avatars', {
   avatarImage: text('avatar_image').notNull(),
 });
 
+export const roles = sqliteTable('roles', {
+  roleId: integer('role_id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull().unique(),
+  description: text('description'),
+  createdAt: text('created_at').default(`datetime('now')`),
+});
+
+export const permissions = sqliteTable('permissions', {
+  permissionId: integer('permission_id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull().unique(),
+  resource: text('resource').notNull(),
+  action: text('action').notNull(),
+  description: text('description'),
+});
+
+export const rolePermissions = sqliteTable('role_permissions', {
+  roleId: integer('role_id')
+    .notNull()
+    .references(() => roles.roleId, { onDelete: 'cascade' }),
+  permissionId: integer('permission_id')
+    .notNull()
+    .references(() => permissions.permissionId, { onDelete: 'cascade' }),
+});
+
 export const users = sqliteTable('users', {
   userId: integer('user_id').primaryKey({ autoIncrement: true }),
   fullname: text('fullname').notNull(),
@@ -20,6 +44,7 @@ export const users = sqliteTable('users', {
   learningLang: text('learning_lang').default('Bisaya'),
   country: text('country'),
   role: text('role').notNull().default('user'),
+  roleId: integer('role_id').references(() => roles.roleId),
   status: text('status').notNull().default('approved'),
   isVerified: integer('is_verified').default(0),
   createdAt: text('created_at').default(`datetime('now')`),
@@ -27,7 +52,10 @@ export const users = sqliteTable('users', {
 
 export const userSettings = sqliteTable('user_settings', {
   settingId: integer('setting_id').primaryKey({ autoIncrement: true }),
-  userId: integer('user_id').notNull().unique().references(() => users.userId, { onDelete: 'cascade' }),
+  userId: integer('user_id')
+    .notNull()
+    .unique()
+    .references(() => users.userId, { onDelete: 'cascade' }),
   darkMode: integer('dark_mode').default(0),
   speechSpeed: real('speech_speed').default(1.0),
   voiceGender: text('voice_gender').default('neutral'),
@@ -35,7 +63,9 @@ export const userSettings = sqliteTable('user_settings', {
 
 export const savedPhrases = sqliteTable('saved_phrases', {
   phraseId: integer('phrase_id').primaryKey({ autoIncrement: true }),
-  userId: integer('user_id').notNull().references(() => users.userId, { onDelete: 'cascade' }),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.userId, { onDelete: 'cascade' }),
   phrase: text('phrase').notNull(),
   language: text('language'),
   category: text('category'),
@@ -44,7 +74,9 @@ export const savedPhrases = sqliteTable('saved_phrases', {
 
 export const notifications = sqliteTable('notifications', {
   notifyId: integer('notify_id').primaryKey({ autoIncrement: true }),
-  userId: integer('user_id').notNull().references(() => users.userId, { onDelete: 'cascade' }),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.userId, { onDelete: 'cascade' }),
   title: text('title'),
   message: text('message'),
   isRead: integer('is_read').default(0),
@@ -53,7 +85,9 @@ export const notifications = sqliteTable('notifications', {
 
 export const feedback = sqliteTable('feedback', {
   feedbackId: integer('feedback_id').primaryKey({ autoIncrement: true }),
-  userId: integer('user_id').notNull().references(() => users.userId, { onDelete: 'cascade' }),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.userId, { onDelete: 'cascade' }),
   functionality: integer('functionality').default(0),
   usability: integer('usability').default(0),
   reliability: integer('reliability').default(0),
@@ -63,14 +97,18 @@ export const feedback = sqliteTable('feedback', {
 
 export const conversations = sqliteTable('conversations', {
   conversationId: integer('conversation_id').primaryKey({ autoIncrement: true }),
-  userId: integer('user_id').notNull().references(() => users.userId, { onDelete: 'cascade' }),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.userId, { onDelete: 'cascade' }),
   title: text('title'),
   createdAt: text('created_at').default(`datetime('now')`),
 });
 
 export const conversationMessages = sqliteTable('conversation_messages', {
   messageId: integer('message_id').primaryKey({ autoIncrement: true }),
-  conversationId: integer('conversation_id').notNull().references(() => conversations.conversationId, { onDelete: 'cascade' }),
+  conversationId: integer('conversation_id')
+    .notNull()
+    .references(() => conversations.conversationId, { onDelete: 'cascade' }),
   sender: text('sender').notNull().default('user'),
   message: text('message'),
   translatedMessage: text('translated_message'),
@@ -79,7 +117,9 @@ export const conversationMessages = sqliteTable('conversation_messages', {
 
 export const speechRecords = sqliteTable('speech_records', {
   speechId: integer('speech_id').primaryKey({ autoIncrement: true }),
-  userId: integer('user_id').notNull().references(() => users.userId, { onDelete: 'cascade' }),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.userId, { onDelete: 'cascade' }),
   audioPath: text('audio_path'),
   recognizedText: text('recognized_text'),
   languageDetected: text('language_detected'),
@@ -89,7 +129,9 @@ export const speechRecords = sqliteTable('speech_records', {
 
 export const translations = sqliteTable('translations', {
   translationId: integer('translation_id').primaryKey({ autoIncrement: true }),
-  speechId: integer('speech_id').notNull().references(() => speechRecords.speechId, { onDelete: 'cascade' }),
+  speechId: integer('speech_id')
+    .notNull()
+    .references(() => speechRecords.speechId, { onDelete: 'cascade' }),
   sourceLanguage: text('source_language'),
   targetLanguage: text('target_language'),
   translatedText: text('translated_text'),
@@ -97,7 +139,9 @@ export const translations = sqliteTable('translations', {
 
 export const phraseRecommendations = sqliteTable('phrase_recommendations', {
   recommendationId: integer('recommendation_id').primaryKey({ autoIncrement: true }),
-  speechId: integer('speech_id').notNull().references(() => speechRecords.speechId, { onDelete: 'cascade' }),
+  speechId: integer('speech_id')
+    .notNull()
+    .references(() => speechRecords.speechId, { onDelete: 'cascade' }),
   recommendedPhrase: text('recommended_phrase'),
   intent: text('intent'),
   confidence: real('confidence').default(0),
@@ -113,15 +157,21 @@ export const learningModules = sqliteTable('learning_modules', {
 
 export const learningProgress = sqliteTable('learning_progress', {
   progressId: integer('progress_id').primaryKey({ autoIncrement: true }),
-  userId: integer('user_id').notNull().references(() => users.userId, { onDelete: 'cascade' }),
-  moduleId: integer('module_id').notNull().references(() => learningModules.moduleId, { onDelete: 'cascade' }),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.userId, { onDelete: 'cascade' }),
+  moduleId: integer('module_id')
+    .notNull()
+    .references(() => learningModules.moduleId, { onDelete: 'cascade' }),
   completionPercent: real('completion_percent').default(0),
   createdAt: text('created_at').default(`datetime('now')`),
 });
 
 export const communityPosts = sqliteTable('community_posts', {
   postId: integer('post_id').primaryKey({ autoIncrement: true }),
-  userId: integer('user_id').notNull().references(() => users.userId, { onDelete: 'cascade' }),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.userId, { onDelete: 'cascade' }),
   title: text('title'),
   content: text('content'),
   phrase: text('phrase'),
@@ -135,15 +185,21 @@ export const communityPosts = sqliteTable('community_posts', {
 
 export const comments = sqliteTable('comments', {
   commentId: integer('comment_id').primaryKey({ autoIncrement: true }),
-  postId: integer('post_id').notNull().references(() => communityPosts.postId, { onDelete: 'cascade' }),
-  userId: integer('user_id').notNull().references(() => users.userId, { onDelete: 'cascade' }),
+  postId: integer('post_id')
+    .notNull()
+    .references(() => communityPosts.postId, { onDelete: 'cascade' }),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.userId, { onDelete: 'cascade' }),
   comment: text('comment'),
   createdAt: text('created_at').default(`datetime('now')`),
 });
 
 export const communityReports = sqliteTable('community_reports', {
   reportId: integer('report_id').primaryKey({ autoIncrement: true }),
-  postId: integer('post_id').notNull().references(() => communityPosts.postId, { onDelete: 'cascade' }),
+  postId: integer('post_id')
+    .notNull()
+    .references(() => communityPosts.postId, { onDelete: 'cascade' }),
   reporterId: integer('reporter_id').references(() => users.userId, { onDelete: 'set null' }),
   reason: text('reason'),
   status: text('status').default('open'),
@@ -152,7 +208,10 @@ export const communityReports = sqliteTable('community_reports', {
 
 export const learnerProfiles = sqliteTable('learner_profiles', {
   profileId: integer('profile_id').primaryKey({ autoIncrement: true }),
-  userId: integer('user_id').notNull().unique().references(() => users.userId, { onDelete: 'cascade' }),
+  userId: integer('user_id')
+    .notNull()
+    .unique()
+    .references(() => users.userId, { onDelete: 'cascade' }),
   level: text('level').default('beginner'),
   strengths: text('strengths'),
   weakAreas: text('weak_areas'),
@@ -185,7 +244,9 @@ export const preservedWords = sqliteTable('preserved_words', {
 export const verificationRequests = sqliteTable('verification_requests', {
   requestId: integer('request_id').primaryKey({ autoIncrement: true }),
   wordId: integer('word_id').references(() => preservedWords.wordId, { onDelete: 'cascade' }),
-  userId: integer('user_id').notNull().references(() => users.userId, { onDelete: 'cascade' }),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.userId, { onDelete: 'cascade' }),
   audioPath: text('audio_path'),
   recordedText: text('recorded_text'),
   verifierId: integer('verifier_id').references(() => users.userId, { onDelete: 'set null' }),
@@ -198,7 +259,9 @@ export const verificationRequests = sqliteTable('verification_requests', {
 
 export const tutorSessions = sqliteTable('tutor_sessions', {
   sessionId: integer('session_id').primaryKey({ autoIncrement: true }),
-  userId: integer('user_id').notNull().references(() => users.userId, { onDelete: 'cascade' }),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.userId, { onDelete: 'cascade' }),
   messages: text('messages'),
   summary: text('summary'),
   startedAt: text('started_at').default(`datetime('now')`),
@@ -208,7 +271,9 @@ export const tutorSessions = sqliteTable('tutor_sessions', {
 
 export const pronunciationAttempts = sqliteTable('pronunciation_attempts', {
   id: text('id').primaryKey(),
-  userId: integer('user_id').notNull().references(() => users.userId, { onDelete: 'cascade' }),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.userId, { onDelete: 'cascade' }),
   word: text('word').notNull(),
   phoneticExpected: text('phonetic_expected').default(''),
   phoneticHeard: text('phonetic_heard').default(''),
@@ -221,7 +286,9 @@ export const pronunciationAttempts = sqliteTable('pronunciation_attempts', {
 
 export const vocabularyReviews = sqliteTable('vocabulary_reviews', {
   id: text('id').primaryKey(),
-  userId: integer('user_id').notNull().references(() => users.userId, { onDelete: 'cascade' }),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.userId, { onDelete: 'cascade' }),
   word: text('word').notNull(),
   translation: text('translation').default(''),
   pronunciation: text('pronunciation').default(''),
@@ -242,7 +309,9 @@ export const vocabularyReviews = sqliteTable('vocabulary_reviews', {
 
 export const conversationSummaries = sqliteTable('conversation_summaries', {
   id: text('id').primaryKey(),
-  userId: integer('user_id').notNull().references(() => users.userId, { onDelete: 'cascade' }),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.userId, { onDelete: 'cascade' }),
   summary: text('summary').notNull(),
   topics: text('topics').default('[]'),
   vocabularyLearned: text('vocabulary_learned').default('[]'),
@@ -252,7 +321,9 @@ export const conversationSummaries = sqliteTable('conversation_summaries', {
 
 export const xpLogs = sqliteTable('xp_logs', {
   id: text('id').primaryKey(),
-  userId: integer('user_id').notNull().references(() => users.userId, { onDelete: 'cascade' }),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.userId, { onDelete: 'cascade' }),
   amount: integer('amount').notNull(),
   source: text('source').notNull(),
   description: text('description'),
@@ -261,7 +332,9 @@ export const xpLogs = sqliteTable('xp_logs', {
 
 export const aiRecommendations = sqliteTable('ai_recommendations', {
   id: text('id').primaryKey(),
-  userId: integer('user_id').notNull().references(() => users.userId, { onDelete: 'cascade' }),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.userId, { onDelete: 'cascade' }),
   recommendationType: text('recommendation_type').notNull(),
   content: text('content').notNull(),
   priority: integer('priority').default(0),
@@ -272,7 +345,9 @@ export const aiRecommendations = sqliteTable('ai_recommendations', {
 
 export const userSessions = sqliteTable('user_sessions', {
   id: text('id').primaryKey(),
-  userId: integer('user_id').notNull().references(() => users.userId, { onDelete: 'cascade' }),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.userId, { onDelete: 'cascade' }),
   refreshToken: text('refresh_token').notNull(),
   deviceInfo: text('device_info'),
   ipAddress: text('ip_address'),
@@ -282,7 +357,10 @@ export const userSessions = sqliteTable('user_sessions', {
 
 export const notificationPreferences = sqliteTable('notification_preferences', {
   id: integer('id').primaryKey({ autoIncrement: true }),
-  userId: integer('user_id').notNull().unique().references(() => users.userId, { onDelete: 'cascade' }),
+  userId: integer('user_id')
+    .notNull()
+    .unique()
+    .references(() => users.userId, { onDelete: 'cascade' }),
   dailyReminder: integer('daily_reminder').default(1),
   dailyReminderHour: integer('daily_reminder_hour').default(9),
   dailyReminderMinute: integer('daily_reminder_minute').default(0),
@@ -296,7 +374,10 @@ export const notificationPreferences = sqliteTable('notification_preferences', {
 
 export const learningAnalytics = sqliteTable('learning_analytics', {
   id: integer('id').primaryKey({ autoIncrement: true }),
-  userId: integer('user_id').notNull().unique().references(() => users.userId, { onDelete: 'cascade' }),
+  userId: integer('user_id')
+    .notNull()
+    .unique()
+    .references(() => users.userId, { onDelete: 'cascade' }),
   totalSpeakingSeconds: integer('total_speaking_seconds').default(0),
   totalWordsLearned: integer('total_words_learned').default(0),
   totalPronunciationAttempts: integer('total_pronunciation_attempts').default(0),
@@ -310,15 +391,23 @@ export const learningAnalytics = sqliteTable('learning_analytics', {
 
 export const bookmarks = sqliteTable('bookmarks', {
   id: integer('id').primaryKey({ autoIncrement: true }),
-  userId: integer('user_id').notNull().references(() => users.userId, { onDelete: 'cascade' }),
-  postId: integer('post_id').notNull().references(() => communityPosts.postId, { onDelete: 'cascade' }),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.userId, { onDelete: 'cascade' }),
+  postId: integer('post_id')
+    .notNull()
+    .references(() => communityPosts.postId, { onDelete: 'cascade' }),
   createdAt: text('created_at').default(`datetime('now')`),
 });
 
 export const likes = sqliteTable('likes', {
   id: integer('id').primaryKey({ autoIncrement: true }),
-  userId: integer('user_id').notNull().references(() => users.userId, { onDelete: 'cascade' }),
-  postId: integer('post_id').notNull().references(() => communityPosts.postId, { onDelete: 'cascade' }),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.userId, { onDelete: 'cascade' }),
+  postId: integer('post_id')
+    .notNull()
+    .references(() => communityPosts.postId, { onDelete: 'cascade' }),
   createdAt: text('created_at').default(`datetime('now')`),
 });
 
@@ -335,42 +424,56 @@ export const auditLogs = sqliteTable('audit_logs', {
 
 export const dailyActivity = sqliteTable('daily_activity', {
   activityId: integer('activity_id').primaryKey({ autoIncrement: true }),
-  userId: integer('user_id').notNull().references(() => users.userId, { onDelete: 'cascade' }),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.userId, { onDelete: 'cascade' }),
   activityDate: text('activity_date').notNull(),
   xpEarned: integer('xp_earned').default(0),
 });
 
 export const userAchievements = sqliteTable('user_achievements', {
   userAchievementId: integer('user_achievement_id').primaryKey({ autoIncrement: true }),
-  userId: integer('user_id').notNull().references(() => users.userId, { onDelete: 'cascade' }),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.userId, { onDelete: 'cascade' }),
   achievementId: text('achievement_id').notNull(),
   unlockedAt: text('unlocked_at'),
 });
 
 export const userBadges = sqliteTable('user_badges', {
   userBadgeId: integer('user_badge_id').primaryKey({ autoIncrement: true }),
-  userId: integer('user_id').notNull().references(() => users.userId, { onDelete: 'cascade' }),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.userId, { onDelete: 'cascade' }),
   badgeId: text('badge_id').notNull(),
   earnedAt: text('earned_at'),
 });
 
 export const completedChallenges = sqliteTable('completed_challenges', {
   id: integer('id').primaryKey({ autoIncrement: true }),
-  userId: integer('user_id').notNull().references(() => users.userId, { onDelete: 'cascade' }),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.userId, { onDelete: 'cascade' }),
   challengeId: text('challenge_id').notNull(),
   completedAt: text('completed_at').default(`datetime('now')`),
 });
 
 export const follows = sqliteTable('follows', {
   id: integer('id').primaryKey({ autoIncrement: true }),
-  followerId: integer('follower_id').notNull().references(() => users.userId, { onDelete: 'cascade' }),
-  followingId: integer('following_id').notNull().references(() => users.userId, { onDelete: 'cascade' }),
+  followerId: integer('follower_id')
+    .notNull()
+    .references(() => users.userId, { onDelete: 'cascade' }),
+  followingId: integer('following_id')
+    .notNull()
+    .references(() => users.userId, { onDelete: 'cascade' }),
   createdAt: text('created_at').default(`datetime('now')`),
 });
 
 export const verifications = sqliteTable('verifications', {
   id: integer('id').primaryKey({ autoIncrement: true }),
-  userId: integer('user_id').notNull().references(() => users.userId, { onDelete: 'cascade' }),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.userId, { onDelete: 'cascade' }),
   verifiedBy: integer('verified_by').references(() => users.userId, { onDelete: 'set null' }),
   status: text('status').default('pending'),
   createdAt: text('created_at').default(`datetime('now')`),

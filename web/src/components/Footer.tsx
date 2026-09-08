@@ -1,28 +1,28 @@
-import Link from "next/link";
+import Link from 'next/link';
 
 const columns = [
   {
-    title: "Product",
+    title: 'Product',
     links: [
-      { href: "/features", label: "Features" },
-      { href: "/how-it-works", label: "How it Works" },
-      { href: "/pricing", label: "Pricing" },
-      { href: "/download", label: "Download" },
+      { href: '/features', label: 'Features' },
+      { href: '/how-it-works', label: 'How it Works' },
+      { href: '/pricing', label: 'Pricing' },
+      { href: '/download', label: 'Download' },
     ],
   },
   {
-    title: "Company",
+    title: 'Company',
     links: [
-      { href: "/about", label: "About" },
-      { href: "/culture", label: "Culture" },
-      { href: "/contact", label: "Contact" },
+      { href: '/about', label: 'About' },
+      { href: '/culture', label: 'Culture' },
+      { href: '/contact', label: 'Contact' },
     ],
   },
   {
-    title: "Legal",
+    title: 'Legal',
     links: [
-      { href: "/privacy", label: "Privacy Policy" },
-      { href: "/terms", label: "Terms of Service" },
+      { href: '/privacy', label: 'Privacy Policy' },
+      { href: '/terms', label: 'Terms of Service' },
     ],
   },
 ];
@@ -53,7 +53,10 @@ export default function Footer() {
               <ul className="mt-4 space-y-3">
                 {col.links.map((l) => (
                   <li key={l.href}>
-                    <Link href={l.href} className="text-sm text-ink-soft transition-colors hover:text-brand">
+                    <Link
+                      href={l.href}
+                      className="text-sm text-ink-soft transition-colors hover:text-brand"
+                    >
                       {l.label}
                     </Link>
                   </li>

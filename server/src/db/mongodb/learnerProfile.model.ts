@@ -17,11 +17,14 @@ export interface ILearnerProfile extends Document {
   lastActive?: Date;
 }
 
-const MistakeSchema = new Schema<IMistake>({
-  pattern: { type: String, required: true },
-  correction: { type: String, required: true },
-  count: { type: Number, default: 1 },
-}, { _id: false });
+const MistakeSchema = new Schema<IMistake>(
+  {
+    pattern: { type: String, required: true },
+    correction: { type: String, required: true },
+    count: { type: Number, default: 1 },
+  },
+  { _id: false }
+);
 
 const LearnerProfileSchema = new Schema<ILearnerProfile>({
   userId: { type: Number, required: true, unique: true, index: true },
@@ -34,4 +37,7 @@ const LearnerProfileSchema = new Schema<ILearnerProfile>({
   lastActive: { type: Date },
 });
 
-export const LearnerProfile = mongoose.model<ILearnerProfile>('LearnerProfile', LearnerProfileSchema);
+export const LearnerProfile = mongoose.model<ILearnerProfile>(
+  'LearnerProfile',
+  LearnerProfileSchema
+);

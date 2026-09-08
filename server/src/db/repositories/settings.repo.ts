@@ -4,13 +4,14 @@ import * as schema from '../schema-sqlite';
 
 export async function getSettings(userEmail: string): Promise<any> {
   const db = getDb();
-  const rows = await (db as any).select({
-    settingId: schema.userSettings.settingId,
-    userId: schema.userSettings.userId,
-    darkMode: schema.userSettings.darkMode,
-    speechSpeed: schema.userSettings.speechSpeed,
-    voiceGender: schema.userSettings.voiceGender,
-  })
+  const rows = await (db as any)
+    .select({
+      settingId: schema.userSettings.settingId,
+      userId: schema.userSettings.userId,
+      darkMode: schema.userSettings.darkMode,
+      speechSpeed: schema.userSettings.speechSpeed,
+      voiceGender: schema.userSettings.voiceGender,
+    })
     .from(schema.userSettings)
     .innerJoin(schema.users, eq(schema.userSettings.userId, schema.users.userId))
     .where(eq(schema.users.email, userEmail))
@@ -20,7 +21,8 @@ export async function getSettings(userEmail: string): Promise<any> {
 
 export async function getUserIdByEmail(email: string): Promise<number | undefined> {
   const db = getDb();
-  const rows = await (db as any).select()
+  const rows = await (db as any)
+    .select()
     .from(schema.users)
     .where(eq(schema.users.email, email))
     .limit(1);
@@ -34,11 +36,14 @@ export async function updateSettings(
   const db = getDb();
   const updateData: any = {};
   if (data.darkMode !== undefined && data.darkMode !== null) updateData.darkMode = data.darkMode;
-  if (data.speechSpeed !== undefined && data.speechSpeed !== null) updateData.speechSpeed = data.speechSpeed;
-  if (data.voiceGender !== undefined && data.voiceGender !== null) updateData.voiceGender = data.voiceGender;
+  if (data.speechSpeed !== undefined && data.speechSpeed !== null)
+    updateData.speechSpeed = data.speechSpeed;
+  if (data.voiceGender !== undefined && data.voiceGender !== null)
+    updateData.voiceGender = data.voiceGender;
 
   if (Object.keys(updateData).length > 0) {
-    await (db as any).update(schema.userSettings)
+    await (db as any)
+      .update(schema.userSettings)
       .set(updateData)
       .where(eq(schema.userSettings.userId, userId));
   }

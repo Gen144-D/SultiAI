@@ -26,11 +26,7 @@ export function success<T>(
   return res.status(statusCode).json(response);
 }
 
-export function created<T>(
-  res: Response,
-  data: T,
-  message = 'Created successfully'
-): Response {
+export function created<T>(res: Response, data: T, message = 'Created successfully'): Response {
   return success(res, data, message, 201);
 }
 
@@ -58,12 +54,10 @@ export const errors = {
     error(res, 'VALIDATION_ERROR', message, 400, details),
   unauthorized: (res: Response, message = 'Authentication required') =>
     error(res, 'UNAUTHORIZED', message, 401),
-  forbidden: (res: Response, message = 'Access denied') =>
-    error(res, 'FORBIDDEN', message, 403),
+  forbidden: (res: Response, message = 'Access denied') => error(res, 'FORBIDDEN', message, 403),
   notFound: (res: Response, message = 'Resource not found') =>
     error(res, 'NOT_FOUND', message, 404),
-  conflict: (res: Response, message: string) =>
-    error(res, 'CONFLICT', message, 409),
+  conflict: (res: Response, message: string) => error(res, 'CONFLICT', message, 409),
   rateLimited: (res: Response, message = 'Too many requests') =>
     error(res, 'RATE_LIMITED', message, 429),
   aiError: (res: Response, message = 'AI service unavailable') =>

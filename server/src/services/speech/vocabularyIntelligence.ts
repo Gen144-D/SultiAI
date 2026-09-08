@@ -26,7 +26,8 @@ export class VocabularyIntelligenceService {
       const db = getDb();
       const now = new Date().toISOString();
 
-      const existing = await (db as any).select()
+      const existing = await (db as any)
+        .select()
         .from(schema.vocabularyReviews)
         .where(
           (db as any).and(
@@ -37,7 +38,8 @@ export class VocabularyIntelligenceService {
         .limit(1);
 
       if (existing.length > 0) {
-        await (db as any).update(schema.vocabularyReviews)
+        await (db as any)
+          .update(schema.vocabularyReviews)
           .set({
             usageFrequency: (db as any).sql`usage_frequency + 1`,
             updatedAt: now,
@@ -47,7 +49,9 @@ export class VocabularyIntelligenceService {
       }
 
       const id = crypto.randomUUID();
-      const nextReview = new Date(Date.now() + SM2_DEFAULTS.INITIAL_INTERVAL * 24 * 60 * 60 * 1000).toISOString();
+      const nextReview = new Date(
+        Date.now() + SM2_DEFAULTS.INITIAL_INTERVAL * 24 * 60 * 60 * 1000
+      ).toISOString();
 
       await (db as any).insert(schema.vocabularyReviews).values({
         id,
@@ -79,7 +83,8 @@ export class VocabularyIntelligenceService {
       const db = getDb();
       const now = new Date().toISOString();
 
-      const existing = await (db as any).select()
+      const existing = await (db as any)
+        .select()
         .from(schema.vocabularyReviews)
         .where(
           (db as any).and(
@@ -102,9 +107,13 @@ export class VocabularyIntelligenceService {
         item.reviewCount || 0
       );
 
-      const mastery = quality >= 4 ? Math.min(100, (item.mastery || 0) + 15) : Math.max(0, (item.mastery || 0) - 5);
+      const mastery =
+        quality >= 4
+          ? Math.min(100, (item.mastery || 0) + 15)
+          : Math.max(0, (item.mastery || 0) - 5);
 
-      await (db as any).update(schema.vocabularyReviews)
+      await (db as any)
+        .update(schema.vocabularyReviews)
         .set({
           mastery,
           reviewCount: (item.reviewCount || 0) + 1,
@@ -116,7 +125,13 @@ export class VocabularyIntelligenceService {
         })
         .where((db as any).eq(schema.vocabularyReviews.id, item.id));
 
-      logger.debug('Word reviewed', { userId, word, quality, mastery, interval: sm2Result.interval });
+      logger.debug('Word reviewed', {
+        userId,
+        word,
+        quality,
+        mastery,
+        interval: sm2Result.interval,
+      });
 
       return sm2Result;
     } catch (err) {
@@ -135,7 +150,8 @@ export class VocabularyIntelligenceService {
       const db = getDb();
       const now = new Date().toISOString();
 
-      const due = await (db as any).select()
+      const due = await (db as any)
+        .select()
         .from(schema.vocabularyReviews)
         .where(
           (db as any).and(
@@ -181,15 +197,17 @@ export class VocabularyIntelligenceService {
       const db = getDb();
       const now = new Date().toISOString();
 
-      const words = await (db as any).select()
+      const words = await (db as any)
+        .select()
         .from(schema.vocabularyReviews)
         .where((db as any).eq(schema.vocabularyReviews.userId, userId));
 
       const totalWords = words.length;
       const masteredWords = words.filter((w: any) => (w.mastery || 0) >= 80).length;
-      const avgMastery = totalWords > 0
-        ? words.reduce((s: number, w: any) => s + (w.mastery || 0), 0) / totalWords
-        : 0;
+      const avgMastery =
+        totalWords > 0
+          ? words.reduce((s: number, w: any) => s + (w.mastery || 0), 0) / totalWords
+          : 0;
 
       const dueToday = words.filter((w: any) => w.nextReview <= now).length;
 
@@ -199,7 +217,13 @@ export class VocabularyIntelligenceService {
         byCategory[cat] = (byCategory[cat] || 0) + 1;
       }
 
-      return { totalWords, masteredWords, avgMastery: Math.round(avgMastery), dueToday, byCategory };
+      return {
+        totalWords,
+        masteredWords,
+        avgMastery: Math.round(avgMastery),
+        dueToday,
+        byCategory,
+      };
     } catch {
       return { totalWords: 0, masteredWords: 0, avgMastery: 0, dueToday: 0, byCategory: {} };
     }
@@ -208,7 +232,8 @@ export class VocabularyIntelligenceService {
   async toggleFavorite(userId: number, word: string): Promise<boolean> {
     try {
       const db = getDb();
-      const existing = await (db as any).select()
+      const existing = await (db as any)
+        .select()
         .from(schema.vocabularyReviews)
         .where(
           (db as any).and(
@@ -221,7 +246,8 @@ export class VocabularyIntelligenceService {
       if (existing.length === 0) return false;
 
       const newValue = !existing[0].isFavorite;
-      await (db as any).update(schema.vocabularyReviews)
+      await (db as any)
+        .update(schema.vocabularyReviews)
         .set({ isFavorite: newValue, updatedAt: new Date().toISOString() })
         .where((db as any).eq(schema.vocabularyReviews.id, existing[0].id));
 

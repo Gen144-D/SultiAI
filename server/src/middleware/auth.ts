@@ -36,7 +36,11 @@ function extractCredentials(req: Request) {
  * Auth middleware that verifies Supabase-issued JWTs using @supabase/server/core,
  * then falls back to legacy JWT verification.
  */
-export async function authMiddleware(req: Request, res: Response, next: NextFunction): Promise<void> {
+export async function authMiddleware(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
   const credentials = extractCredentials(req);
 
   if (!credentials.token) {
@@ -74,7 +78,11 @@ export async function authMiddleware(req: Request, res: Response, next: NextFunc
             const db = getDb();
             const schema = require('../db/schema-sqlite');
             const { eq } = require('drizzle-orm');
-            const [existing] = (db as any).select().from(schema.users).where(eq(schema.users.email, email)).limit(1);
+            const [existing] = (db as any)
+              .select()
+              .from(schema.users)
+              .where(eq(schema.users.email, email))
+              .limit(1);
             if (existing) {
               session.userId = existing.user_id;
               if (supabaseId) userIdCache.set(supabaseId, existing.user_id);
@@ -107,7 +115,11 @@ export async function authMiddleware(req: Request, res: Response, next: NextFunc
           const db = getDb();
           const schema = require('../db/schema-sqlite');
           const { eq } = require('drizzle-orm');
-          const [existing] = (db as any).select().from(schema.users).where(eq(schema.users.email, email)).limit(1);
+          const [existing] = (db as any)
+            .select()
+            .from(schema.users)
+            .where(eq(schema.users.email, email))
+            .limit(1);
           if (existing) {
             legacySession.userId = existing.user_id;
             if (supabaseId) userIdCache.set(supabaseId, existing.user_id);

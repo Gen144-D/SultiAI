@@ -1,9 +1,9 @@
-import type { SeriesPoint } from "@/types";
+import type { SeriesPoint } from '@/types';
 
 export function BarChart({
   data,
   height = 160,
-  color = "#1e6f9f",
+  color = '#1e6f9f',
 }: {
   data: SeriesPoint[];
   height?: number;
@@ -14,7 +14,11 @@ export function BarChart({
     <div>
       <div className="flex items-end gap-2" style={{ height }}>
         {data.map((d) => (
-          <div key={d.label} className="flex flex-1 flex-col items-center justify-end gap-2" style={{ height: "100%" }}>
+          <div
+            key={d.label}
+            className="flex flex-1 flex-col items-center justify-end gap-2"
+            style={{ height: '100%' }}
+          >
             <div
               className="w-full rounded-t-md transition-all"
               style={{
@@ -38,7 +42,15 @@ export function BarChart({
   );
 }
 
-export function LineChart({ data, height = 160, color = "#1e6f9f" }: { data: SeriesPoint[]; height?: number; color?: string }) {
+export function LineChart({
+  data,
+  height = 160,
+  color = '#1e6f9f',
+}: {
+  data: SeriesPoint[];
+  height?: number;
+  color?: string;
+}) {
   const max = Math.max(...data.map((d) => d.value), 1);
   const min = Math.min(...data.map((d) => d.value), 0);
   const range = max - min || 1;
@@ -50,22 +62,44 @@ export function LineChart({ data, height = 160, color = "#1e6f9f" }: { data: Ser
     const y = h - 8 - ((d.value - min) / range) * (h - 24);
     return { x, y, ...d };
   });
-  const path = points.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
+  const path = points
+    .map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`)
+    .join(' ');
   const area = `${path} L${(data.length - 1) * step},${h} L0,${h} Z`;
 
   return (
     <div>
-      <svg viewBox={`0 0 ${w} ${h}`} className="w-full" preserveAspectRatio="none" style={{ height }}>
+      <svg
+        viewBox={`0 0 ${w} ${h}`}
+        className="w-full"
+        preserveAspectRatio="none"
+        style={{ height }}
+      >
         <defs>
-          <linearGradient id={`grad-${color.replace("#", "")}`} x1="0" y1="0" x2="0" y2="1">
+          <linearGradient id={`grad-${color.replace('#', '')}`} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor={color} stopOpacity="0.25" />
             <stop offset="100%" stopColor={color} stopOpacity="0" />
           </linearGradient>
         </defs>
-        <path d={area} fill={`url(#grad-${color.replace("#", "")})`} />
-        <path d={path} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+        <path d={area} fill={`url(#grad-${color.replace('#', '')})`} />
+        <path
+          d={path}
+          fill="none"
+          stroke={color}
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
         {points.map((p) => (
-          <circle key={p.label} cx={p.x} cy={p.y} r="3.5" fill="#fff" stroke={color} strokeWidth="2" />
+          <circle
+            key={p.label}
+            cx={p.x}
+            cy={p.y}
+            r="3.5"
+            fill="#fff"
+            stroke={color}
+            strokeWidth="2"
+          />
         ))}
       </svg>
       <div className="mt-1 flex">
@@ -89,25 +123,31 @@ export function DonutChart({
   thickness?: number;
 }) {
   const total = data.reduce((s, d) => s + d.value, 0) || 1;
-  const colors = ["#1e6f9f", "#10b981", "#ffb347", "#7c3aed", "#ef4444", "#38bdf8", "#ec4899"];
+  const colors = ['#1e6f9f', '#10b981', '#ffb347', '#7c3aed', '#ef4444', '#38bdf8', '#ec4899'];
   const radius = (size - thickness) / 2;
   const circumference = 2 * Math.PI * radius;
 
-  const segments = data.reduce<{ label: string; value: number; color: string; length: number; offset: number }[]>(
-    (acc, d, i) => {
-      const length = (d.value / total) * circumference;
-      const offset = acc.reduce((s, seg) => s + seg.length, 0);
-      acc.push({ label: d.label, value: d.value, color: colors[i % colors.length], length, offset });
-      return acc;
-    },
-    [],
-  );
+  const segments = data.reduce<
+    { label: string; value: number; color: string; length: number; offset: number }[]
+  >((acc, d, i) => {
+    const length = (d.value / total) * circumference;
+    const offset = acc.reduce((s, seg) => s + seg.length, 0);
+    acc.push({ label: d.label, value: d.value, color: colors[i % colors.length], length, offset });
+    return acc;
+  }, []);
 
   return (
     <div className="flex flex-col items-center gap-5 sm:flex-row">
       <div className="relative" style={{ width: size, height: size }}>
         <svg width={size} height={size}>
-          <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="#f1f5f9" strokeWidth={thickness} />
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            fill="none"
+            stroke="#f1f5f9"
+            strokeWidth={thickness}
+          />
           {segments.map((seg) => (
             <circle
               key={seg.label}
@@ -135,7 +175,9 @@ export function DonutChart({
               <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: seg.color }} />
               {seg.label}
             </span>
-            <span className="font-semibold tabular-nums text-ink">{seg.value.toLocaleString()}</span>
+            <span className="font-semibold tabular-nums text-ink">
+              {seg.value.toLocaleString()}
+            </span>
           </li>
         ))}
       </ul>

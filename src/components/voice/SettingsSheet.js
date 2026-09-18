@@ -28,7 +28,7 @@ function Row({ icon, title, subtitle, value, onValueChange, accessibilityLabel }
 
 export default function SettingsSheet({
   visible, onClose, haptics, continuous, slowMode, onHaptics, onContinuous, onSlow,
-  selectedCharacter, onCharacterChange,
+  selectedCharacter, onCharacterChange, useMetaVoice, onMetaVoiceChange,
 }) {
   const insets = useSafeAreaInsets();
   const CHARACTERS = [
@@ -72,6 +72,13 @@ export default function SettingsSheet({
           subtitle="Repeat after me at a slower pace"
           value={slowMode}
           onValueChange={onSlow}
+        />
+        <Row
+          icon="rocket-outline"
+          title="Meta Voice AI"
+          subtitle="Use SeamlessM4T v2 for better translation"
+          value={useMetaVoice}
+          onValueChange={onMetaVoiceChange}
         />
 
         <Text style={[styles.sectionLabel, { color: voice.textSecondary }]}>Voice Character</Text>

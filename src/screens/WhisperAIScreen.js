@@ -8,7 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { useAudioRecorder, useAudioRecorderState, RecordingPresets, requestRecordingPermissionsAsync, setAudioModeAsync } from 'expo-audio';
-import { File } from 'expo-file-system';
+import { readAsStringAsync } from 'expo-file-system/legacy';
 import Animated, {
   useSharedValue, useAnimatedStyle, withSpring, withTiming,
   withDelay, withRepeat, withSequence, Easing,
@@ -204,8 +204,7 @@ export default function WhisperAIScreen({ navigation }) {
         setLoading(false);
         return;
       }
-      const audioFile = new File(uri);
-      const audioBase64 = await audioFile.base64();
+      const audioBase64 = await readAsStringAsync(uri, { encoding: 'base64' });
       if (!audioBase64 || audioBase64.length < 100) {
         setLoading(false);
         return;

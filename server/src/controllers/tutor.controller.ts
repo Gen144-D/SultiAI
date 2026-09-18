@@ -91,11 +91,15 @@ export async function chat(req: Request, res: Response): Promise<void> {
     sessionMessages.push({ role: 'assistant', content: result.reply });
 
     const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
-    if (sessionId) {
-      await updateSession(Number(sessionId), sessionMessages, now);
-    } else {
-      const id = await createSession(req.user!.email, sessionMessages, now);
-      sessionId = String(id);
+    try {
+      if (sessionId) {
+        await updateSession(Number(sessionId), sessionMessages, now);
+      } else {
+        const id = await createSession(req.user!.email, sessionMessages, now);
+        sessionId = String(id);
+      }
+    } catch (err) {
+      logger.warn('Session persistence failed (chat still succeeded)', { error: (err as Error).message });
     }
 
     try {
@@ -123,8 +127,8 @@ export async function chat(req: Request, res: Response): Promise<void> {
       'Chat response generated'
     );
   } catch (err) {
-    logger.error('Tutor chat error', { error: (err as Error).message });
-    errors.aiError(res, 'Tutor chat failed');
+    logger.error('Tutor chat error', { error: (err as Error).message, stack: (err as Error).stack });
+    errors.aiError(res, `Tutor chat failed: ${(err as Error).message}`);
   }
 }
 

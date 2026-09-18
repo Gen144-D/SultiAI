@@ -77,3 +77,11 @@ supabase/.temp/
 .next/
 admin/.next/
 web/.next/
+.aider*
+
+# Voice server
+voice-server/venv/
+voice-server/__pycache__/
+
+# Windows NUL device
+nul

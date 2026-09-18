@@ -4,7 +4,14 @@ import fs from 'fs';
 import path from 'path';
 import { authMiddleware } from '../middleware/auth';
 import { isConfigured, groqChat, groqTranscribeAudio, groqJson } from '../utils/groq';
-import { isPythonServiceAvailable, scoreWithPython } from '../utils/pythonService';
+import { 
+  isPythonServiceAvailable, 
+  scoreWithPython,
+  isRobertaAvailable,
+  robertaFillMask,
+  generateVocabularyExercise,
+  completeSentence
+} from '../utils/pythonService';
 import ttsService, { CHARACTER_VOICES } from '../services/ttsService';
 
 const router = Router();
@@ -20,18 +27,21 @@ function sanitizeSsml(input: string): string {
 }
 
 router.post('/synthesize', authMiddleware, async (req: Request, res: Response) => {
+  const startMs = Date.now();
   try {
-    const { text, voice, rate, pitch } = req.body || {};
+    const { text, voice, rate, pitch, language } = req.body || {};
     const clean = sanitizeSsml(text);
     if (!clean) {
       res.status(400).json({ error: 'Text is required' });
       return;
     }
 
-    const result = await ttsService.synthesize(clean, voice, rate, pitch);
+    console.log(`[TTS] synthesize request: voice=${voice} rate=${rate} text="${clean.substring(0, 50)}..."`);
+    const result = await ttsService.synthesize(clean, voice, rate, pitch, language);
+    console.log(`[TTS] synthesize done in ${Date.now() - startMs}ms provider=${result.provider} cached=${result.cached}`);
     res.json(result);
   } catch (err) {
-    console.error('TTS synthesis error:', err);
+    console.error(`[TTS] synthesize error in ${Date.now() - startMs}ms:`, (err as Error).message);
     res.status(500).json({ error: 'Speech synthesis failed' });
   }
 });
@@ -282,8 +292,6 @@ router.post('/recommend', authMiddleware, async (req: Request, res: Response) =>
   }
 });
 
-export default router;
-
 router.get('/voices', authMiddleware, async (_req: Request, res: Response) => {
   const voices = Object.entries(CHARACTER_VOICES).map(([key, v]) => ({
     id: key,
@@ -296,3 +304,133 @@ router.get('/voices', authMiddleware, async (_req: Request, res: Response) => {
   }));
   res.json({ voices });
 });
+
+// ==================== RoBERTa Tagalog Base Endpoints ====================
+
+router.get('/roberta/status', authMiddleware, async (_req: Request, res: Response) => {
+  try {
+    const robertaAvailable = await isRobertaAvailable();
+    res.json({
+      available: robertaAvailable,
+      model: 'jcblaise/roberta-tagalog-base',
+      description: 'RoBERTa Tagalog Base for fill-mask predictions and vocabulary exercises'
+    });
+  } catch (err) {
+    console.error('RoBERTa status check error:', err);
+    res.status(500).json({ error: 'Failed to check RoBERTa status' });
+  }
+});
+
+router.post('/roberta/fill-mask', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { text, top_k = 5 } = req.body || {};
+    
+    if (!text) {
+      res.status(400).json({ error: 'Text is required' });
+      return;
+    }
+
+    if (!text.includes('<mask>')) {
+      res.status(400).json({ 
+        error: 'Text must contain <mask> token for prediction',
+        example: 'Mahal ko ang aking <mask>.'
+      });
+      return;
+    }
+
+    const robertaAvailable = await isRobertaAvailable();
+    if (!robertaAvailable) {
+      res.status(503).json({ 
+        error: 'RoBERTa Tagalog model not available',
+        suggestion: 'Ensure Python AI service is running with RoBERTa loaded'
+      });
+      return;
+    }
+
+    const result = await robertaFillMask(text, top_k);
+    if (!result) {
+      res.status(500).json({ error: 'Fill-mask prediction failed' });
+      return;
+    }
+
+    res.json(result);
+  } catch (err) {
+    console.error('RoBERTa fill-mask error:', err);
+    res.status(500).json({ error: 'Fill-mask prediction failed' });
+  }
+});
+
+router.post('/roberta/vocabulary-exercise', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { difficulty = 'beginner', topic } = req.body || {};
+    
+    const validDifficulties = ['beginner', 'intermediate', 'advanced'];
+    if (!validDifficulties.includes(difficulty)) {
+      res.status(400).json({ 
+        error: 'Invalid difficulty. Must be: beginner, intermediate, or advanced' 
+      });
+      return;
+    }
+
+    const robertaAvailable = await isRobertaAvailable();
+    if (!robertaAvailable) {
+      res.status(503).json({ 
+        error: 'RoBERTa Tagalog model not available',
+        suggestion: 'Ensure Python AI service is running with RoBERTa loaded'
+      });
+      return;
+    }
+
+    const result = await generateVocabularyExercise(difficulty as any, topic);
+    if (!result) {
+      res.status(500).json({ error: 'Vocabulary exercise generation failed' });
+      return;
+    }
+
+    res.json(result);
+  } catch (err) {
+    console.error('Vocabulary exercise error:', err);
+    res.status(500).json({ error: 'Vocabulary exercise generation failed' });
+  }
+});
+
+router.post('/roberta/sentence-completion', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { text, context } = req.body || {};
+    
+    if (!text) {
+      res.status(400).json({ error: 'Text is required' });
+      return;
+    }
+
+    if (!text.includes('<mask>')) {
+      res.status(400).json({ 
+        error: 'Text must contain <mask> token for prediction',
+        example: 'Ang pangalan ko ay <mask>.'
+      });
+      return;
+    }
+
+    const robertaAvailable = await isRobertaAvailable();
+    if (!robertaAvailable) {
+      res.status(503).json({ 
+        error: 'RoBERTa Tagalog model not available',
+        suggestion: 'Ensure Python AI service is running with RoBERTa loaded'
+      });
+      return;
+    }
+
+    const result = await completeSentence(text, context);
+    if (!result) {
+      res.status(500).json({ error: 'Sentence completion failed' });
+      return;
+    }
+
+    res.json(result);
+  } catch (err) {
+    console.error('Sentence completion error:', err);
+    res.status(500).json({ error: 'Sentence completion failed' });
+  }
+});
+
+export default router;

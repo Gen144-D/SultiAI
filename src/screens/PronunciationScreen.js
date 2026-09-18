@@ -1,18 +1,19 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator,
   ScrollView, TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Audio } from 'expo-audio';
-import { File } from 'expo-file-system';
-import * as Speech from 'expo-speech';
+import { readAsStringAsync } from 'expo-file-system/legacy';
+import { speakTTSPromise } from '../utils/tts';
 import Animated, {
   useSharedValue, useAnimatedProps, useAnimatedStyle, withSpring, withTiming,
   withSequence, withDelay, withRepeat, FadeIn, FadeInRight, FadeInUp,
 } from 'react-native-reanimated';
 import Svg, { Circle } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api } from '../services/api';
 import { useTheme } from '../context/ThemeContext';
 import { DIALECTS } from '../data/pronunciationPhrases';
@@ -72,6 +73,7 @@ function shuffle(arr) {
 }
 
 function ScoreRing({ score, size = 100 }) {
+  const { colors } = useTheme();
   const stroke = 6;
   const radius = (size - stroke) / 2;
   const circumference = 2 * Math.PI * radius;
@@ -86,25 +88,26 @@ function ScoreRing({ score, size = 100 }) {
     strokeDasharray: `${circumference * progress.value} ${circumference}`,
   }));
 
-  const color = score >= 85 ? '#34D399' : score >= 60 ? '#FBBF24' : '#F87171';
+  const color = score >= 85 ? colors.success : score >= 60 ? colors.warning : colors.error;
 
   return (
     <View style={[styles.ringWrap, { width: size, height: size }]}>
       <Svg width={size} height={size}>
-        <Circle cx={size / 2} cy={size / 2} r={radius} stroke="rgba(255,255,255,0.14)" strokeWidth={stroke} fill="none" />
+        <Circle cx={size / 2} cy={size / 2} r={radius} stroke={colors.primary + '33'} strokeWidth={stroke} fill="none" />
         <AnimatedCircle
           cx={size / 2} cy={size / 2} r={radius}
           stroke={color} strokeWidth={stroke} fill="none" strokeLinecap="round"
           animatedProps={animatedProps}
         />
       </Svg>
-      <Text style={styles.scoreText}>{score}</Text>
-      <Text style={styles.scoreCaption}>avg</Text>
+      <Text style={[styles.scoreText, { color: colors.text }]}>{score}</Text>
+      <Text style={[styles.scoreCaption, { color: colors.textSecondary }]}>avg</Text>
     </View>
   );
 }
 
 function DialectCard({ dialect, onSelect, index }) {
+  const { colors } = useTheme();
   const scale = useSharedValue(0.9);
   const opacity = useSharedValue(0);
 
@@ -122,43 +125,49 @@ function DialectCard({ dialect, onSelect, index }) {
   return (
     <Animated.View style={animatedStyle}>
       <TouchableOpacity
-        style={styles.dialectCard}
+        style={[styles.dialectCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
         onPress={() => { hapticTap(); onSelect(dialect); }}
         activeOpacity={0.7}
       >
-        <View style={styles.dialectIcon}>
-          <Ionicons name={dialect.icon} size={24} color="#7CF7E8" />
+        <View style={[styles.dialectIcon, { backgroundColor: colors.primary + '1F' }]}>
+          <Ionicons name={dialect.icon} size={24} color={colors.accent} />
         </View>
         <View style={styles.dialectInfo}>
-          <Text style={styles.dialectName}>{dialect.name}</Text>
-          <Text style={styles.dialectDesc}>{dialect.tagline}</Text>
+          <Text style={[styles.dialectName, { color: colors.text }]}>{dialect.name}</Text>
+          <Text style={[styles.dialectDesc, { color: colors.textSecondary }]}>{dialect.tagline}</Text>
         </View>
-        <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.5)" />
+        <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
       </TouchableOpacity>
     </Animated.View>
   );
 }
 
 function PhraseCard({ phrase, onListen, isListening }) {
+  const { colors } = useTheme();
   return (
-    <Animated.View entering={FadeInRight.duration(400)} style={styles.phraseCard}>
-      <Text style={styles.phraseLabel}>Say this phrase:</Text>
-      <Text style={styles.phraseBisaya}>{phrase.bisaya}</Text>
-      <Text style={styles.phraseEnglish}>{phrase.english}</Text>
+    <Animated.View entering={FadeInRight.duration(400)} style={[styles.phraseCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+      <Text style={[styles.phraseLabel, { color: colors.textSecondary }]}>Say this phrase:</Text>
+      <Text style={[styles.phraseBisaya, { color: colors.text }]}>{phrase.bisaya}</Text>
+      <Text style={[styles.phraseEnglish, { color: colors.textSecondary }]}>{phrase.english}</Text>
       <View style={styles.pronunciationRow}>
         <TouchableOpacity
-          style={[styles.listenBtn, isListening && styles.listenBtnActive]}
+          style={[
+            styles.listenBtn,
+            { backgroundColor: colors.primary + '26', borderColor: colors.primary + '4D' },
+            isListening && { backgroundColor: colors.primary + '4D' },
+          ]}
           onPress={onListen}
         >
-          <Ionicons name={isListening ? 'volume-high' : 'volume-medium'} size={20} color="#2DD4BF" />
+          <Ionicons name={isListening ? 'volume-high' : 'volume-medium'} size={20} color={colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.phrasePron}>{phrase.pronunciation}</Text>
+        <Text style={[styles.phrasePron, { color: colors.textSecondary }]}>{phrase.pronunciation}</Text>
       </View>
     </Animated.View>
   );
 }
 
 function MicButton({ isRecording, onPress }) {
+  const { colors } = useTheme();
   const pulse = useSharedValue(1);
   const glowOpacity = useSharedValue(0);
 
@@ -184,10 +193,18 @@ function MicButton({ isRecording, onPress }) {
 
   return (
     <View style={styles.micContainer}>
-      <Animated.View style={[styles.micGlow, glowStyle]} />
-      <Animated.View style={[styles.micBtn, isRecording && styles.micBtnRecording, btnStyle]}>
+      <Animated.View style={[styles.micGlow, glowStyle, { backgroundColor: colors.primary + '4D' }]} />
+      <Animated.View
+        style={[
+          styles.micBtn,
+          btnStyle,
+          isRecording
+            ? { backgroundColor: colors.error, boxShadow: `0 4px 16px ${colors.error}66` }
+            : { backgroundColor: colors.primary, boxShadow: `0 4px 16px ${colors.primary}66` },
+        ]}
+      >
         <TouchableOpacity style={styles.micTouch} onPress={onPress} activeOpacity={0.8}>
-          <Ionicons name={isRecording ? 'stop' : 'mic'} size={40} color="#FFFFFF" />
+          <Ionicons name={isRecording ? 'stop' : 'mic'} size={40} color={colors.textOnGradient} />
         </TouchableOpacity>
       </Animated.View>
     </View>
@@ -195,6 +212,7 @@ function MicButton({ isRecording, onPress }) {
 }
 
 function FeedbackScreen({ result, phrase, onNext, onDone }) {
+  const { colors } = useTheme();
   const isCorrect = result.score >= 85;
   const flashOpacity = useSharedValue(0.3);
 
@@ -215,37 +233,37 @@ function FeedbackScreen({ result, phrase, onNext, onDone }) {
       <Animated.View style={[styles.feedbackFlash, flashStyle]} />
       <View style={styles.feedbackHeader}>
         <ScoreRing score={result.score} size={100} />
-        <Text style={[styles.feedbackTitle, { color: isCorrect ? '#34D399' : '#F87171' }]}>
+        <Text style={[styles.feedbackTitle, { color: isCorrect ? colors.success : colors.error }]}>
           {isCorrect ? 'Perfect!' : 'Almost!'}
         </Text>
-        <Text style={styles.feedbackSubtitle}>
+        <Text style={[styles.feedbackSubtitle, { color: colors.textSecondary }]}>
           {isCorrect ? 'Excellent pronunciation' : `Try saying \u2018${phrase.bisaya}\u2019 again`}
         </Text>
       </View>
 
       {result.transcription && (
-        <View style={styles.feedbackCard}>
-          <Text style={styles.feedbackLabel}>You said</Text>
-          <Text style={styles.feedbackValue}>{result.transcription}</Text>
+        <View style={[styles.feedbackCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Text style={[styles.feedbackLabel, { color: colors.textSecondary }]}>You said</Text>
+          <Text style={[styles.feedbackValue, { color: colors.text }]}>{result.transcription}</Text>
         </View>
       )}
 
       {result.feedback && (
-        <View style={styles.feedbackCard}>
-          <Text style={styles.feedbackLabel}>Feedback</Text>
-          <Text style={styles.feedbackText}>{result.feedback}</Text>
+        <View style={[styles.feedbackCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Text style={[styles.feedbackLabel, { color: colors.textSecondary }]}>Feedback</Text>
+          <Text style={[styles.feedbackText, { color: colors.text }]}>{result.feedback}</Text>
         </View>
       )}
 
       {result.phoneme_breakdown && result.phoneme_breakdown.length > 0 && (
         <View style={styles.phonemeSection}>
-          <Text style={styles.phonemeLabel}>Breakdown</Text>
+          <Text style={[styles.phonemeLabel, { color: colors.textSecondary }]}>Breakdown</Text>
           <View style={styles.phonemeList}>
             {result.phoneme_breakdown.slice(0, 6).map((p, i) => (
-              <View key={i} style={styles.phonemeChip}>
-                <Text style={styles.phonemeExpected}>{p.expected}</Text>
-                <Ionicons name={p.correct ? 'checkmark-circle' : 'close-circle'} size={14} color={p.correct ? '#34D399' : '#F87171'} />
-                <Text style={styles.phonemeHeard}>{p.heard}</Text>
+              <View key={i} style={[styles.phonemeChip, { backgroundColor: colors.surfaceSecondary }]}>
+                <Text style={[styles.phonemeExpected, { color: colors.text }]}>{p.expected}</Text>
+                <Ionicons name={p.correct ? 'checkmark-circle' : 'close-circle'} size={14} color={p.correct ? colors.success : colors.error} />
+                <Text style={[styles.phonemeHeard, { color: colors.textLight }]}>{p.heard}</Text>
               </View>
             ))}
           </View>
@@ -262,9 +280,9 @@ function FeedbackScreen({ result, phrase, onNext, onDone }) {
               { label: 'Volume', value: `${Math.round(result.metrics.energy_consistency * 100)}%` },
               { label: 'Pace', value: `${result.metrics.speaking_rate?.toFixed(1)} syl/s` },
             ].map((m, i) => (
-              <View key={i} style={{ backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 }}>
-                <Text style={{ color: '#94A3B8', fontSize: 11 }}>{m.label}</Text>
-                <Text style={{ color: '#F1F5F9', fontSize: 14, fontWeight: '600' }}>{m.value}</Text>
+              <View key={i} style={{ backgroundColor: colors.surfaceSecondary, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 }}>
+                <Text style={{ color: colors.textLight, fontSize: 11 }}>{m.label}</Text>
+                <Text style={{ color: colors.text, fontSize: 14, fontWeight: '600' }}>{m.value}</Text>
               </View>
             ))}
           </View>
@@ -272,13 +290,13 @@ function FeedbackScreen({ result, phrase, onNext, onDone }) {
       )}
 
       <View style={styles.feedbackActions}>
-        <TouchableOpacity style={styles.doneBtn} onPress={onDone} activeOpacity={0.8}>
-          <Ionicons name="grid-outline" size={18} color="#2DD4BF" />
-          <Text style={styles.doneBtnText}>Dashboard</Text>
+        <TouchableOpacity style={[styles.doneBtn, { backgroundColor: colors.primary + '1F', borderColor: colors.primary + '59' }]} onPress={onDone} activeOpacity={0.8}>
+          <Ionicons name="grid-outline" size={18} color={colors.primary} />
+          <Text style={[styles.doneBtnText, { color: colors.primary }]}>Dashboard</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.nextBtn} onPress={onNext} activeOpacity={0.8}>
-          <Text style={styles.nextBtnText}>Next Phrase</Text>
-          <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
+        <TouchableOpacity style={[styles.nextBtn, { backgroundColor: colors.primary, boxShadow: `0 4px 12px ${colors.primary}66` }]} onPress={onNext} activeOpacity={0.8}>
+          <Text style={[styles.nextBtnText, { color: colors.textOnGradient }]}>Next Phrase</Text>
+          <Ionicons name="arrow-forward" size={18} color={colors.textOnGradient} />
         </TouchableOpacity>
       </View>
     </Animated.View>
@@ -286,38 +304,40 @@ function FeedbackScreen({ result, phrase, onNext, onDone }) {
 }
 
 function LibraryRow({ phrase, onPlay, onPractice }) {
+  const { colors } = useTheme();
   const [playing, setPlaying] = useState(false);
   const play = async () => {
     if (playing) return;
     setPlaying(true);
     onPlay();
     try {
-      await Speech.speak(phrase.bisaya, { language: 'ceb', rate: 0.8, pitch: 1.0 });
+      await speakTTSPromise(phrase.bisaya, { language: 'ceb', rate: 0.8 });
     } catch (_) {}
     setPlaying(false);
   };
 
   return (
-    <Animated.View entering={FadeInUp.duration(350)} style={styles.libraryRow}>
+    <Animated.View entering={FadeInUp.duration(350)} style={[styles.libraryRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
       <TouchableOpacity style={styles.libraryRowMain} onPress={onPractice} activeOpacity={0.7}>
         <View>
-          <Text style={styles.libraryBisaya}>{phrase.bisaya}</Text>
-          <Text style={styles.libraryEnglish}>{phrase.english}</Text>
-          <Text style={styles.libraryPron}>{phrase.pronunciation}</Text>
+          <Text style={[styles.libraryBisaya, { color: colors.text }]}>{phrase.bisaya}</Text>
+          <Text style={[styles.libraryEnglish, { color: colors.textSecondary }]}>{phrase.english}</Text>
+          <Text style={[styles.libraryPron, { color: colors.textLight }]}>{phrase.pronunciation}</Text>
         </View>
       </TouchableOpacity>
-      <TouchableOpacity style={styles.libraryPlay} onPress={play} activeOpacity={0.8} accessibilityLabel={`Listen to ${phrase.bisaya}`}>
-        <Ionicons name={playing ? 'volume-high' : 'volume-medium'} size={20} color="#2DD4BF" />
+      <TouchableOpacity style={[styles.libraryPlay, { backgroundColor: colors.primary + '1F', borderColor: colors.primary + '4D' }]} onPress={play} activeOpacity={0.8} accessibilityLabel={`Listen to ${phrase.bisaya}`}>
+        <Ionicons name={playing ? 'volume-high' : 'volume-medium'} size={20} color={colors.primary} />
       </TouchableOpacity>
-      <TouchableOpacity style={styles.libraryPractice} onPress={onPractice} activeOpacity={0.8} accessibilityLabel={`Practice ${phrase.bisaya}`}>
-        <Ionicons name="mic" size={20} color="#fff" />
+      <TouchableOpacity style={[styles.libraryPractice, { backgroundColor: colors.primary }]} onPress={onPractice} activeOpacity={0.8} accessibilityLabel={`Practice ${phrase.bisaya}`}>
+        <Ionicons name="mic" size={20} color={colors.textOnGradient} />
       </TouchableOpacity>
     </Animated.View>
   );
 }
 
 export default function PronunciationScreen({ navigation }) {
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const [step, setStep] = useState('home');
   const [selectedDialect, setSelectedDialect] = useState(DIALECTS[0]);
   const [currentPhrase, setCurrentPhrase] = useState(null);
@@ -371,7 +391,7 @@ export default function PronunciationScreen({ navigation }) {
     hapticTap();
     setIsListening(true);
     try {
-      await Speech.speak(currentPhrase.bisaya, { language: selectedDialect?.language || 'ceb', rate: 0.8, pitch: 1.0 });
+      await speakTTSPromise(currentPhrase.bisaya, { language: selectedDialect?.language || 'ceb', rate: 0.8 });
     } catch (_) {
       /* TTS unavailable */
     } finally {
@@ -402,8 +422,7 @@ export default function PronunciationScreen({ navigation }) {
       await recording.stopAndUnloadAsync();
       const uri = recording.getURI();
       setRecording(null);
-      const audioFile = new File(uri);
-      const audioBase64 = await audioFile.base64();
+      const audioBase64 = await readAsStringAsync(uri, { encoding: 'base64' });
 
       // Send audio + expected text for acoustic analysis
       const expectedText = currentPhrase?.text || currentPhrase?.phrase || '';
@@ -467,7 +486,7 @@ export default function PronunciationScreen({ navigation }) {
   }, []);
 
   const avgScore = stats.sessions ? Math.round(stats.totalScore / stats.sessions) : 0;
-  const filtered = useMemoLike(() => {
+  const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return PHRASES.filter((p) => {
       const inCat = category === 'All' || p.category === category;
@@ -477,21 +496,21 @@ export default function PronunciationScreen({ navigation }) {
   }, [query, category]);
 
   const renderHeader = () => (
-    <View style={[styles.header, { backgroundColor: isDark ? '#0D1E30' : colors.primary }]}>
+    <View style={[styles.header, { backgroundColor: colors.surface, paddingTop: insets.top + 16 }]}>
       <TouchableOpacity onPress={step === 'home' ? () => navigation?.goBack() : goHome} style={styles.backBtn} accessibilityRole="button" accessibilityLabel="Go back">
-        <Ionicons name={step === 'home' ? 'arrow-back' : 'chevron-down'} size={24} color="#FFFFFF" />
+        <Ionicons name={step === 'home' ? 'arrow-back' : 'chevron-down'} size={24} color={colors.text} />
       </TouchableOpacity>
       <View style={styles.headerCenter}>
-        <Text style={styles.headerTitle}>Pronunciation Lab</Text>
-        <Text style={styles.headerSubtitle}>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Pronunciation Lab</Text>
+        <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
           {step === 'home' ? 'Master the sounds of Bisaya' : 'Record yourself speaking'}
         </Text>
       </View>
       <View style={styles.backBtn}>
         {stats.sessions > 0 && (
-          <View style={styles.headerStat}>
-            <Ionicons name="flame" size={14} color="#FFD76A" />
-            <Text style={styles.headerStatText}>{stats.practiced}</Text>
+          <View style={[styles.headerStat, { backgroundColor: colors.surfaceSecondary }]}>
+            <Ionicons name="flame" size={14} color={colors.warning} />
+            <Text style={[styles.headerStatText, { color: colors.text }]}>{stats.practiced}</Text>
           </View>
         )}
       </View>
@@ -500,75 +519,75 @@ export default function PronunciationScreen({ navigation }) {
 
   const renderHome = () => (
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.homeContent}>
-      <Animated.View entering={FadeInUp.duration(400)} style={styles.heroCard}>
+      <Animated.View entering={FadeInUp.duration(400)} style={[styles.heroCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <View style={styles.heroRing}>
           <ScoreRing score={avgScore} size={120} />
         </View>
         <View style={styles.heroInfo}>
-          <Text style={styles.heroTitle}>
+          <Text style={[styles.heroTitle, { color: colors.text }]}>
             {avgScore >= 85 ? 'Outstanding' : avgScore >= 60 ? 'Keep pushing' : 'Getting started'}
           </Text>
-          <Text style={styles.heroSubtitle}>Your average pronunciation score across {stats.sessions} session{stats.sessions === 1 ? '' : 's'}.</Text>
+          <Text style={[styles.heroSubtitle, { color: colors.textSecondary }]}>Your average pronunciation score across {stats.sessions} session{stats.sessions === 1 ? '' : 's'}.</Text>
           <View style={styles.heroStats}>
             <View style={styles.heroStatItem}>
-              <Ionicons name="trophy" size={16} color="#FFD76A" />
-              <Text style={styles.heroStatValue}>{stats.bestScore}</Text>
-              <Text style={styles.heroStatLabel}>Best</Text>
+              <Ionicons name="trophy" size={16} color={colors.warning} />
+              <Text style={[styles.heroStatValue, { color: colors.text }]}>{stats.bestScore}</Text>
+              <Text style={[styles.heroStatLabel, { color: colors.textLight }]}>Best</Text>
             </View>
-            <View style={styles.heroStatDivider} />
+            <View style={[styles.heroStatDivider, { backgroundColor: colors.border }]} />
             <View style={styles.heroStatItem}>
-              <Ionicons name="mic" size={16} color="#7CF7E8" />
-              <Text style={styles.heroStatValue}>{stats.practiced}</Text>
-              <Text style={styles.heroStatLabel}>Practiced</Text>
+              <Ionicons name="mic" size={16} color={colors.accent} />
+              <Text style={[styles.heroStatValue, { color: colors.text }]}>{stats.practiced}</Text>
+              <Text style={[styles.heroStatLabel, { color: colors.textLight }]}>Practiced</Text>
             </View>
-            <View style={styles.heroStatDivider} />
+            <View style={[styles.heroStatDivider, { backgroundColor: colors.border }]} />
             <View style={styles.heroStatItem}>
-              <Ionicons name="time" size={16} color="#A5B4FC" />
-              <Text style={styles.heroStatValue}>{stats.sessions}</Text>
-              <Text style={styles.heroStatLabel}>Sessions</Text>
+              <Ionicons name="time" size={16} color={colors.secondary} />
+              <Text style={[styles.heroStatValue, { color: colors.text }]}>{stats.sessions}</Text>
+              <Text style={[styles.heroStatLabel, { color: colors.textLight }]}>Sessions</Text>
             </View>
           </View>
         </View>
       </Animated.View>
 
-      <TouchableOpacity style={styles.startBtn} onPress={startSession} activeOpacity={0.85}>
+      <TouchableOpacity style={[styles.startBtn, { backgroundColor: colors.primary, boxShadow: `0 6px 18px ${colors.primary}59`, elevation: 6 }]} onPress={startSession} activeOpacity={0.85}>
         <View style={styles.startBtnIcon}>
-          <Ionicons name="mic" size={22} color="#fff" />
+          <Ionicons name="mic" size={22} color={colors.textOnGradient} />
         </View>
         <View style={styles.startBtnTextWrap}>
           <Text style={styles.startBtnTitle}>Start Practicing</Text>
           <Text style={styles.startBtnSubtitle}>Pick a dialect and speak aloud for instant feedback</Text>
         </View>
-        <Ionicons name="arrow-forward" size={22} color="#fff" />
+        <Ionicons name="arrow-forward" size={22} color={colors.textOnGradient} />
       </TouchableOpacity>
 
       <View style={styles.dialectStrip}>
         {DIALECTS.map((d) => (
-          <TouchableOpacity key={d.id} style={styles.dialectChip} onPress={() => selectDialect(d)} activeOpacity={0.8}>
-            <Ionicons name={d.icon} size={16} color="#2DD4BF" />
-            <Text style={styles.dialectChipText}>{d.name}</Text>
+          <TouchableOpacity key={d.id} style={[styles.dialectChip, { backgroundColor: colors.primary + '1F', borderColor: colors.primary + '4D' }]} onPress={() => selectDialect(d)} activeOpacity={0.8} hitSlop={{ top: 6, bottom: 6 }}>
+            <Ionicons name={d.icon} size={16} color={colors.primary} />
+            <Text style={[styles.dialectChipText, { color: colors.primary }]}>{d.name}</Text>
           </TouchableOpacity>
         ))}
       </View>
 
       <View style={styles.libraryHeader}>
-        <Text style={styles.libraryTitle}>Phrase Library</Text>
-        <Text style={styles.libraryCount}>{filtered.length} phrases</Text>
+        <Text style={[styles.libraryTitle, { color: colors.text }]}>Phrase Library</Text>
+        <Text style={[styles.libraryCount, { color: colors.textLight }]}>{filtered.length} phrases</Text>
       </View>
 
-      <View style={[styles.searchBox, { backgroundColor: isDark ? 'rgba(13,30,48,0.7)' : '#FFFFFF', borderColor: isDark ? 'rgba(124,247,232,0.14)' : '#E2E8F0' }]}>
-        <Ionicons name="search" size={18} color={isDark ? 'rgba(255,255,255,0.5)' : '#94A3B8'} />
+      <View style={[styles.searchBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <Ionicons name="search" size={18} color={colors.textLight} />
         <TextInput
-          style={[styles.searchInput, { color: isDark ? '#fff' : '#1E293B' }]}
+          style={[styles.searchInput, { color: colors.text }]}
           placeholder="Search phrases..."
-          placeholderTextColor={isDark ? 'rgba(255,255,255,0.4)' : '#94A3B8'}
+          placeholderTextColor={colors.textLight}
           value={query}
           onChangeText={setQuery}
           autoCorrect={false}
         />
         {query.length > 0 && (
-          <TouchableOpacity onPress={() => setQuery('')} style={styles.clearBtn} accessibilityLabel="Clear search">
-            <Ionicons name="close-circle" size={18} color={isDark ? 'rgba(255,255,255,0.5)' : '#94A3B8'} />
+          <TouchableOpacity onPress={() => setQuery('')} style={styles.clearBtn} accessibilityLabel="Clear search" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+            <Ionicons name="close-circle" size={18} color={colors.textLight} />
           </TouchableOpacity>
         )}
       </View>
@@ -579,11 +598,17 @@ export default function PronunciationScreen({ navigation }) {
           return (
             <TouchableOpacity
               key={c}
-              style={[styles.categoryChip, active && { backgroundColor: '#2DD4BF' }]}
+              style={[
+                styles.categoryChip,
+                active
+                  ? { backgroundColor: colors.primary, borderColor: colors.primary }
+                  : { backgroundColor: colors.surface, borderColor: colors.border },
+              ]}
               onPress={() => setCategory(c)}
               activeOpacity={0.8}
+              hitSlop={{ top: 6, bottom: 6 }}
             >
-              <Text style={[styles.categoryChipText, { color: active ? '#04111f' : 'rgba(255,255,255,0.6)' }]}>{c}</Text>
+              <Text style={[styles.categoryChipText, { color: active ? '#04111f' : colors.textSecondary }]}>{c}</Text>
             </TouchableOpacity>
           );
         })}
@@ -591,8 +616,8 @@ export default function PronunciationScreen({ navigation }) {
 
       {filtered.length === 0 ? (
         <View style={styles.emptyLibrary}>
-          <Ionicons name="search-outline" size={40} color="rgba(255,255,255,0.3)" />
-          <Text style={styles.emptyLibraryText}>No phrases match your search.</Text>
+          <Ionicons name="search-outline" size={40} color={colors.textLight} />
+          <Text style={[styles.emptyLibraryText, { color: colors.textLight }]}>No phrases match your search.</Text>
         </View>
       ) : (
         filtered.map((p) => (
@@ -606,8 +631,8 @@ export default function PronunciationScreen({ navigation }) {
   const renderDialect = () => (
     <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false}>
       <View style={styles.dialectContainer}>
-        <Text style={styles.dialectTitle}>Choose your dialect</Text>
-        <Text style={styles.dialectSubtitle}>Select a Bisaya dialect to practice</Text>
+        <Text style={[styles.dialectTitle, { color: colors.text }]}>Choose your dialect</Text>
+        <Text style={[styles.dialectSubtitle, { color: colors.textSecondary }]}>Select a Bisaya dialect to practice</Text>
         {DIALECTS.map((d, i) => (
           <DialectCard key={d.id} dialect={d} onSelect={selectDialect} index={i} />
         ))}
@@ -618,10 +643,10 @@ export default function PronunciationScreen({ navigation }) {
   const renderPractice = () => (
     <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false}>
       <View style={styles.practiceContainer}>
-        <TouchableOpacity style={styles.dialectBadge} onPress={() => setStep('dialect')}>
-          <Ionicons name={selectedDialect?.icon} size={16} color="#2DD4BF" />
-          <Text style={styles.dialectBadgeText}>{selectedDialect?.name}</Text>
-          <Ionicons name="chevron-down" size={14} color="rgba(255,255,255,0.6)" />
+        <TouchableOpacity style={[styles.dialectBadge, { backgroundColor: colors.primary + '26', borderColor: colors.primary + '4D' }]} onPress={() => setStep('dialect')} hitSlop={{ top: 6, bottom: 6 }}>
+          <Ionicons name={selectedDialect?.icon} size={16} color={colors.primary} />
+          <Text style={[styles.dialectBadgeText, { color: colors.primary }]}>{selectedDialect?.name}</Text>
+          <Ionicons name="chevron-down" size={14} color={colors.textSecondary} />
         </TouchableOpacity>
 
         {currentPhrase && (
@@ -629,12 +654,12 @@ export default function PronunciationScreen({ navigation }) {
         )}
 
         <MicButton isRecording={step === 'recording'} onPress={toggleRecording} />
-        <Text style={styles.statusText}>{step === 'recording' ? 'Tap to stop' : 'Tap to record'}</Text>
+        <Text style={[styles.statusText, { color: colors.textSecondary }]}>{step === 'recording' ? 'Tap to stop' : 'Tap to record'}</Text>
 
         <View style={styles.progressRow}>
-          <Text style={styles.progressText}>{phraseIndex + 1} / {shuffledPhrases.length}</Text>
-          <TouchableOpacity onPress={goHome} style={styles.exitPractice}>
-            <Text style={styles.exitPracticeText}>Exit practice</Text>
+          <Text style={[styles.progressText, { color: colors.textLight }]}>{phraseIndex + 1} / {shuffledPhrases.length}</Text>
+          <TouchableOpacity onPress={goHome} style={styles.exitPractice} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <Text style={[styles.exitPracticeText, { color: colors.primary }]}>Exit practice</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -651,8 +676,8 @@ export default function PronunciationScreen({ navigation }) {
         return (
           <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
             <View style={styles.analyzingContainer}>
-              <ActivityIndicator size="large" color="#2DD4BF" />
-              <Text style={styles.analyzingText}>Analyzing pronunciation...</Text>
+              <ActivityIndicator size="large" color={colors.primary} />
+              <Text style={[styles.analyzingText, { color: colors.textSecondary }]}>Analyzing pronunciation...</Text>
             </View>
           </ScrollView>
         );
@@ -667,26 +692,17 @@ export default function PronunciationScreen({ navigation }) {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: isDark ? '#07101F' : '#F4F7FB' }]}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       {renderHeader()}
       {renderStep()}
     </View>
   );
 }
 
-function useMemoLike(fn, deps) {
-  const ref = React.useRef({});
-  const key = deps.join('|');
-  if (ref.current.key !== key) {
-    ref.current = { key, value: fn() };
-  }
-  return ref.current.value;
-}
-
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', paddingTop: 60, paddingBottom: 16, paddingHorizontal: 16 },
-  backBtn: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
+  header: { flexDirection: 'row', alignItems: 'center', paddingBottom: 16, paddingHorizontal: 16 },
+  backBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
   headerCenter: { flex: 1, alignItems: 'center' },
   headerTitle: { fontSize: 18, fontWeight: '700', color: '#FFFFFF' },
   headerSubtitle: { fontSize: 12, color: 'rgba(255,255,255,0.7)', marginTop: 2 },
@@ -754,11 +770,10 @@ const styles = StyleSheet.create({
   libraryEnglish: { fontSize: 13, color: 'rgba(255,255,255,0.7)', marginTop: 2 },
   libraryPron: { fontSize: 12, color: 'rgba(255,255,255,0.45)', fontStyle: 'italic', marginTop: 2 },
   libraryPlay: {
-    width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center',
-    backgroundColor: 'rgba(45,212,191,0.12)', borderWidth: 1, borderColor: 'rgba(45,212,191,0.3)',
+    width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center',
   },
   libraryPractice: {
-    width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: '#2DD4BF',
+    width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center',
   },
 
   emptyLibrary: { alignItems: 'center', paddingVertical: 40 },

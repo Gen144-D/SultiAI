@@ -1,6 +1,25 @@
 import { supabase } from '../lib/supabase';
 
-export const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001';
+function getBaseUrl() {
+  const envUrl = process.env.EXPO_PUBLIC_API_URL;
+  // If env var is set to a non-localhost URL (e.g. a tunnel or production URL), use it directly
+  if (envUrl && !envUrl.includes('localhost') && !envUrl.includes('127.0.0.1')) {
+    return envUrl;
+  }
+  // In web browser, use same-origin when behind a dev tunnel.
+  // The Metro proxy middleware (metro.config.js) forwards /api/* to the backend on port 3001.
+  if (typeof window !== 'undefined' && window.location) {
+    const { hostname, protocol } = window.location;
+    if (hostname.includes('asse.devtunnels.ms')) {
+      // Use the same origin — the proxy server handles routing to the backend
+      return `${protocol}//${window.location.host}`;
+    }
+  }
+  // Default: localhost for local development
+  return envUrl || 'http://localhost:3001';
+}
+
+export const BASE_URL = getBaseUrl();
 const SUPABASE_PUBLISHABLE_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
 
 async function getToken() {
@@ -14,7 +33,7 @@ async function getToken() {
   return null;
 }
 
-async function request(method, path, body = null) {
+async function request(method, path, body = null, timeoutMs = 15000) {
   const token = await getToken();
   const headers = { 'Content-Type': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
@@ -25,7 +44,7 @@ async function request(method, path, body = null) {
   if (body) opts.body = JSON.stringify(body);
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 15000);
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   opts.signal = controller.signal;
 
   let res;
@@ -37,14 +56,22 @@ async function request(method, path, body = null) {
       throw new Error('Request timed out. Please check your connection and try again.');
     }
     if (err instanceof TypeError) {
-      throw new Error('No internet connection. Please check your network and try again.');
+      throw new Error(`Cannot reach server (${BASE_URL}). Please check your connection and try again.`);
     }
     throw new Error(err.message || 'Network request failed');
   }
   clearTimeout(timeoutId);
 
-  const data = await res.json();
-  if (!res.ok) throw new Error((data && data.error && (data.error.message || data.error)) || 'Request failed');
+  let data;
+  try {
+    data = await res.json();
+  } catch {
+    throw new Error(`Request failed (${res.status})`);
+  }
+  if (!res.ok) {
+    const msg = (data && ((data.error && (data.error.message || data.error)) || data.detail || data.message)) || `Request failed (${res.status})`;
+    throw new Error(msg);
+  }
   return data && typeof data === 'object' && 'data' in data ? data.data : data;
 }
 
@@ -85,8 +112,8 @@ export const api = {
     request('POST', '/api/speech/translate', { text, from, to }),
   transcribe: (audio, language) =>
     request('POST', '/api/speech/transcribe', { audio, language }),
-  ttsSynthesize: (text, voice, rate, pitch) =>
-    request('POST', '/api/speech/synthesize', { text, voice, rate, pitch }),
+  ttsSynthesize: (text, voice, rate, pitch, language) =>
+    request('POST', '/api/speech/synthesize', { text, voice, rate, pitch, language }),
   getVoices: () => request('GET', '/api/speech/voices'),
   analyzeNLP: (text) => request('POST', '/api/speech/nlp/analyze', { text }),
   detectLanguage: (text) => request('POST', '/api/speech/detect', { text }),
@@ -217,6 +244,26 @@ export const api = {
   // Voice Agent (xAI realtime speech-to-speech)
   agentStatus: () => request('GET', '/api/agent/status'),
   agentToken: () => request('POST', '/api/agent/token'),
+
+  // Voice Pipeline (OpenRouter TTS + Groq STT/LLM)
+  voiceChat: (message, audio, sessionId, useMetaVoice = false) =>
+    request('POST', '/api/voice/chat', { message, audio, session_id: sessionId, use_meta_voice: useMetaVoice }, 45000),
+  voiceStatus: () => request('GET', '/api/voice/status'),
+  
+  // Meta Voice (SeamlessM4T v2 + Spirit LM)
+  voiceSpeechToSpeech: (audio, sourceLang = 'auto', targetLang = 'en') =>
+    request('POST', '/api/voice/speech-to-speech', { audio, source_lang: sourceLang, target_lang: targetLang }, 60000),
+  voiceTranscribeTranslate: (audio, sourceLang = 'auto', targetLang = 'en') =>
+    request('POST', '/api/voice/transcribe-translate', { audio, source_lang: sourceLang, target_lang: targetLang }, 60000),
+
+  // RoBERTa Tagalog Base (NLP for Filipino language learning)
+  robertaStatus: () => request('GET', '/api/speech/roberta/status'),
+  robertaFillMask: (text, topK = 5) =>
+    request('POST', '/api/speech/roberta/fill-mask', { text, top_k: topK }),
+  robertaVocabularyExercise: (difficulty = 'beginner', topic) =>
+    request('POST', '/api/speech/roberta/vocabulary-exercise', { difficulty, topic }),
+  robertaSentenceCompletion: (text, context) =>
+    request('POST', '/api/speech/roberta/sentence-completion', { text, context }),
 
   // Voice Agent (xAI realtime speech-to-speech)
   // Generic methods for offline sync

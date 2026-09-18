@@ -103,8 +103,8 @@ export const SM2_DEFAULTS = {
 export const DAILY_GOAL_DEFAULT = 50;
 
 export const RATE_LIMITS = {
-  GLOBAL: { windowMs: 15 * 60 * 1000, max: 100 },
-  AUTH: { windowMs: 15 * 60 * 1000, max: 5 },
+  GLOBAL: { windowMs: 15 * 60 * 1000, max: 500 },
+  AUTH: { windowMs: 15 * 60 * 1000, max: 30 },
   AI: { windowMs: 60 * 1000, max: 30 },
   SPEECH: { windowMs: 60 * 1000, max: 20 },
   COMMUNITY: { windowMs: 60 * 1000, max: 30 },

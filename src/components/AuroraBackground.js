@@ -1,17 +1,17 @@
 import React, { useEffect, useMemo } from 'react';
 import { View, StyleSheet, useWindowDimensions, Platform } from 'react-native';
 import Animated, {
-  useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing,
+  useSharedValue, useAnimatedStyle, withRepeat, withTiming, withSequence, Easing,
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { useTheme } from '../context/ThemeContext';
 
 const BLOBS = [
-  { size: 0.65, top: -0.15, left: -0.1, colorKey: 'aurora1', dur: 7000, rangeX: 0.18, rangeY: 0.08, delay: 0, opacity: 0.5 },
-  { size: 0.45, top: 0.12, right: -0.08, colorKey: 'aurora2', dur: 9000, rangeX: 0.12, rangeY: 0.06, delay: 1.2, opacity: 0.45 },
-  { size: 0.4, bottom: 0.18, left: 0.12, colorKey: 'aurora3', dur: 11000, rangeX: 0.14, rangeY: 0.07, delay: 2.5, opacity: 0.4 },
-  { size: 0.3, bottom: 0.08, right: 0.08, colorKey: 'aurora4', dur: 8000, rangeX: 0.1, rangeY: 0.05, delay: 0.8, opacity: 0.35 },
+  { size: 0.7, top: -0.2, left: -0.15, colorKey: 'aurora1', dur: 9000, rangeX: 0.16, rangeY: 0.1, delay: 0, opacity: 0.5, tone: 'teal' },
+  { size: 0.5, top: 0.05, right: -0.1, colorKey: 'aurora2', dur: 11000, rangeX: 0.12, rangeY: 0.08, delay: 1.4, opacity: 0.42, tone: 'blue' },
+  { size: 0.42, bottom: 0.12, left: 0.08, colorKey: 'aurora3', dur: 13000, rangeX: 0.14, rangeY: 0.09, delay: 2.8, opacity: 0.4, tone: 'teal' },
+  { size: 0.3, bottom: -0.05, right: 0.05, colorKey: 'aurora4', dur: 10000, rangeX: 0.1, rangeY: 0.06, delay: 0.9, opacity: 0.36, tone: 'mint' },
 ];
 
 const PARTICLE_COUNT = 15;
@@ -53,7 +53,7 @@ function Particle({ particle, width, height }) {
 }
 
 export default function AuroraBackground({ children, style }) {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
 
   const particles = useMemo(() => {
@@ -71,6 +71,7 @@ export default function AuroraBackground({ children, style }) {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }, style]}>
+      <BreathingGlow width={SCREEN_WIDTH} height={SCREEN_HEIGHT} isDark={isDark} />
       {BLOBS.map((cfg, i) => (
         <AuroraBlob key={i} cfg={cfg} colors={colors} screenWidth={SCREEN_WIDTH} screenHeight={SCREEN_HEIGHT} />
       ))}
@@ -78,11 +79,19 @@ export default function AuroraBackground({ children, style }) {
         <Particle key={i} particle={p} width={SCREEN_WIDTH} height={SCREEN_HEIGHT} />
       ))}
       {Platform.OS !== 'web' && (
-        <BlurView intensity={80} style={[StyleSheet.absoluteFill, { pointerEvents: 'none' }]} tint="default" />
+        <BlurView intensity={80} style={[StyleSheet.absoluteFill, { pointerEvents: 'none' }]} tint={isDark ? 'dark' : 'light'} />
       )}
       <LinearGradient
-        colors={['transparent', colors.background]}
-        style={[styles.fadeBottom, { height: 120, pointerEvents: 'none' }]}
+        colors={isDark
+          ? ['transparent', 'rgba(4,11,22,0.92)']
+          : ['transparent', colors.background]}
+        style={[styles.fadeBottom, { height: SCREEN_HEIGHT * 0.3, pointerEvents: 'none' }]}
+      />
+      <LinearGradient
+        colors={isDark
+          ? ['rgba(4,11,22,0.88)', 'transparent']
+          : [colors.background, 'transparent']}
+        style={[styles.fadeTop, { height: SCREEN_HEIGHT * 0.16, pointerEvents: 'none' }]}
       />
       <View style={styles.content}>
         {children}
@@ -93,7 +102,6 @@ export default function AuroraBackground({ children, style }) {
 
 function AuroraBlob({ cfg, colors, screenWidth, screenHeight }) {
   const progress = useSharedValue(0);
-  const color = colors[cfg.colorKey] || 'rgba(20,184,166,0.08)';
 
   useEffect(() => {
     progress.value = withRepeat(
@@ -119,8 +127,7 @@ function AuroraBlob({ cfg, colors, screenWidth, screenHeight }) {
       width: cfg.size * screenWidth,
       height: cfg.size * screenWidth,
       borderRadius: (cfg.size * screenWidth) / 2,
-      backgroundColor: color,
-      opacity: cfg.opacity || 0.6,
+      opacity: cfg.opacity * (0.75 + 0.25 * Math.sin(phase * 0.5)),
       ...posStyle,
       transform: [
         { translateX: x },
@@ -130,14 +137,66 @@ function AuroraBlob({ cfg, colors, screenWidth, screenHeight }) {
     };
   });
 
-  return <Animated.View style={[styles.blob, style]} />;
+  const gradient = cfg.tone === 'teal'
+    ? ['rgba(0,212,189,0.16)', 'rgba(0,212,189,0.03)', 'transparent']
+    : cfg.tone === 'blue'
+      ? ['rgba(52,211,153,0.1)', 'rgba(0,212,189,0.03)', 'transparent']
+      : ['rgba(94,234,212,0.12)', 'rgba(0,212,189,0.03)', 'transparent'];
+
+  return (
+    <Animated.View style={[styles.blob, style]}>
+      <LinearGradient
+        colors={gradient}
+        locations={[0, 0.6, 1]}
+        start={{ x: 0.2, y: 0.1 }}
+        end={{ x: 0.9, y: 0.9 }}
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+      />
+    </Animated.View>
+  );
+}
+
+function BreathingGlow({ width, height, isDark }) {
+  const breath = useSharedValue(1);
+
+  useEffect(() => {
+    breath.value = withRepeat(
+      withSequence(
+        withTiming(1.06, { duration: 4200, easing: Easing.inOut(Easing.sin) }),
+        withTiming(1, { duration: 4200, easing: Easing.inOut(Easing.sin) }),
+      ),
+      -1, false
+    );
+  }, []);
+
+  const style = useAnimatedStyle(() => ({
+    opacity: 0.5 + (breath.value - 1) * 3,
+    transform: [{ scale: breath.value }],
+  }));
+
+  const colorsSlice = isDark
+    ? ['rgba(0,212,189,0.14)', 'rgba(94,234,212,0.04)', 'transparent']
+    : ['rgba(0,168,150,0.16)', 'rgba(0,143,127,0.05)', 'transparent'];
+
+  return (
+    <Animated.View pointerEvents="none" style={[styles.breathGlow, style, { width: width * 0.9, height: height * 0.9, borderRadius: height * 0.45 }]}>
+      <LinearGradient
+        colors={colorsSlice}
+        locations={[0, 0.55, 1]}
+        style={StyleSheet.absoluteFill}
+      />
+    </Animated.View>
+  );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, position: 'relative', overflow: 'visible' },
   blob: { position: 'absolute' },
+  breathGlow: { position: 'absolute', top: '5%', left: '5%' },
   fadeBottom: {
     position: 'absolute', bottom: 0, left: 0, right: 0,
   },
+  fadeTop: { position: 'absolute', top: 0, left: 0, right: 0 },
   content: { flex: 1, zIndex: 2, minHeight: 0 },
 });

@@ -4,16 +4,23 @@ import { BlurView } from 'expo-blur';
 import { useTheme } from '../context/ThemeContext';
 import { spacing, borderRadius, shadows } from '../theme';
 
+const padMap = { sm: spacing.sm, md: spacing.lg, lg: spacing.xl, xl: spacing.xxl, xxl: spacing.xxxl, huge: spacing.huge };
+
 export default function GlassCard({
   children, style, variant = 'default', intensity = 30,
-  gradientBorder = false, glowColor, padding = 'lg', floating = false,
+  glowColor, padding = 'lg', floating = false,
 }) {
   const { colors, isDark } = useTheme();
-  const padMap = { sm: spacing.sm, md: spacing.lg, lg: spacing.xl, xl: spacing.xxl, huge: spacing.huge };
+  const pad = padMap[padding] || spacing.xl;
 
   const baseStyle = [
     styles.base,
-    { padding: padMap[padding] || spacing.xl, borderColor: colors.border, ...shadows.card },
+    {
+      padding: pad,
+      borderColor: colors.border,
+      ...shadows.card,
+      ...(padding === 'xl' ? shadows.soft : {}),
+    },
     style,
   ];
 
@@ -21,8 +28,8 @@ export default function GlassCard({
     return (
       <View style={[
         styles.webGlass,
-        { backgroundColor: colors.glassBg, borderColor: colors.glassBorder },
         baseStyle,
+        { backgroundColor: colors.glassBg, borderColor: colors.glassBorder, padding: pad },
         variant === 'elevated' && styles.elevated,
         variant === 'tinted' && { backgroundColor: colors.primary + '10', borderColor: colors.borderHover },
         floating && styles.floatShadow,
@@ -43,6 +50,7 @@ export default function GlassCard({
         baseStyle,
         variant === 'elevated' && styles.elevated,
         variant === 'tinted' && { backgroundColor: colors.primary + '10' },
+        variant === 'glow' && { borderColor: glowColor || colors.primary + '40', ...shadows.premium },
         floating && styles.floatShadow,
       ]}>
       {children}
@@ -52,31 +60,31 @@ export default function GlassCard({
 
 const styles = StyleSheet.create({
   base: {
-    borderRadius: borderRadius.xl,
+    borderRadius: borderRadius.xxl,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-    ...shadows.lg,
+    borderColor: 'rgba(255,255,255,0.15)',
+    overflow: 'hidden',
   },
   inner: {
     overflow: 'hidden',
-    borderRadius: borderRadius.xl,
+    borderRadius: borderRadius.xxl,
   },
   webGlass: {
-    borderRadius: borderRadius.xl,
+    borderRadius: borderRadius.xxl,
     borderWidth: 1,
-    backdropFilter: 'blur(20px)',
-    WebkitBackdropFilter: 'blur(20px)',
+    backdropFilter: 'blur(24px)',
+    WebkitBackdropFilter: 'blur(24px)',
   },
   elevated: {
-    ...shadows.xl,
+    ...shadows.xxl,
   },
   floatShadow: {
-    boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
-    elevation: 10,
+    boxShadow: '0 12px 36px rgba(0,0,0,0.15)',
+    elevation: 14,
   },
   shine: {
     position: 'absolute', top: 0, left: 0, right: 0, height: '50%',
-    borderTopLeftRadius: borderRadius.xl, borderTopRightRadius: borderRadius.xl,
-    opacity: 0.3,
+    borderTopLeftRadius: borderRadius.xxl, borderTopRightRadius: borderRadius.xxl,
+    opacity: 0.25,
   },
 });

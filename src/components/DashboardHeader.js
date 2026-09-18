@@ -1,13 +1,14 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Animated, Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../context/ThemeContext';
 import { useUser } from '../context/UserContext';
 import { useGame } from '../context/GameContext';
-import Avatar from './Avatar';
+import UserAvatar from './profile/UserAvatar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { spacing, borderRadius, typography } from '../theme';
+import { spacing, typography } from '../theme';
 import { dashboardGradients } from '../theme/dashboardGradients';
 
 /**
@@ -24,9 +25,16 @@ export default function DashboardHeader({ onNotificationPress, unreadCount = 0 }
   const { user } = useUser();
   const { xp, hearts, streak, dailyGoal, dailyXp, getLevelInfo } = useGame();
   const insets = useSafeAreaInsets();
+  const [userAvatarId, setUserAvatarId] = useState('avatar-01');
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(-10)).current;
+
+  useEffect(() => {
+    AsyncStorage.getItem('user_avatar_id').then((id) => {
+      if (id) setUserAvatarId(id);
+    }).catch(() => []);
+  }, []);
 
   useEffect(() => {
     Animated.parallel([
@@ -68,7 +76,7 @@ export default function DashboardHeader({ onNotificationPress, unreadCount = 0 }
           {/* Top row: avatar + greeting + notifications */}
           <View style={styles.topRow}>
             <View style={styles.leftSection}>
-              <Avatar name={user?.name} uri={user?.avatar?.image} size={44} />
+              <UserAvatar avatarId={userAvatarId} name={user?.name} uri={user?.avatar?.image} size={44} />
               <View style={styles.greetingBox}>
                 <Text style={styles.greeting}>Kumusta, {firstName}!</Text>
                 <Text style={styles.subGreeting}>Padayon sa pagkat-on</Text>

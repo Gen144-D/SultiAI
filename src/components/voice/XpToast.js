@@ -10,7 +10,7 @@ export default function XpToast({ visible, amount = 15, streak = 0, offset = 60 
   return (
     <Animated.View entering={FadeInUp.duration(320).springify().damping(16)} exiting={FadeOutUp.duration(320)} style={[styles.wrap, { top: offset }]}>
       <LinearGradient
-        colors={['#20D6C7', '#5EEAD4']}
+        colors={[voice.primary, voice.secondary]}
         start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
         style={styles.pill}
         accessibilityRole="text"
@@ -32,7 +32,7 @@ const styles = StyleSheet.create({
   pill: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     paddingHorizontal: 16, paddingVertical: 8, borderRadius: 999,
-    boxShadow: '0 4px 12px rgba(32,214,199,0.5)',
+    boxShadow: '0 4px 12px rgba(0,212,189,0.5)',
     elevation: 8,
   },
   xp: { color: '#04111f', fontSize: 14, fontWeight: '800' },

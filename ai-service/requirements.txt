@@ -1,9 +1,9 @@
 fastapi>=0.104.0
 uvicorn[standard]>=0.24.0
-librosa>=0.10.1
-praat-parselmouth>=0.4.3
-numpy>=1.24.0
-scipy>=1.11.0
-soundfile>=0.12.1
-pydub>=0.25.1
+faster-whisper>=1.0.3
+transformers==4.46.0
+torch>=2.3.0
+numpy<2.0
+scipy>=1.11.0,<1.12
+edge-tts>=6.1.0
 python-multipart>=0.0.6

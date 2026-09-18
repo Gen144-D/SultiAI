@@ -19,7 +19,11 @@ export class AiPipeline {
 
       if (input.audio) {
         const transcriptionStart = Date.now();
-        text = await groqTranscribeAudio(input.audio);
+        let filename = 'recording.webm';
+        let mimeType = 'audio/webm';
+        if (input.audio.startsWith('Ukl')) { filename = 'recording.wav'; mimeType = 'audio/wav'; }
+        else if (input.audio.startsWith('SUk')) { filename = 'recording.wav'; mimeType = 'audio/wav'; }
+        text = await groqTranscribeAudio(input.audio, filename, mimeType);
         transcription = text;
         logger.ai('whisper', 'transcribe', Date.now() - transcriptionStart, true);
       }

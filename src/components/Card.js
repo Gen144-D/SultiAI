@@ -1,13 +1,14 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, Pressable, StyleSheet } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { borderRadius, spacing, shadows } from '../theme';
 
+const padMap = { sm: spacing.sm, md: spacing.md, lg: spacing.lg, xl: spacing.xl, xxl: spacing.xxl };
+
 export default function Card({
-  children, style, variant = 'default', padding = 'md', onPress, glass = false,
+  children, style, variant = 'default', padding = 'md', onPress, glass = false, accessibilityLabel,
 }) {
   const { colors } = useTheme();
-  const padMap = { sm: spacing.sm, md: spacing.lg, lg: spacing.xl, xl: spacing.xxl };
 
   const cardStyles = [
     styles.card,
@@ -20,15 +21,28 @@ export default function Card({
       borderColor: colors.glassBorder,
       ...shadows.lg,
     },
+    variant !== 'outlined' && variant !== 'glass' && { borderWidth: 1, borderColor: colors.border },
     { padding: padMap[padding] || spacing.lg },
     style,
   ];
 
-  return (
-    <View style={cardStyles}>
-      {children}
-    </View>
-  );
+  if (onPress) {
+    return (
+      <Pressable
+        style={({ pressed }) => [
+          ...cardStyles,
+          pressed && { transform: [{ scale: 0.985 }], opacity: 0.92, ...shadows.lg },
+        ]}
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel={accessibilityLabel}
+      >
+        {children}
+      </Pressable>
+    );
+  }
+
+  return <View style={cardStyles}>{children}</View>;
 }
 
 const styles = StyleSheet.create({

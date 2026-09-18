@@ -8,6 +8,7 @@ import Animated, {
   FadeInRight, runOnJS, interpolate,
 } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
 import { useGame } from '../context/GameContext';
 import { useOfflineSync } from '../hooks/useOfflineSync';
@@ -21,7 +22,7 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.35;
 
 function Flashcard({ phrase, onKnown, onReview }) {
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const rotateY = useSharedValue(0);
   const translateX = useSharedValue(0);
   const cardScale = useSharedValue(1);
@@ -92,26 +93,26 @@ function Flashcard({ phrase, onKnown, onReview }) {
     <GestureDetector gesture={composed}>
       <View style={styles.flashcardContainer}>
         <Animated.View style={[styles.overlay, knownStyle]}>
-          <Ionicons name="checkmark-circle" size={60} color="#34D399" />
-          <Text style={styles.overlayText}>Known</Text>
+          <Ionicons name="checkmark-circle" size={60} color={colors.success} />
+          <Text style={[styles.overlayText, { color: colors.text }]}>Known</Text>
         </Animated.View>
 
         <Animated.View style={[styles.overlay, reviewStyle]}>
-          <Ionicons name="refresh-circle" size={60} color="#F87171" />
-          <Text style={styles.overlayText}>Review</Text>
+          <Ionicons name="refresh-circle" size={60} color={colors.error} />
+          <Text style={[styles.overlayText, { color: colors.text }]}>Review</Text>
         </Animated.View>
 
-        <Animated.View style={[styles.flashcard, styles.flashcardFront, frontStyle, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF' }]}>
-          <Text style={[styles.flashcardBisaya, { color: isDark ? '#F1F5F9' : colors.text }]}>{key}</Text>
+        <Animated.View style={[styles.flashcard, styles.flashcardFront, frontStyle, { backgroundColor: colors.surface }]}>
+          <Text style={[styles.flashcardBisaya, { color: colors.text }]}>{key}</Text>
           {phrase.category && <Text style={[styles.flashcardCategory, { color: colors.primary }]}>{phrase.category}</Text>}
-          <Text style={[styles.flashcardHint, { color: isDark ? '#64748B' : colors.textLight }]}>Tap to reveal</Text>
+          <Text style={[styles.flashcardHint, { color: colors.textLight }]}>Tap to reveal</Text>
         </Animated.View>
 
-        <Animated.View style={[styles.flashcard, styles.flashcardBack, backStyle, { backgroundColor: isDark ? '#134E4A' : '#E8F4F8' }]}>
+        <Animated.View style={[styles.flashcard, styles.flashcardBack, backStyle, { backgroundColor: colors.primaryLight }]}>
           <Ionicons name="checkmark-circle" size={32} color={colors.primary} />
-          <Text style={[styles.flashcardTranslation, { color: isDark ? '#F1F5F9' : colors.text }]}>{phrase.translation || phrase.meaning || phrase.english}</Text>
-          {phrase.pronunciation && <Text style={[styles.flashcardPron, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>{phrase.pronunciation}</Text>}
-          <Text style={[styles.flashcardHint, { color: isDark ? '#64748B' : colors.textLight }]}>Tap to flip back</Text>
+          <Text style={[styles.flashcardTranslation, { color: colors.text }]}>{phrase.translation || phrase.meaning || phrase.english}</Text>
+          {phrase.pronunciation && <Text style={[styles.flashcardPron, { color: colors.textSecondary }]}>{phrase.pronunciation}</Text>}
+          <Text style={[styles.flashcardHint, { color: colors.textLight }]}>Tap to flip back</Text>
         </Animated.View>
       </View>
     </GestureDetector>
@@ -119,27 +120,28 @@ function Flashcard({ phrase, onKnown, onReview }) {
 }
 
 function SessionStats({ known, remaining, total }) {
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const progress = total > 0 ? ((known) / total) * 100 : 0;
 
   return (
     <View style={styles.statsContainer}>
-      <View style={[styles.progressBar, { backgroundColor: isDark ? '#1E293B' : colors.border }]}>
+      <View style={[styles.progressBar, { backgroundColor: colors.border }]}>
         <View style={[styles.progressFill, { width: `${progress}%`, backgroundColor: colors.primary }]} />
       </View>
       <View style={styles.statsRow}>
         <View style={styles.statItem}>
           <Ionicons name="checkmark-circle" size={16} color={colors.success} />
-          <Text style={[styles.statText, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>{known} known</Text>
+          <Text style={[styles.statText, { color: colors.textSecondary }]}>{known} known</Text>
         </View>
-        <Text style={[styles.statText, { color: isDark ? '#64748B' : colors.textLight }]}>{remaining} remaining</Text>
+        <Text style={[styles.statText, { color: colors.textLight }]}>{remaining} remaining</Text>
       </View>
     </View>
   );
 }
 
 export default function VocabularyReviewScreen({ navigation }) {
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const { addXp } = useGame();
   const { enqueueAction } = useOfflineSync();
   const [phrases, setPhrases] = useState([]);
@@ -214,7 +216,7 @@ export default function VocabularyReviewScreen({ navigation }) {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { backgroundColor: colors.primary }]}>
+      <View style={[styles.header, { backgroundColor: colors.primary, paddingTop: insets.top + 16 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
         </TouchableOpacity>
@@ -236,22 +238,22 @@ export default function VocabularyReviewScreen({ navigation }) {
         <>
           <View style={styles.searchContainer}>
             <View style={[styles.searchRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <Ionicons name="search" size={20} color={isDark ? '#64748B' : colors.textLight} />
+              <Ionicons name="search" size={20} color={colors.textLight} />
               <TextInput
                 id="vocabularySearch"
                 name="vocabularySearch"
                 testID="vocabulary-search-input"
-                style={[styles.searchInput, { color: isDark ? '#F1F5F9' : colors.text }]}
+                style={[styles.searchInput, { color: colors.text }]}
                 placeholder="Search vocabulary..."
-                placeholderTextColor={isDark ? '#64748B' : colors.textLight}
+                placeholderTextColor={colors.textLight}
                 value={search}
                 onChangeText={setSearch}
                 autoComplete="off"
                 autoCorrect={false}
               />
               {search ? (
-                <TouchableOpacity onPress={() => setSearch('')}>
-                  <Ionicons name="close-circle" size={20} color={isDark ? '#64748B' : colors.textLight} />
+                <TouchableOpacity onPress={() => setSearch('')} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+                  <Ionicons name="close-circle" size={20} color={colors.textLight} />
                 </TouchableOpacity>
               ) : null}
             </View>
@@ -259,12 +261,31 @@ export default function VocabularyReviewScreen({ navigation }) {
 
           {categories.length > 0 && (
             <View style={styles.filterRow}>
-              <TouchableOpacity style={[styles.filterChip, filter === 'all' && styles.filterChipActive]} onPress={() => setFilter('all')}>
-                <Text style={[styles.filterText, filter === 'all' && styles.filterTextActive]}>All</Text>
+              <TouchableOpacity
+                style={[
+                  styles.filterChip,
+                  filter === 'all'
+                    ? { backgroundColor: colors.primary, borderColor: colors.primary }
+                    : { backgroundColor: colors.surfaceSecondary, borderColor: colors.border },
+                ]}
+                onPress={() => setFilter('all')}
+                hitSlop={{ top: 4, bottom: 4 }}
+              >
+                <Text style={[styles.filterText, { color: filter === 'all' ? colors.textOnGradient : colors.textSecondary }]}>All</Text>
               </TouchableOpacity>
               {categories.map(cat => (
-                <TouchableOpacity key={cat} style={[styles.filterChip, filter === cat && styles.filterChipActive]} onPress={() => setFilter(cat)}>
-                  <Text style={[styles.filterText, filter === cat && styles.filterTextActive]}>{cat}</Text>
+                <TouchableOpacity
+                  key={cat}
+                  style={[
+                    styles.filterChip,
+                    filter === cat
+                      ? { backgroundColor: colors.primary, borderColor: colors.primary }
+                      : { backgroundColor: colors.surfaceSecondary, borderColor: colors.border },
+                  ]}
+                  onPress={() => setFilter(cat)}
+                  hitSlop={{ top: 4, bottom: 4 }}
+                >
+                  <Text style={[styles.filterText, { color: filter === cat ? colors.textOnGradient : colors.textSecondary }]}>{cat}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -282,15 +303,15 @@ export default function VocabularyReviewScreen({ navigation }) {
                 <Animated.View entering={FadeInRight.delay(index * 50).duration(300)}>
                   <View style={[styles.listCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
                     <View style={styles.listCardHeader}>
-                      <Text style={[styles.listCardPhrase, { color: isDark ? '#F1F5F9' : colors.text }]}>{key}</Text>
+                      <Text style={[styles.listCardPhrase, { color: colors.text }]}>{key}</Text>
                       {item.category && (
                         <View style={[styles.listCardBadge, { backgroundColor: colors.primary + '20' }]}>
                           <Text style={[styles.listCardBadgeText, { color: colors.primary }]}>{item.category}</Text>
                         </View>
                       )}
                     </View>
-                    {item.translation && <Text style={[styles.listCardTranslation, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>{item.translation}</Text>}
-                    {item.pronunciation && <Text style={[styles.listCardPron, { color: isDark ? '#64748B' : colors.textLight }]}>{item.pronunciation}</Text>}
+                    {item.translation && <Text style={[styles.listCardTranslation, { color: colors.textSecondary }]}>{item.translation}</Text>}
+                    {item.pronunciation && <Text style={[styles.listCardPron, { color: colors.textLight }]}>{item.pronunciation}</Text>}
                     {(isKnown || needsReview) && (
                       <View style={styles.listCardStatus}>
                         <Ionicons name={isKnown ? 'checkmark-circle' : 'refresh-circle'} size={14} color={isKnown ? colors.success : colors.error} />
@@ -311,15 +332,15 @@ export default function VocabularyReviewScreen({ navigation }) {
       ) : studyPhrases.length === 0 ? (
         <View style={styles.studyEmpty}>
           <Ionicons name="trophy" size={64} color={colors.primary} />
-          <Text style={[styles.studyEmptyTitle, { color: isDark ? '#F1F5F9' : colors.text }]}>All reviewed!</Text>
-          <Text style={[styles.studyEmptySubtitle, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>
+          <Text style={[styles.studyEmptyTitle, { color: colors.text }]}>All reviewed!</Text>
+          <Text style={[styles.studyEmptySubtitle, { color: colors.textSecondary }]}>
             {'You\'ve reviewed all ' + filtered.length + ' phrases.'}
           </Text>
           <TouchableOpacity style={[styles.resetBtn, { backgroundColor: colors.primary }]} onPress={resetStudy}>
             <Text style={styles.resetBtnText}>Start Over</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.resetBtn, { backgroundColor: colors.surface, marginTop: 12 }]} onPress={() => setMode('list')}>
-            <Text style={[styles.resetBtnText, { color: isDark ? '#F1F5F9' : colors.text }]}>Back to List</Text>
+            <Text style={[styles.resetBtnText, { color: colors.text }]}>Back to List</Text>
           </TouchableOpacity>
         </View>
       ) : (
@@ -329,7 +350,7 @@ export default function VocabularyReviewScreen({ navigation }) {
             <Flashcard key={currentPhrase.phrase || currentPhrase.phrase_text || currentPhrase.word} phrase={currentPhrase} onKnown={markKnown} onReview={markReview} />
           </View>
           <View style={styles.studyActions}>
-            <TouchableOpacity style={[styles.studyBtn, styles.studyBtnReview]} onPress={markReview}>
+            <TouchableOpacity style={[styles.studyBtn, styles.studyBtnReview, { backgroundColor: colors.error + '1F' }]} onPress={markReview}>
               <Ionicons name="close" size={24} color={colors.error} />
               <Text style={[styles.studyBtnText, { color: colors.error }]}>Need Review</Text>
             </TouchableOpacity>
@@ -346,13 +367,13 @@ export default function VocabularyReviewScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', paddingTop: 60, paddingBottom: 16, paddingHorizontal: 16 },
-  backBtn: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
+  header: { flexDirection: 'row', alignItems: 'center', paddingBottom: 16, paddingHorizontal: 16 },
+  backBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
   headerCenter: { flex: 1, alignItems: 'center' },
   headerTitle: { fontSize: 18, fontWeight: '700', color: '#FFFFFF' },
   headerSubtitle: { fontSize: 12, color: 'rgba(255,255,255,0.7)', marginTop: 2 },
   modeToggle: { flexDirection: 'row', gap: 4 },
-  modeBtn: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
+  modeBtn: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
   modeBtnActive: { backgroundColor: 'rgba(255,255,255,0.2)' },
 
   searchContainer: { paddingHorizontal: spacing.xl, paddingBottom: spacing.md },
@@ -360,9 +381,9 @@ const styles = StyleSheet.create({
   searchInput: { flex: 1, paddingVertical: 10, fontSize: 15, marginLeft: spacing.sm },
 
   filterRow: { flexDirection: 'row', paddingHorizontal: spacing.xl, paddingBottom: spacing.md, gap: 8 },
-  filterChip: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 999, borderWidth: 1 },
+  filterChip: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 999, borderWidth: 1 },
   filterChipActive: { backgroundColor: 'rgba(45, 212, 191, 0.2)', borderColor: 'rgba(45, 212, 191, 0.4)' },
-  filterText: { fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.5)' },
+  filterText: { fontSize: 13, fontWeight: '600' },
   filterTextActive: { color: '#2DD4BF' },
 
   list: { padding: spacing.xl, paddingTop: 0 },

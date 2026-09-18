@@ -1,0 +1,17 @@
+fastapi==0.115.0
+uvicorn[standard]==0.32.0
+python-multipart==0.0.12
+pydantic==2.9.2
+pydantic-settings==2.6.0
+# Seamless Communication - install from GitHub (no PyPI package available)
+# Install manually with: pip install git+https://github.com/facebookresearch/seamless_communication.git
+torch==2.5.0
+torchaudio==2.5.0
+transformers==4.46.0
+accelerate==1.1.0
+soundfile==0.12.1
+librosa==0.10.2
+numpy==1.26.4
+# Spirit LM dependencies (optional, for expressive TTS)
+# Uncomment when Spirit LM is publicly available
+# git+https://github.com/facebookresearch/spiritlm.git

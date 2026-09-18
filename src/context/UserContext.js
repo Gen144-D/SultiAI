@@ -1,7 +1,7 @@
 import React, { createContext, useState, useEffect, useCallback, useContext, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase, normalizeUser } from '../lib/supabase';
-import { api } from '../services/api';
+import { api, BASE_URL } from '../services/api';
 
 const UserContext = createContext(null);
 
@@ -36,7 +36,7 @@ export function UserProvider({ children }) {
         // Sync user to local DB on sign-in / token refresh / OAuth callback
         if (currentSession?.user) {
           const u = currentSession.user;
-          const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001';
+          const API_URL = BASE_URL;
           fetch(`${API_URL}/api/auth/sync-supabase`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -125,7 +125,7 @@ export function UserProvider({ children }) {
       // Sync user to local SQLite DB (in case they only existed in Supabase before)
       if (data.user) {
         try {
-          const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001';
+          const API_URL = BASE_URL;
           await fetch(`${API_URL}/api/auth/sync-supabase`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -179,7 +179,7 @@ export function UserProvider({ children }) {
       // Sync user to local SQLite DB so admin can see/manage them
       if (data.user) {
         try {
-          const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001';
+          const API_URL = BASE_URL;
           await fetch(`${API_URL}/api/auth/sync-supabase`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -201,7 +201,7 @@ export function UserProvider({ children }) {
       if (data.user && !data.session) {
         // Try to auto-confirm the user via server endpoint (for development)
         try {
-          const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001';
+          const API_URL = BASE_URL;
           const confirmRes = await fetch(`${API_URL}/api/auth/confirm-user`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

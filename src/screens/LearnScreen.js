@@ -10,6 +10,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import Svg, { Circle } from 'react-native-svg';
 import { useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
 import { useGame } from '../context/GameContext';
 import { SafeUserStats } from '../utils/formatters';
@@ -232,7 +233,7 @@ function ShimmerBar({ progress, color }) {
   }));
 
   return (
-    <View style={[styles.shimmerTrack, { backgroundColor: isDark ? 'rgba(255,255,255,0.15)' : colors.border }]}>
+    <View style={[styles.shimmerTrack, { backgroundColor: colors.border }]}>
       <View style={[styles.shimmerFill, { width: `${progress}%`, backgroundColor: color || colors.accent }]} />
       {progress > 0 && progress < 100 && (
         <Animated.View style={[styles.shimmerOverlay, { width: '30%', backgroundColor: isDark ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.6)' }, shimmerStyle]} />
@@ -242,7 +243,8 @@ function ShimmerBar({ progress, color }) {
 }
 
 export default function LearnScreen({ navigation }) {
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const { xp, dailyXp, streak, dailyGoal, user } = useGame();
   const [wordsLearned, setWordsLearned] = useState(0);
   const [notifCount, setNotifCount] = useState(0);
@@ -401,7 +403,7 @@ export default function LearnScreen({ navigation }) {
 
   return (
     <AuroraBackground style={styles.container}>
-      <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+      <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false} contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + spacing.sm }]}>
         {/* Header */}
         <Animated.View entering={FadeInRight.duration(500)} style={styles.header}>
           <View style={styles.headerLeft}>
@@ -413,7 +415,7 @@ export default function LearnScreen({ navigation }) {
             </View>
           </View>
           <TouchableOpacity
-            style={[styles.notifBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : colors.surfaceSecondary }]}
+            style={[styles.notifBtn, { backgroundColor: colors.surfaceSecondary }]}
             onPress={() => navigation.navigate('Notifications')}
             activeOpacity={0.7}
             accessibilityRole="button"
@@ -433,8 +435,8 @@ export default function LearnScreen({ navigation }) {
           <View style={[styles.quoteCard, { backgroundColor: colors.accent + '10', borderColor: colors.accent + '20' }]}>
             <Ionicons name="bulb-outline" size={18} color={colors.accent} />
             <View style={styles.quoteTextWrap}>
-              <Text style={[styles.quoteText, { color: isDark ? '#F1F5F9' : '#0F172A' }]}>{quote.text}</Text>
-              <Text style={[styles.quoteEnglish, { color: isDark ? '#94A3B8' : '#64748B' }]}>{quote.english}</Text>
+              <Text style={[styles.quoteText, { color: colors.text }]}>{quote.text}</Text>
+              <Text style={[styles.quoteEnglish, { color: colors.textSecondary }]}>{quote.english}</Text>
             </View>
           </View>
         </Animated.View>
@@ -443,8 +445,8 @@ export default function LearnScreen({ navigation }) {
         <Animated.View entering={FadeInRight.delay(200).duration(500)} style={styles.goalSection}>
           <View style={styles.goalHeader}>
             <View>
-              <Text style={[styles.goalTitle, { color: isDark ? '#F1F5F9' : '#0F172A' }]}>Today&apos;s Goal</Text>
-              <Text style={[styles.goalSubtitle, { color: isDark ? '#94A3B8' : '#64748B' }]}>Complete your goal to keep your progress moving</Text>
+              <Text style={[styles.goalTitle, { color: colors.text }]}>Today&apos;s Goal</Text>
+              <Text style={[styles.goalSubtitle, { color: colors.textSecondary }]}>Complete your goal to keep your progress moving</Text>
             </View>
             <View style={[styles.goalChip, { backgroundColor: colors.accent + '15' }]}>
               <Ionicons name="flame" size={14} color={colors.accent} />
@@ -452,10 +454,10 @@ export default function LearnScreen({ navigation }) {
             </View>
           </View>
           <View style={styles.goalValueRow}>
-            <Text style={[styles.goalValue, { color: isDark ? '#F1F5F9' : '#0F172A' }]}>{stats.targetDisplay}</Text>
+            <Text style={[styles.goalValue, { color: colors.text }]}>{stats.targetDisplay}</Text>
             <Text style={[styles.goalPercent, { color: colors.accent }]}>{stats.dailyProgress}% of today&apos;s goal</Text>
           </View>
-          <ShimmerBar progress={stats.dailyProgress} color={isDark ? '#2DD4BF' : '#14B8A6'} />
+          <ShimmerBar progress={stats.dailyProgress} color={colors.primary} />
         </Animated.View>
 
         {/* Progress Summary */}
@@ -501,10 +503,10 @@ export default function LearnScreen({ navigation }) {
               <Text style={styles.bannerCardTitle}>Talk with SULTI</Text>
               <Text style={styles.bannerCardDesc}>Practice speaking Bisaya naturally with AI-powered voice recognition</Text>
             </View>
-            <TouchableOpacity style={[styles.bannerBtn, { backgroundColor: isDark ? '#0F172A' : '#FFFFFF' }]} onPress={handleTalkToSulti} activeOpacity={0.85}>
+            <TouchableOpacity style={[styles.bannerBtn, { backgroundColor: colors.surface }]} onPress={handleTalkToSulti} activeOpacity={0.85}>
               <View style={styles.bannerBtnContent}>
-                <Ionicons name="mic" size={18} color={isDark ? '#FFFFFF' : '#0F172A'} />
-                <Text style={[styles.bannerBtnText, { color: isDark ? '#FFFFFF' : '#0F172A' }]}>Start Voice Session</Text>
+                <Ionicons name="mic" size={18} color={colors.text} />
+                <Text style={[styles.bannerBtnText, { color: colors.text }]}>Start Voice Session</Text>
               </View>
             </TouchableOpacity>
           </TouchableOpacity>
@@ -518,7 +520,7 @@ export default function LearnScreen({ navigation }) {
 
         {/* Learning Modules */}
         <Animated.View entering={FadeInRight.delay(700).duration(500)}>
-          <Text style={[styles.sectionTitle, { color: isDark ? '#F1F5F9' : '#0F172A' }]}>Learning Modules</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Learning Modules</Text>
           <View style={styles.modulesGrid}>
             {MODULES.map((module, index) => {
               const pct = moduleProgressByTitle[module.title.toLowerCase()];
@@ -547,7 +549,7 @@ export default function LearnScreen({ navigation }) {
 
         {/* Categories */}
         <Animated.View entering={FadeInRight.delay(800).duration(500)} style={styles.categoriesSection}>
-          <Text style={[styles.sectionTitle, { color: isDark ? '#F1F5F9' : '#0F172A' }]}>Categories</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Categories</Text>
           <View style={styles.categoriesGrid}>
             {CATEGORIES.map((category) => (
               <TouchableOpacity
@@ -652,7 +654,7 @@ const styles = StyleSheet.create({
   bannerCardContent: { flex: 1, marginBottom: spacing.md },
   bannerCardTitle: { fontSize: 20, fontWeight: '800', color: '#FFFFFF', marginBottom: spacing.xs },
   bannerCardDesc: { fontSize: 13, lineHeight: 18, color: 'rgba(255,255,255,0.7)' },
-  bannerBtn: { paddingVertical: spacing.sm + 2, paddingHorizontal: spacing.lg, borderRadius: 999, alignSelf: 'flex-start', ...shadows.md },
+  bannerBtn: { minHeight: 44, paddingVertical: spacing.sm + 2, paddingHorizontal: spacing.lg, borderRadius: 999, alignSelf: 'flex-start', ...shadows.md },
   bannerBtnContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm },
   bannerBtnText: { fontSize: 13, fontWeight: '700' },
 
@@ -662,7 +664,7 @@ const styles = StyleSheet.create({
 
   categoriesSection: { marginTop: spacing.sm },
   categoriesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  categoryChip: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md, paddingVertical: spacing.sm + 2, borderRadius: borderRadius.lg, borderWidth: 1, gap: spacing.sm, minWidth: 120 },
+  categoryChip: { flexDirection: 'row', alignItems: 'center', minHeight: 44, paddingHorizontal: spacing.md, paddingVertical: spacing.sm + 2, borderRadius: borderRadius.lg, borderWidth: 1, gap: spacing.sm, minWidth: 120 },
 
   categoryName: { fontSize: 13, fontWeight: '600', flex: 1 },
 

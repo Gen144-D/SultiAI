@@ -33,6 +33,7 @@ export const env = {
   GROQ_API_KEY: getEnv('GROQ_API_KEY'),
   GROQ_MODEL: getEnv('GROQ_MODEL', 'qwen/qwen3.6-27b'),
   XAI_API_KEY: getEnv('XAI_API_KEY'),
+  OPENROUTER_API_KEY: getEnv('OPENROUTER_API_KEY'),
   SUPABASE_PUBLISHABLE_KEY: getEnv('SUPABASE_PUBLISHABLE_KEY'),
   DB_PATH: getEnv('DB_PATH', './sultiai.db'),
   DB_DIALECT: getEnv('DB_DIALECT', 'sqlite'),

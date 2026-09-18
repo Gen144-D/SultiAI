@@ -1,23 +1,23 @@
 export const voice = {
-  primary: '#20D6C7',
-  secondary: '#5EEAD4',
-  accent: '#7CF7E8',
-  background: '#07101F',
-  backgroundDeep: '#040B16',
-  surface: 'rgba(13, 30, 48, 0.6)',
-  surfaceStrong: 'rgba(18, 40, 62, 0.82)',
-  glass: 'rgba(255, 255, 255, 0.06)',
-  glassBorder: 'rgba(124, 247, 232, 0.14)',
-  glassHighlight: 'rgba(255, 255, 255, 0.08)',
-  text: '#FFFFFF',
-  textSecondary: 'rgba(255, 255, 255, 0.72)',
-  textMuted: 'rgba(255, 255, 255, 0.45)',
-  danger: '#FF6B6B',
-  warning: '#FFB347',
+  primary: '#00D4BD',
+  secondary: '#34D399',
+  accent: '#5EEAD4',
+  background: '#0B1120',
+  backgroundDeep: '#080E1A',
+  surface: 'rgba(17, 24, 39, 0.6)',
+  surfaceStrong: 'rgba(22, 36, 55, 0.82)',
+  glass: 'rgba(255, 255, 255, 0.05)',
+  glassBorder: 'rgba(94, 234, 212, 0.12)',
+  glassHighlight: 'rgba(255, 255, 255, 0.06)',
+  text: '#F8FAFC',
+  textSecondary: 'rgba(248, 250, 252, 0.72)',
+  textMuted: 'rgba(248, 250, 252, 0.45)',
+  danger: '#FB7185',
+  warning: '#FCD34D',
   success: '#34D399',
   star: '#FFD76A',
 };
 
-export const orbGradient = ['#20D6C7', '#5EEAD4'];
-export const orbCoreGradient = ['#2BE4D5', '#12B3A6'];
-export const glowColor = 'rgba(32, 214, 199, 0.28)';
+export const orbGradient = ['#00D4BD', '#34D399'];
+export const orbCoreGradient = ['#33DDD0', '#00B8A3'];
+export const glowColor = 'rgba(0, 212, 189, 0.28)';

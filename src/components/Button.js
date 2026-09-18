@@ -1,8 +1,8 @@
-import React, { useRef } from 'react';
+import React, { useMemo } from 'react';
 import { TouchableOpacity, Text, ActivityIndicator, StyleSheet, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../context/ThemeContext';
-import { borderRadius, spacing, shadows, gradients } from '../theme';
+import { borderRadius, spacing, shadows } from '../theme';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function Button({
@@ -10,7 +10,7 @@ export default function Button({
   disabled, loading, style, textStyle, gradient = false, fullWidth = false,
 }) {
   const { colors } = useTheme();
-  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const scaleAnim = useMemo(() => new Animated.Value(1), []);
   const isSmall = size === 'sm';
   const isLarge = size === 'lg';
 
@@ -21,7 +21,7 @@ export default function Button({
     Animated.spring(scaleAnim, { toValue: 1, friction: 8, tension: 200, useNativeDriver: true }).start();
   };
 
-  const textColor = variant === 'primary' || variant === 'danger' ? '#fff'
+  const textColor = variant === 'primary' || variant === 'danger' ? colors.textOnGradient
     : variant === 'secondary' ? colors.text
     : variant === 'glass' ? colors.text
     : colors.primary;
@@ -58,41 +58,52 @@ export default function Button({
     </>
   );
 
-  const renderBtn = () => {
-    if ((gradient && variant === 'primary') || variant === 'premium') {
-      const gradColors = variant === 'premium' ? [colors.primary, colors.secondary] : [colors.primary, colors.primaryDark];
-      return (
-        <Animated.View style={{ transform: [{ scale: scaleAnim }], borderRadius: borderRadius.lg }}>
-          <TouchableOpacity
-            onPress={onPress}
-            disabled={disabled || loading}
-            activeOpacity={0.9}
-            onPressIn={onPressIn}
-            onPressOut={onPressOut}
-            style={[{ borderRadius: borderRadius.lg }, fullWidth && styles.fullWidth, disabled && styles.disabled]}
-          >
-            <LinearGradient
-              colors={gradColors}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={[styles.base, isSmall && styles.small, isLarge && styles.large, fullWidth && styles.fullWidth, { borderRadius: borderRadius.lg }, variant === 'premium' && shadows.md]}
-            >
-              {content}
-            </LinearGradient>
-          </TouchableOpacity>
-        </Animated.View>
-      );
-    }
+  if ((gradient && variant === 'primary') || variant === 'premium') {
+    const gradColors = variant === 'premium' ? [colors.primary, colors.secondary] : [colors.primary, colors.primaryDark];
     return (
       <Animated.View style={{ transform: [{ scale: scaleAnim }], borderRadius: borderRadius.lg }}>
-        <TouchableOpacity onPress={onPress} disabled={disabled || loading} activeOpacity={0.9} style={btnStyles} onPressIn={onPressIn} onPressOut={onPressOut}>
-          {content}
+        <TouchableOpacity
+          onPress={onPress}
+          disabled={disabled || loading}
+          activeOpacity={0.75}
+          onPressIn={onPressIn}
+          onPressOut={onPressOut}
+          accessibilityRole="button"
+          accessibilityLabel={title}
+          accessibilityState={{ disabled: disabled || loading, busy: loading }}
+          hitSlop={8}
+          style={[{ borderRadius: borderRadius.lg }, fullWidth && styles.fullWidth, disabled && styles.disabled, style]}
+        >
+          <LinearGradient
+            colors={gradColors}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[styles.base, isSmall && styles.small, isLarge && styles.large, fullWidth && styles.fullWidth, { borderRadius: borderRadius.lg }, variant === 'premium' && shadows.md]}
+          >
+            {content}
+          </LinearGradient>
         </TouchableOpacity>
       </Animated.View>
     );
-  };
-
-  return renderBtn();
+  }
+  return (
+    <Animated.View style={{ transform: [{ scale: scaleAnim }], borderRadius: borderRadius.lg }}>
+      <TouchableOpacity
+        onPress={onPress}
+        disabled={disabled || loading}
+        activeOpacity={0.75}
+        style={btnStyles}
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
+        accessibilityRole="button"
+        accessibilityLabel={title}
+        accessibilityState={{ disabled: disabled || loading, busy: loading }}
+        hitSlop={8}
+      >
+        {content}
+      </TouchableOpacity>
+    </Animated.View>
+  );
 }
 
 const styles = StyleSheet.create({

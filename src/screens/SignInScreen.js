@@ -1,18 +1,19 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  KeyboardAvoidingView, Platform, Animated, TextInput, ActivityIndicator,
+  KeyboardAvoidingView, Platform, Animated, TextInput,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useUser } from '../context/UserContext';
 import { useTheme } from '../context/ThemeContext';
 import { spacing, borderRadius, shadows } from '../theme';
+import Button from '../components/Button';
 
 /* ── Animations ──────────────────────────────────────────────────── */
 function FadeSlideIn({ delay = 0, children, style }) {
-  const fade = useRef(new Animated.Value(0)).current;
-  const slide = useRef(new Animated.Value(24)).current;
+  const fade = useMemo(() => new Animated.Value(0), []);
+  const slide = useMemo(() => new Animated.Value(24), []);
 
   useEffect(() => {
     Animated.parallel([
@@ -41,11 +42,6 @@ export default function SignInScreen({ navigation }) {
   const [error, setError] = useState('');
   const [emailFocused, setEmailFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
-
-  // Clear error when user types
-  useEffect(() => {
-    if (error) setError('');
-  }, [email, password]);
 
   // Show auth context errors
   useEffect(() => {
@@ -77,7 +73,12 @@ export default function SignInScreen({ navigation }) {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backBtn}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+        >
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>Sign In</Text>
@@ -107,13 +108,16 @@ export default function SignInScreen({ navigation }) {
             <Text style={[styles.label, { color: colors.textSecondary }]}>Email Address</Text>
             <View style={[
               styles.inputWrap,
-              { backgroundColor: colors.surface, borderColor: emailFocused ? colors.primary : colors.border },
+              {
+                backgroundColor: colors.surface,
+                borderColor: error ? colors.error : emailFocused ? colors.primary : colors.border,
+              },
             ]}>
-              <Ionicons name="mail-outline" size={18} color={emailFocused ? colors.primary : colors.textLight} style={styles.inputIcon} />
+              <Ionicons name="mail-outline" size={18} color={error ? colors.error : emailFocused ? colors.primary : colors.textLight} style={styles.inputIcon} />
               <TextInput
                 style={[styles.input, { color: colors.text }]}
                 value={email}
-                onChangeText={setEmail}
+                onChangeText={(v) => { setEmail(v); if (error) setError(''); }}
                 placeholder="your@email.com"
                 placeholderTextColor={colors.textLight}
                 keyboardType="email-address"
@@ -131,13 +135,16 @@ export default function SignInScreen({ navigation }) {
             <Text style={[styles.label, { color: colors.textSecondary }]}>Password</Text>
             <View style={[
               styles.inputWrap,
-              { backgroundColor: colors.surface, borderColor: passwordFocused ? colors.primary : colors.border },
+              {
+                backgroundColor: colors.surface,
+                borderColor: error ? colors.error : passwordFocused ? colors.primary : colors.border,
+              },
             ]}>
-              <Ionicons name="lock-closed-outline" size={18} color={passwordFocused ? colors.primary : colors.textLight} style={styles.inputIcon} />
+              <Ionicons name="lock-closed-outline" size={18} color={error ? colors.error : passwordFocused ? colors.primary : colors.textLight} style={styles.inputIcon} />
               <TextInput
                 style={[styles.input, { color: colors.text, flex: 1 }]}
                 value={password}
-                onChangeText={setPassword}
+                onChangeText={(v) => { setPassword(v); if (error) setError(''); }}
                 placeholder="Your password"
                 placeholderTextColor={colors.textLight}
                 secureTextEntry={!showPassword}
@@ -145,7 +152,13 @@ export default function SignInScreen({ navigation }) {
                 onFocus={() => setPasswordFocused(true)}
                 onBlur={() => setPasswordFocused(false)}
               />
-              <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeBtn}>
+              <TouchableOpacity
+                onPress={() => setShowPassword(!showPassword)}
+                style={styles.eyeBtn}
+                hitSlop={4}
+                accessibilityRole="button"
+                accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+              >
                 <Ionicons
                   name={showPassword ? 'eye-off-outline' : 'eye-outline'}
                   size={18}
@@ -158,43 +171,61 @@ export default function SignInScreen({ navigation }) {
           {/* Error */}
           {!!error && (
             <FadeSlideIn delay={0}>
-              <View style={[styles.errorBox, { backgroundColor: '#FF3B3015', borderColor: '#FF3B3030' }]}>
-                <Ionicons name="alert-circle" size={16} color="#FF3B30" />
-                <Text style={styles.errorText}>{error}</Text>
+              <View
+                style={[styles.errorBox, { backgroundColor: colors.error + '15', borderColor: colors.error + '30' }]}
+                accessibilityLiveRegion="polite"
+              >
+                <Ionicons name="alert-circle" size={16} color={colors.error} />
+                <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
               </View>
             </FadeSlideIn>
           )}
 
           {/* Sign In Button */}
           <FadeSlideIn delay={200}>
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={handleSignIn}
-              disabled={loading}
-              style={styles.signInBtn}
-            >
-              <LinearGradientBg colors={[colors.primary, colors.primaryDark || colors.primary]}>
-                {loading ? (
-                  <ActivityIndicator size="small" color="#FFF" />
-                ) : (
-                  <Text style={styles.signInBtnText}>Sign In</Text>
-                )}
-              </LinearGradientBg>
-            </TouchableOpacity>
+            <View style={styles.signInBtn}>
+              <Button
+                title="Sign In"
+                onPress={handleSignIn}
+                variant="primary"
+                gradient
+                loading={loading}
+                fullWidth
+              />
+            </View>
           </FadeSlideIn>
 
           {/* Forgot Password */}
           <FadeSlideIn delay={250}>
-            <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')}>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('ForgotPassword')}
+              style={styles.forgotLinkTouch}
+              accessibilityRole="link"
+              accessibilityLabel="Forgot password?"
+            >
               <Text style={[styles.forgotLink, { color: colors.primary }]}>Forgot password?</Text>
             </TouchableOpacity>
           </FadeSlideIn>
 
-          {/* Divider */}
+          {/* Social Sign In */}
           <FadeSlideIn delay={300}>
+            <View style={styles.socialRow}>
+              <TouchableOpacity
+                style={[styles.socialBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel="Sign in with Google"
+              >
+                <Ionicons name="logo-google" size={22} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+          </FadeSlideIn>
+
+          {/* Divider */}
+          <FadeSlideIn delay={350}>
             <View style={styles.dividerRow}>
               <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
-              <Text style={[styles.dividerText, { color: colors.textLight }]}>or</Text>
+              <Text style={[styles.dividerText, { color: colors.textLight }]}>or continue with email</Text>
               <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
             </View>
           </FadeSlideIn>
@@ -206,22 +237,13 @@ export default function SignInScreen({ navigation }) {
               style={styles.switchRow}
             >
               <Text style={[styles.switchText, { color: colors.textSecondary }]}>
-                Don't have an account?
+                Don&apos;t have an account?
               </Text>
               <Text style={[styles.switchLink, { color: colors.primary }]}> Create Account</Text>
             </TouchableOpacity>
           </FadeSlideIn>
         </ScrollView>
       </KeyboardAvoidingView>
-    </View>
-  );
-}
-
-/* Simple gradient-like wrapper using View background */
-function LinearGradientBg({ children, colors: gradientColors, style }) {
-  return (
-    <View style={[{ backgroundColor: gradientColors?.[0] || '#4A90D9', borderRadius: borderRadius.lg, height: 54, alignItems: 'center', justifyContent: 'center' }, style]}>
-      {children}
     </View>
   );
 }
@@ -235,7 +257,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.md,
   },
-  backBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  backBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { fontSize: 17, fontWeight: '600' },
 
   scroll: { flexGrow: 1, paddingHorizontal: spacing.xl, paddingTop: spacing.lg },
@@ -243,20 +265,20 @@ const styles = StyleSheet.create({
   title: { fontSize: 28, fontWeight: '800', marginBottom: spacing.sm },
   subtitle: { fontSize: 15, marginBottom: spacing.xxl, lineHeight: 22 },
 
-  label: { fontSize: 13, fontWeight: '600', marginBottom: 6, marginLeft: 2 },
+  label: { fontSize: 14, fontWeight: '600', marginBottom: 8, marginLeft: 2 },
   inputWrap: {
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1.5,
     borderRadius: borderRadius.lg,
-    height: 52,
+    height: 56,
     paddingHorizontal: spacing.md,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.xl,
     ...shadows.sm,
   },
   inputIcon: { marginRight: 10 },
   input: { flex: 1, fontSize: 16, paddingVertical: 0 },
-  eyeBtn: { padding: 4 },
+  eyeBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
 
   errorBox: {
     flexDirection: 'row',
@@ -267,12 +289,24 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginBottom: spacing.sm,
   },
-  errorText: { fontSize: 13, fontWeight: '500', color: '#FF3B30', flex: 1 },
+  errorText: { fontSize: 13, fontWeight: '500', flex: 1 },
 
   signInBtn: { marginTop: spacing.sm, marginBottom: spacing.md },
-  signInBtnText: { fontSize: 17, fontWeight: '700', color: '#FFF' },
 
-  forgotLink: { fontSize: 14, fontWeight: '600', textAlign: 'center', marginBottom: spacing.lg },
+  forgotLink: { fontSize: 14, fontWeight: '600', textAlign: 'center' },
+  forgotLinkTouch: { minHeight: 44, justifyContent: 'center', marginBottom: spacing.md },
+
+  socialRow: { flexDirection: 'row', gap: spacing.md, marginBottom: spacing.lg },
+  socialBtn: {
+    flex: 1,
+    height: 52,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1.5,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...shadows.sm,
+  },
 
   dividerRow: { flexDirection: 'row', alignItems: 'center', marginVertical: spacing.lg },
   dividerLine: { flex: 1, height: 1 },

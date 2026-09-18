@@ -5,7 +5,6 @@ import Animated, {
   withDelay, cancelAnimation, Easing,
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
 import { voice } from './palette';
 
 function seededRandom(seed) {
@@ -168,17 +167,9 @@ export default function VoiceBackground({ children, style, parallax = 0 }) {
       {blobs.map((cfg, i) => (
         <FloatBlob key={i} cfg={cfg} width={W} height={H} />
       ))}
-      <LinearGradient
-        colors={['rgba(4,11,22,0)', 'rgba(4,11,22,0.55)']}
-        style={[styles.radialFade, { width: W * 0.9, height: W * 0.9, borderRadius: W * 0.45, top: H * 0.22, left: W * 0.05 }]}
-        pointerEvents="none"
-      />
       {particles.map((p, i) => (
         <Particle key={i} data={p} width={W} height={H} />
       ))}
-      {Platform.OS !== 'web' && (
-        <BlurView intensity={28} style={StyleSheet.absoluteFill} tint="dark" pointerEvents="none" />
-      )}
       <LinearGradient
         colors={['transparent', 'rgba(4,11,22,0.92)']}
         style={[styles.bottomFade, { height: H * 0.32 }]}
@@ -202,7 +193,6 @@ const styles = StyleSheet.create({
   breathGlow: {
     position: 'absolute', top: '5%', left: '5%',
   },
-  radialFade: { position: 'absolute' },
   bottomFade: { position: 'absolute', bottom: 0, left: 0, right: 0 },
   topFade: { position: 'absolute', top: 0, left: 0, right: 0 },
   content: { flex: 1, zIndex: 2 },

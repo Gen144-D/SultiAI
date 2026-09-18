@@ -1,24 +1,22 @@
 import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, Image, StyleSheet } from 'react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
-import { voice, orbCoreGradient } from './palette';
+import { voice } from './palette';
 import WordReveal from '../WordReveal';
 import { findVocabInText } from '../../utils/bisayaWords';
 import { PronunciationCard, RepeatCard, VocabCards } from './LearningCards';
+import { SULTI_IMAGES } from '../../constants/avatars';
+import UserAvatar from '../profile/UserAvatar';
 
 function SultiAvatar() {
   return (
     <View style={styles.avatarWrap}>
-      <LinearGradient colors={orbCoreGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.avatar}>
-        <Ionicons name="sparkles" size={12} color="#04111f" />
-      </LinearGradient>
+      <Image source={SULTI_IMAGES.idle} style={styles.sultiAvatar} />
     </View>
   );
 }
 
-export function UserMessage({ text, pronunciation, speaking }) {
+export function UserMessage({ text, pronunciation, speaking, userAvatarId }) {
   const speed = useMemo(() => {
     if (!text) return 40;
     return Math.max(18, Math.min(60, Math.round(360 / (text.split(/\s+/).length || 1))));
@@ -31,6 +29,7 @@ export function UserMessage({ text, pronunciation, speaking }) {
           <Text style={styles.userLabel}>You</Text>
           <Text style={styles.userText}>{text}</Text>
         </View>
+        <UserAvatar avatarId={userAvatarId} size={28} style={styles.userAvatar} />
       </View>
       {pronunciation ? (
         <View style={styles.cardAlign}>
@@ -92,15 +91,16 @@ export function TypingIndicator() {
 
 const styles = StyleSheet.create({
   avatarWrap: { marginBottom: 2 },
-  avatar: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  sultiAvatar: { width: 28, height: 28, borderRadius: 14 },
   userBlock: { alignItems: 'flex-end' },
-  userRow: { alignItems: 'flex-end', paddingLeft: 40 },
+  userRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, paddingLeft: 40 },
+  userAvatar: { marginBottom: 2 },
   userBubble: {
     backgroundColor: 'rgba(32,214,199,0.16)',
     borderWidth: 1, borderColor: 'rgba(32,214,199,0.35)',
     borderRadius: 20, borderTopRightRadius: 6,
     paddingHorizontal: 14, paddingVertical: 10,
-    maxWidth: '92%',
+    maxWidth: '85%',
   },
   userLabel: { color: voice.primary, fontSize: 10, fontWeight: '800', letterSpacing: 0.8, marginBottom: 3 },
   userText: { color: voice.text, fontSize: 15, lineHeight: 21 },

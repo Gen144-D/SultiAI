@@ -1,40 +1,7 @@
 version: '3.8'
 
 services:
-  # Node.js API Server
-  server:
-    build:
-      context: .
-      dockerfile: server/Dockerfile
-      target: production
-    container_name: sultiai-server
-    restart: unless-stopped
-    ports:
-      - "3001:3001"
-    environment:
-      - NODE_ENV=production
-      - PORT=3001
-      - JWT_SECRET=${JWT_SECRET}
-      - DB_PATH=/app/data/sultiai.db
-      - CORS_ORIGINS=${CORS_ORIGINS:-*}
-      - SUPABASE_URL=${SUPABASE_URL}
-      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
-      - GROQ_API_KEY=${GROQ_API_KEY}
-    volumes:
-      - server-data:/app/data
-    networks:
-      - sultiai-network
-    healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
-      interval: 30s
-      timeout: 3s
-      retries: 3
-      start_period: 10s
-    depends_on:
-      ai-service:
-        condition: service_healthy
-
-  # Python AI Service
+  # Python AI Service (Whisper STT + BART Intent + Edge TTS)
   ai-service:
     build:
       context: ./ai-service
@@ -43,17 +10,54 @@ services:
     container_name: sultiai-ai-service
     restart: unless-stopped
     ports:
-      - "8000:8000"
+      - "8001:8001"
     environment:
       - PYTHONUNBUFFERED=1
+      - WHISPER_MODEL=small
+      - WHISPER_DEVICE=cpu
+      - WHISPER_COMPUTE=int8
+      - CLASSIFIER_MODEL=facebook/bart-large-mnli
+    volumes:
+      - ai-models:/root/.cache
     networks:
       - sultiai-network
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Node.js Express Gateway
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+      target: production
+    container_name: sultiai-server
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - AI_SERVICE_URL=http://ai-service:8001
+      - JWT_SECRET=${JWT_SECRET}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+    volumes:
+      - server-uploads:/app/uploads
+    networks:
+      - sultiai-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
       interval: 30s
       timeout: 3s
       retries: 3
       start_period: 10s
+    depends_on:
+      ai-service:
+        condition: service_healthy
 
   # Next.js Web App
   web:
@@ -63,9 +67,9 @@ services:
     container_name: sultiai-web
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "3001:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=http://server:3001
+      - NEXT_PUBLIC_API_URL=http://server:3000
       - NEXT_PUBLIC_SUPABASE_URL=${SUPABASE_URL}
       - NEXT_PUBLIC_SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
     networks:
@@ -83,7 +87,7 @@ services:
     ports:
       - "3002:3002"
     environment:
-      - NEXT_PUBLIC_API_URL=http://server:3001
+      - NEXT_PUBLIC_API_URL=http://server:3000
       - NEXT_PUBLIC_SUPABASE_URL=${SUPABASE_URL}
       - NEXT_PUBLIC_SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
     networks:
@@ -92,7 +96,9 @@ services:
       - server
 
 volumes:
-  server-data:
+  ai-models:
+    driver: local
+  server-uploads:
     driver: local
 
 networks:

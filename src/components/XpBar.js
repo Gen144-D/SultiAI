@@ -7,7 +7,7 @@ import { useTheme } from '../context/ThemeContext';
 import { spacing } from '../theme';
 
 export default function XpBar({ current, max, label, showLabel = true, color, height = 8 }) {
-  const { colors } = useTheme();
+  const { colors, reduceMotion } = useTheme();
   const safeCurrent = Math.max(0, Number(current) || 0);
   const safeMax = Math.max(1, Number(max) || 0);
   const progress = safeMax > 0 ? Math.min(safeCurrent / safeMax, 1) : 0;
@@ -16,17 +16,22 @@ export default function XpBar({ current, max, label, showLabel = true, color, he
 
   useEffect(() => {
     animatedWidth.value = withTiming(progress * 100, {
-      duration: 800,
+      duration: reduceMotion ? 0 : 800,
       easing: Easing.out(Easing.quad),
     });
-  }, [progress, animatedWidth]);
+  }, [progress, animatedWidth, reduceMotion]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     width: `${animatedWidth.value}%`,
   }));
 
   return (
-    <View style={styles.container}>
+    <View
+      style={styles.container}
+      accessibilityRole="progressbar"
+      accessibilityLabel={label || 'Progress'}
+      accessibilityValue={{ min: 0, max: safeMax, now: safeCurrent }}
+    >
       {showLabel && label && (
         <View style={styles.labelRow}>
           <Text style={[styles.label, { color: colors.textSecondary }]}>{label}</Text>

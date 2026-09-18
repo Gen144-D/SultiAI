@@ -35,9 +35,13 @@ export default function ErrorState({
           style={[styles.actionBtn, { backgroundColor: colors.primary }]}
           onPress={onAction}
           activeOpacity={0.85}
+          accessibilityRole="button"
+          accessibilityLabel={actionLabel}
+          accessibilityHint="Retries loading this content"
+          hitSlop={8}
         >
-          <Ionicons name="refresh" size={16} color="#fff" />
-          <Text style={styles.actionText}>{actionLabel}</Text>
+          <Ionicons name="refresh" size={16} color={colors.textOnGradient} />
+          <Text style={[styles.actionText, { color: colors.textOnGradient }]}>{actionLabel}</Text>
         </TouchableOpacity>
       )}
     </View>
@@ -51,5 +55,5 @@ const styles = StyleSheet.create({
   title: { fontSize: 16, fontWeight: '700', textAlign: 'center' },
   message: { fontSize: 13, lineHeight: 18, textAlign: 'center', maxWidth: 260 },
   actionBtn: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.xl, paddingVertical: spacing.md, borderRadius: borderRadius.full, marginTop: spacing.sm },
-  actionText: { fontSize: 14, fontWeight: '700', color: '#fff' },
+  actionText: { fontSize: 14, fontWeight: '700' },
 });

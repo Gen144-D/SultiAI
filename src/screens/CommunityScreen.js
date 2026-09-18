@@ -4,7 +4,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as Speech from 'expo-speech';
+import { speakTTS } from '../utils/tts';
 import { useTheme } from '../context/ThemeContext';
 import { useUser } from '../context/UserContext';
 import { useGame } from '../context/GameContext';
@@ -89,8 +89,6 @@ export default function CommunityScreen({ navigation }) {
   const scrollY = useRef(new Animated.Value(0)).current;
   // eslint-disable-next-line react-hooks/refs
   const collapse = scrollY.interpolate({ inputRange: [0, 36], outputRange: [0, 1], extrapolate: 'clamp' });
-  const searchOpacity = collapse.interpolate({ inputRange: [0, 1], outputRange: [1, 0] });
-  const searchTranslate = collapse.interpolate({ inputRange: [0, 1], outputRange: [0, -12] });
   const subtitleOpacity = collapse.interpolate({ inputRange: [0, 1], outputRange: [1, 0] });
   // eslint-disable-next-line react-hooks/refs
   const onScroll = Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: true });
@@ -106,6 +104,53 @@ export default function CommunityScreen({ navigation }) {
     const answersToday = all.filter((p) => (p.comments || 0) > 0).length;
     return { questionsToday, tipsToday, answersToday };
   }, [posts]);
+
+  const dashboardStats = useMemo(() => {
+    const all = Array.isArray(posts) ? posts : [];
+    const authors = new Set(all.map((p) => p.author_name).filter(Boolean));
+    const totalLikes = all.reduce((sum, p) => sum + (Number(p.likes) || 0), 0);
+    const totalComments = all.reduce((sum, p) => sum + (Number(p.comments) || 0), 0);
+    const dayLabels = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+    const weekly = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date();
+      d.setHours(0, 0, 0, 0);
+      d.setDate(d.getDate() - (6 - i));
+      const start = d.getTime();
+      const end = start + 86400000;
+      const count = all.filter((p) => {
+        const t = new Date(p.created_at).getTime();
+        return t >= start && t < end;
+      }).length;
+      return { label: dayLabels[d.getDay()], count, isToday: i === 6 };
+    });
+    const maxDay = Math.max(1, ...weekly.map((d) => d.count));
+    const tagCounts = {};
+    all.forEach((p) => (p.tags || []).forEach((t) => { tagCounts[t] = (tagCounts[t] || 0) + 1; }));
+    const trendingTags = Object.entries(tagCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6)
+      .map(([name, count]) => ({ name, count }));
+    const topAuthors = Object.entries(
+      all.reduce((acc, p) => {
+        const name = p.author_name || 'Anonymous';
+        acc[name] = acc[name] || { posts: 0, likes: 0, count: 0 };
+        acc[name].count += 1;
+        acc[name].likes += Number(p.likes) || 0;
+        return acc;
+      }, {}),
+    ).sort((a, b) => b[1].count - a[1].count).slice(0, 3).map(([name, v]) => ({ name, ...v }));
+    return {
+      activeMembers: authors.size,
+      totalPosts: all.length,
+      totalLikes,
+      totalComments,
+      weekly,
+      maxDay,
+      trendingTags,
+      topAuthors,
+    };
+  }, [posts]);
+
   const unread = notifications.filter((n) => !n.read).length;
   const canPost = activeTab === 'feed' || activeTab === 'discover';
   const searching = searchFocused && query.trim().length > 0;
@@ -139,11 +184,7 @@ export default function CommunityScreen({ navigation }) {
   }, []);
 
   const speakPhrase = (text) => {
-    try {
-      Speech.speak(text, { language: 'ceb', rate: 0.8, pitch: 1.0 });
-    } catch (e) {
-      console.warn('[Community] Failed to speak phrase:', e.message);
-    }
+    speakTTS(text, { language: 'ceb', rate: 0.8 });
   };
 
   const toggleSavePhrase = async (phrase) => {
@@ -390,6 +431,146 @@ export default function CommunityScreen({ navigation }) {
     </View>
   );
 
+  const renderDashboard = () => {
+    const { activeMembers, totalPosts, weekly, maxDay, trendingTags } = dashboardStats;
+    const kpis = [
+      { key: 'members', label: 'Active today', value: activeMembers, suffix: 'learners', icon: 'people', color: colors.primary },
+      { key: 'questions', label: 'Questions', value: communityMetrics.questionsToday, suffix: 'asked today', icon: 'help-circle', color: colors.accent },
+      { key: 'answers', label: 'Answers', value: communityMetrics.answersToday, suffix: 'given today', icon: 'chatbox-ellipses', color: colors.secondary },
+      { key: 'tips', label: 'Tips shared', value: communityMetrics.tipsToday, suffix: 'today', icon: 'bulb', color: colors.success },
+    ];
+    return (
+      <View>
+        <LinearGradient
+          colors={[colors.gradientStart, colors.gradientEnd]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.dashHero}
+        >
+          <View style={styles.dashHeroHeader}>
+            <View style={styles.dashHeroTitleWrap}>
+              <View style={[styles.dashHeroIcon, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
+                <Ionicons name="stats-chart" size={18} color="#fff" />
+              </View>
+              <View>
+                <Text style={styles.dashHeroTitle}>Community Pulse</Text>
+                <Text style={styles.dashHeroSubtitle}>Live overview of learner activity</Text>
+              </View>
+            </View>
+            <View style={[styles.livePill, { backgroundColor: 'rgba(255,255,255,0.16)' }]}>
+              <View style={styles.liveDot} />
+              <Text style={styles.liveText}>{live ? 'LIVE' : 'SAMPLE'}</Text>
+            </View>
+          </View>
+          <View style={styles.kpiGrid}>
+            {kpis.map((k) => (
+              <View key={k.key} style={[styles.kpiTile, { backgroundColor: 'rgba(255,255,255,0.14)', borderColor: 'rgba(255,255,255,0.16)' }]}>
+                <View style={[styles.kpiIcon, { backgroundColor: k.color + '2E' }]}>
+                  <Ionicons name={k.icon} size={16} color="#fff" />
+                </View>
+                <Text style={styles.kpiValue}>{k.value}</Text>
+                <Text style={styles.kpiLabel}>{k.label}</Text>
+                <Text style={styles.kpiSuffix}>{k.suffix}</Text>
+              </View>
+            ))}
+          </View>
+        </LinearGradient>
+
+        <Card style={styles.dashCard}>
+          <View style={styles.dashCardHeader}>
+            <View>
+              <Text style={[styles.dashCardTitle, { color: colors.text }]}>Weekly Activity</Text>
+              <Text style={[styles.dashCardSubtitle, { color: colors.textSecondary }]}>Posts shared over the last 7 days</Text>
+            </View>
+            <View style={[styles.totalPill, { backgroundColor: colors.primary + '12' }]}>
+              <Text style={[styles.totalPillText, { color: colors.primary }]}>{totalPosts} posts</Text>
+            </View>
+          </View>
+          <View style={styles.chart}>
+            {weekly.map((d, i) => (
+              <View key={i} style={styles.chartGroup}>
+                <View style={[styles.chartTrack, { backgroundColor: colors.surfaceSecondary }]}>
+                  <View
+                    style={[
+                      styles.chartFill,
+                      {
+                        height: `${Math.max(6, (d.count / maxDay) * 100)}%`,
+                        backgroundColor: d.isToday ? colors.primary : colors.accent + '66',
+                      },
+                    ]}
+                  />
+                </View>
+                <Text style={[styles.chartLabel, { color: d.isToday ? colors.primary : colors.textLight }]}>{d.label}</Text>
+              </View>
+            ))}
+          </View>
+          <View style={[styles.chartLegend, { borderTopColor: colors.border }]}>
+            <View style={styles.chartLegendRow}>
+              <View style={[styles.legendDot, { backgroundColor: colors.primary }]} />
+              <Text style={[styles.chartLegendText, { color: colors.textSecondary }]}>Today</Text>
+            </View>
+            <View style={styles.chartLegendRow}>
+              <View style={[styles.legendDot, { backgroundColor: colors.accent }]} />
+              <Text style={[styles.chartLegendText, { color: colors.textSecondary }]}>Previous days</Text>
+            </View>
+          </View>
+        </Card>
+
+        {trendingTags.length > 0 && (
+          <View style={styles.trendingWrap}>
+            <View style={styles.trendingHeader}>
+              <Ionicons name="trending-up" size={15} color={colors.primary} />
+              <Text style={[styles.trendingTitle, { color: colors.text }]}>Trending Topics</Text>
+            </View>
+            <View style={styles.trendingChips}>
+              {trendingTags.map((t) => (
+                <TouchableOpacity
+                  key={t.name}
+                  style={[styles.trendChip, { backgroundColor: colors.primary + '0E', borderColor: colors.primary + '28' }]}
+                  onPress={() => setQuery(t.name)}
+                  activeOpacity={0.8}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Search topic ${t.name}`}
+                >
+                  <Ionicons name="pricetag" size={11} color={colors.primary} />
+                  <Text style={[styles.trendChipText, { color: colors.primary }]}>{t.name}</Text>
+                  <Text style={[styles.trendChipCount, { color: colors.primary + '99' }]}>{t.count}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {dashboardStats.topAuthors.length > 0 && (
+          <Card style={styles.dashCard}>
+            <View style={styles.dashCardHeader}>
+              <View>
+                <Text style={[styles.dashCardTitle, { color: colors.text }]}>Top Contributors</Text>
+                <Text style={[styles.dashCardSubtitle, { color: colors.textSecondary }]}>Most active members this week</Text>
+              </View>
+            </View>
+            {dashboardStats.topAuthors.map((a, i) => (
+              <View key={a.name} style={[styles.contribRow, i < dashboardStats.topAuthors.length - 1 && { borderBottomWidth: 1, borderBottomColor: colors.border }]}>
+                <View style={[styles.contribRank, { backgroundColor: i === 0 ? colors.warning + '18' : colors.surfaceSecondary }]}>
+                  <Text style={[styles.contribRankText, { color: i === 0 ? colors.warning : colors.textSecondary }]}>{i + 1}</Text>
+                </View>
+                <Avatar name={a.name} size={34} />
+                <View style={styles.contribInfo}>
+                  <Text style={[styles.contribName, { color: colors.text }]}>{a.name}</Text>
+                  <Text style={[styles.contribMeta, { color: colors.textLight }]}>{a.count} posts · {a.likes} likes</Text>
+                </View>
+                <View style={[styles.contribBadge, { backgroundColor: colors.primary + '0E' }]}>
+                  <Ionicons name="star" size={12} color={colors.primary} />
+                  <Text style={[styles.contribBadgeText, { color: colors.primary }]}>{a.count} posts</Text>
+                </View>
+              </View>
+            ))}
+          </Card>
+        )}
+      </View>
+    );
+  };
+
   const renderFeed = () => (
     <FlatList
       data={sortedPosts}
@@ -406,37 +587,7 @@ export default function CommunityScreen({ navigation }) {
               <Text style={[styles.sampleBannerText, { color: colors.primary }]}>Showing sample posts — connect to the server to see the live community feed.</Text>
             </View>
           )}
-          <Card style={styles.metricsCard}>
-            <View style={styles.metric}>
-              <View style={[styles.metricIcon, { backgroundColor: colors.primary + '12' }]}>
-                <Ionicons name="help-circle" size={16} color={colors.primary} />
-              </View>
-              <View style={styles.metricInfo}>
-                <Text style={[styles.metricValue, { color: colors.text }]}>{communityMetrics.questionsToday}</Text>
-                <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>questions today</Text>
-              </View>
-            </View>
-            <View style={[styles.metricDivider, { backgroundColor: colors.border }]} />
-            <View style={styles.metric}>
-              <View style={[styles.metricIcon, { backgroundColor: colors.accent + '18' }]}>
-                <Ionicons name="chatbubble-ellipses" size={16} color={colors.accent} />
-              </View>
-              <View style={styles.metricInfo}>
-                <Text style={[styles.metricValue, { color: colors.text }]}>{communityMetrics.answersToday}</Text>
-                <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>answered today</Text>
-              </View>
-            </View>
-            <View style={[styles.metricDivider, { backgroundColor: colors.border }]} />
-            <View style={styles.metric}>
-              <View style={[styles.metricIcon, { backgroundColor: colors.success + '14' }]}>
-                <Ionicons name="bulb" size={16} color={colors.success} />
-              </View>
-              <View style={styles.metricInfo}>
-                <Text style={[styles.metricValue, { color: colors.text }]}>{communityMetrics.tipsToday}</Text>
-                <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>tips shared</Text>
-              </View>
-            </View>
-          </Card>
+          {renderDashboard()}
           <View style={styles.filterRow}>
             <FlatList
               horizontal
@@ -1144,29 +1295,37 @@ export default function CommunityScreen({ navigation }) {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <LinearGradient
-        colors={[colors.gradientStart, colors.gradientEnd]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={[styles.header, { paddingTop: padTop }]}
-      >
+      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border, paddingTop: padTop }]}>
         <View style={styles.headerRow}>
+          <View style={[styles.headerAvatar, { backgroundColor: colors.softPurple }]}>
+            <Ionicons name="people" size={20} color={colors.primary} />
+          </View>
           <View style={styles.headerText}>
-            <Text style={styles.headerTitle}>Community</Text>
+            <Text style={[styles.headerKicker, { color: colors.textSecondary }]}>Community Dashboard</Text>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>
+              {user?.fullname?.split(' ')[0] || 'Learner'}
+            </Text>
             <Animated.View style={{ opacity: subtitleOpacity }}>
-              <Text style={styles.headerSubtitle}>Practice Bisaya. Share knowledge. Learn together.</Text>
+              <Text style={[styles.headerSubtitle, { color: colors.textLight }]}>
+                {(() => {
+                  const h = new Date().getHours();
+                  if (h < 12) return 'Maayong buntag — good morning.';
+                  if (h < 18) return 'Maayong hapon — good afternoon.';
+                  return 'Maayong gabii — good evening.';
+                })()}
+              </Text>
             </Animated.View>
           </View>
           <View style={styles.headerActions}>
             <TouchableOpacity
               onPress={() => setShowNotifications(true)}
-              style={styles.iconBtn}
+              style={[styles.iconBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
               accessibilityRole="button"
               accessibilityLabel="Notifications"
             >
-              <Ionicons name="notifications-outline" size={22} color="#fff" />
+              <Ionicons name="notifications-outline" size={20} color={colors.textSecondary} />
               {unread > 0 && (
-                <View style={[styles.unreadDot, { backgroundColor: colors.accent }]}>
+                <View style={[styles.unreadDot, { backgroundColor: colors.error }]}>
                   <Text style={styles.unreadText}>{unread > 9 ? '9+' : unread}</Text>
                 </View>
               )}
@@ -1174,41 +1333,42 @@ export default function CommunityScreen({ navigation }) {
             {canPost && (
               <TouchableOpacity
                 onPress={() => openCreate()}
-                style={[styles.iconBtn, styles.createBtn, { backgroundColor: 'rgba(255,255,255,0.22)' }]}
+                style={[styles.iconBtn, styles.createBtn, { backgroundColor: colors.primary, borderColor: colors.primary }]}
                 accessibilityRole="button"
                 accessibilityLabel="Create a post"
               >
-                <Ionicons name="add" size={24} color="#fff" />
+                <Ionicons name="add" size={22} color="#fff" />
               </TouchableOpacity>
             )}
           </View>
         </View>
-        <Animated.View style={[styles.searchWrap, { opacity: searchOpacity, transform: [{ translateY: searchTranslate }] }]}>
-          <View style={styles.searchBox}>
-            <Ionicons name="search" size={16} color="rgba(255,255,255,0.85)" />
-            <TextInput
-              id="communitySearch"
-              name="communitySearch"
-              testID="communitySearch-input"
-              style={styles.searchInput}
-              placeholder="Search posts, phrases, questions..."
-              placeholderTextColor="rgba(255,255,255,0.8)"
-              value={query}
-              onChangeText={setQuery}
-              onFocus={() => setSearchFocused(true)}
-              onBlur={() => setSearchFocused(false)}
-              returnKeyType="search"
-              autoCorrect={false}
-              autoComplete="off"
-            />
-            {query.length > 0 && (
-              <TouchableOpacity onPress={() => setQuery('')} style={styles.searchClear} accessibilityRole="button" accessibilityLabel="Clear search">
-                <Ionicons name="close-circle" size={18} color="rgba(255,255,255,0.85)" />
-              </TouchableOpacity>
-            )}
-          </View>
-        </Animated.View>
-      </LinearGradient>
+      </View>
+
+      <View style={[styles.searchBar, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+        <View style={[styles.searchBox, { backgroundColor: colors.surfaceSecondary, borderColor: colors.border }]}>
+          <Ionicons name="search" size={16} color={colors.textLight} />
+          <TextInput
+            id="communitySearch"
+            name="communitySearch"
+            testID="communitySearch-input"
+            style={[styles.searchInput, { color: colors.text }]}
+            placeholder="Search posts, phrases, questions..."
+            placeholderTextColor={colors.textLight}
+            value={query}
+            onChangeText={setQuery}
+            onFocus={() => setSearchFocused(true)}
+            onBlur={() => setSearchFocused(false)}
+            returnKeyType="search"
+            autoCorrect={false}
+            autoComplete="off"
+          />
+          {query.length > 0 && (
+            <TouchableOpacity onPress={() => setQuery('')} style={styles.searchClear} accessibilityRole="button" accessibilityLabel="Clear search">
+              <Ionicons name="close-circle" size={18} color={colors.textLight} />
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
 
       {renderTabs()}
       {activeTab === 'leaderboard' && renderPeriodFilters()}
@@ -1228,19 +1388,21 @@ export default function CommunityScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { paddingHorizontal: spacing.xl, paddingBottom: spacing.lg },
-  headerRow: { flexDirection: 'row', alignItems: 'flex-start', minHeight: 48 },
+  header: { paddingHorizontal: spacing.xl, paddingBottom: spacing.lg, borderBottomWidth: 1 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', minHeight: 48, marginBottom: spacing.sm },
+  headerAvatar: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', marginRight: spacing.md },
   headerText: { flex: 1 },
-  headerTitle: { fontSize: 24, fontWeight: '800', color: '#fff' },
-  headerSubtitle: { fontSize: 13, color: 'rgba(255,255,255,0.85)', marginTop: 3, lineHeight: 18 },
+  headerKicker: { fontSize: 11, fontWeight: '700', letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 2 },
+  headerTitle: { fontSize: 22, fontWeight: '800', letterSpacing: -0.4 },
+  headerSubtitle: { fontSize: 12, fontWeight: '500', marginTop: 2, lineHeight: 16 },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  iconBtn: { padding: spacing.sm, position: 'relative' },
-  createBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', padding: 0 },
-  unreadDot: { position: 'absolute', top: 2, right: 0, minWidth: 16, height: 16, borderRadius: 8, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3 },
+  iconBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', borderWidth: 1, position: 'relative' },
+  createBtn: { width: 40, height: 40, borderRadius: 20, padding: 0 },
+  unreadDot: { position: 'absolute', top: 6, right: 6, minWidth: 16, height: 16, borderRadius: 8, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3 },
   unreadText: { fontSize: 9, fontWeight: '800', color: '#fff' },
-  searchWrap: { marginTop: spacing.md },
-  searchBox: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: borderRadius.lg, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
-  searchInput: { flex: 1, color: '#fff', fontSize: 14, paddingVertical: 0 },
+  searchBar: { paddingHorizontal: spacing.xl, paddingVertical: spacing.sm, borderBottomWidth: 1 },
+  searchBox: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, borderWidth: 1, borderRadius: borderRadius.lg, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
+  searchInput: { flex: 1, fontSize: 14, paddingVertical: 0 },
   searchClear: { padding: 2 },
   tabBar: { borderBottomWidth: 1 },
   tabRow: { paddingHorizontal: spacing.xl, gap: spacing.sm, paddingVertical: spacing.sm },
@@ -1268,6 +1430,51 @@ const styles = StyleSheet.create({
   metricValue: { fontSize: 15, fontWeight: '800' },
   metricLabel: { fontSize: 10, fontWeight: '600', marginTop: 1 },
   metricDivider: { width: 1, height: 24, marginHorizontal: spacing.sm },
+  dashHero: { borderRadius: borderRadius.xl, padding: spacing.lg, marginBottom: spacing.md },
+  dashHeroHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.lg },
+  dashHeroTitleWrap: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  dashHeroIcon: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  dashHeroTitle: { fontSize: 16, fontWeight: '800', color: '#fff', letterSpacing: -0.2 },
+  dashHeroSubtitle: { fontSize: 12, fontWeight: '500', color: 'rgba(255,255,255,0.85)', marginTop: 2 },
+  livePill: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 5, borderRadius: borderRadius.full },
+  liveDot: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: '#22D3EE' },
+  liveText: { fontSize: 10, fontWeight: '800', color: '#fff', letterSpacing: 0.6 },
+  kpiGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  kpiTile: { width: '48.5%', borderRadius: borderRadius.lg, borderWidth: 1, padding: spacing.md, gap: 2 },
+  kpiIcon: { width: 30, height: 30, borderRadius: 9, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.xs },
+  kpiValue: { fontSize: 22, fontWeight: '800', color: '#fff', letterSpacing: -0.5 },
+  kpiLabel: { fontSize: 11, fontWeight: '700', color: 'rgba(255,255,255,0.95)' },
+  kpiSuffix: { fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.7)' },
+  dashCard: { marginBottom: spacing.md },
+  dashCardHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: spacing.md },
+  dashCardTitle: { fontSize: 15, fontWeight: '800' },
+  dashCardSubtitle: { fontSize: 12, fontWeight: '500', marginTop: 2 },
+  totalPill: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: borderRadius.full },
+  totalPillText: { fontSize: 11, fontWeight: '800' },
+  chart: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', height: 96, gap: spacing.xs, marginBottom: spacing.md },
+  chartGroup: { flex: 1, alignItems: 'center', gap: spacing.xs },
+  chartTrack: { width: '100%', height: 76, borderRadius: 6, justifyContent: 'flex-end', overflow: 'hidden' },
+  chartFill: { width: '100%', borderRadius: 6 },
+  chartLabel: { fontSize: 10, fontWeight: '700' },
+  chartLegend: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg, borderTopWidth: 1, paddingTop: spacing.sm },
+  chartLegendRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  legendDot: { width: 8, height: 8, borderRadius: 4 },
+  chartLegendText: { fontSize: 11, fontWeight: '600' },
+  trendingWrap: { marginBottom: spacing.lg },
+  trendingHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginBottom: spacing.sm },
+  trendingTitle: { fontSize: 13, fontWeight: '800' },
+  trendingChips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  trendChip: { flexDirection: 'row', alignItems: 'center', gap: 5, borderWidth: 1.5, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: borderRadius.full },
+  trendChipText: { fontSize: 12, fontWeight: '700' },
+  trendChipCount: { fontSize: 11, fontWeight: '700' },
+  contribRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.sm },
+  contribRank: { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+  contribRankText: { fontSize: 12, fontWeight: '800' },
+  contribInfo: { flex: 1 },
+  contribName: { fontSize: 13, fontWeight: '700' },
+  contribMeta: { fontSize: 11, marginTop: 2 },
+  contribBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: borderRadius.full },
+  contribBadgeText: { fontSize: 11, fontWeight: '700' },
   emptyInvite: { alignItems: 'center', paddingVertical: spacing.xxl, paddingHorizontal: spacing.lg },
   emptyInviteIcon: { width: 96, height: 96, borderRadius: 48, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.xl },
   emptyInviteTitle: { fontSize: 18, fontWeight: '800', textAlign: 'center', marginBottom: spacing.sm },

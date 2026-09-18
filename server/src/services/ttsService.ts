@@ -3,11 +3,10 @@ import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import { CHARACTER_VOICES, CharacterVoice } from '../utils/prompts';
+import { isOpenRouterConfigured, openrouterTTS } from '../utils/openrouter';
 import {
   isVoiceboxEnabled,
-  isVoiceboxAvailable,
   voiceboxSynthesize,
-  saveVoiceboxAudio,
 } from './voiceboxService';
 
 export { CHARACTER_VOICES, CharacterVoice };
@@ -17,8 +16,11 @@ const TTS_CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
 const VOICE_LANGUAGE_HINT: Record<string, string> = {
   blessica: 'bisaya',
-  maria: 'tagalog',
-  juan: 'tagalog',
+  angel: 'bisaya',
+  sultan: 'tagalog',
+  lola: 'bisaya',
+  bryan: 'en',
+  jenny: 'en',
 };
 
 function sanitizeSsml(input: string): string {
@@ -137,58 +139,105 @@ class LocalTTSService {
     language?: string
   ): Promise<{ url: string; cached: boolean; voice: string; provider?: string }> {
     this.evictOldFiles();
-    
+
     const voice = CHARACTER_VOICES[voiceKey] || CHARACTER_VOICES.blessica;
     const cleanText = sanitizeSsml(text);
-    const lang = language || VOICE_LANGUAGE_HINT[voiceKey] || 'bisaya';
+    const lang = (language || VOICE_LANGUAGE_HINT[voiceKey] || 'bisaya').toLowerCase();
 
     const hash = crypto
       .createHash('sha1')
       .update(
-        `v2|${voice.voiceName}|${rate ?? voice.rate ?? 1}|${pitch ?? voice.pitch ?? 1}|${lang}|${cleanText}`
+        `v5|${voice.voiceName}|${rate ?? voice.rate ?? 1}|${pitch ?? voice.pitch ?? 1}|${lang}|${isOpenRouterConfigured() ? 'openrouter' : 'msedge'}|${cleanText}`
       )
       .digest('hex');
 
-    let provider = 'msedge-tts';
-    let ext = 'mp3';
+    const filePath = path.join(this.cacheDir, `${hash}.mp3`);
 
-    if (isVoiceboxEnabled() && (await isVoiceboxAvailable())) {
-      const voiceboxPath = path.join(this.cacheDir, `${hash}.wav`);
-      const msedgePath = path.join(this.cacheDir, `${hash}.mp3`);
-
-      if (!fs.existsSync(voiceboxPath)) {
-        try {
-          const { buffer, ext: voiceboxExt } = await voiceboxSynthesize(cleanText, lang);
-          ext = voiceboxExt;
-          saveVoiceboxAudio(buffer, this.cacheDir, hash, ext);
-          provider = 'voicebox';
-        } catch (err) {
-          console.warn('[TTS] Voicebox synthesis failed, falling back to msedge-tts:', err);
-          if (!fs.existsSync(msedgePath)) {
-            const buffer = await synthesizeWithMsEdge(cleanText, voice, rate, pitch);
-            fs.writeFileSync(msedgePath, buffer);
-          }
-          ext = 'mp3';
-        }
-      } else {
-        provider = 'voicebox';
-        ext = 'wav';
-      }
-    } else {
-      const filePath = path.join(this.cacheDir, `${hash}.mp3`);
-      if (!fs.existsSync(filePath)) {
-        const buffer = await synthesizeWithMsEdge(cleanText, voice, rate, pitch);
-        fs.writeFileSync(filePath, buffer);
-      }
-      ext = 'mp3';
+    if (fs.existsSync(filePath)) {
+      return {
+        url: `/audio/tts/${hash}.mp3`,
+        cached: true,
+        voice: voice.voiceName,
+        provider: 'cache',
+      };
     }
 
-    return {
-      url: `/audio/tts/${hash}.${ext}`,
-      cached: true,
-      voice: voice.voiceName,
-      provider,
-    };
+    // Filipino content (bisaya/tagalog/filipino) MUST use a real Filipino voice.
+    // Deepgram flux-tts only speaks English ("accents spanning ... Filipino English"),
+    // so it is NOT suitable for the primary Filipino languages — it would sound
+    // like a generic English AI. Prefer msedge-tts fil-PH neural voices, then
+    // Voicebox (cloned Bisaya voice), and only fall back to OpenRouter.
+    const isFilipino =
+      lang === 'bisaya' ||
+      lang === 'ceb' ||
+      lang === 'cebuano' ||
+      lang === 'tl' ||
+      lang === 'tagalog' ||
+      lang === 'fil' ||
+      lang === 'fil-ph' ||
+      voice.locale.toLowerCase().startsWith('fil');
+
+    interface TtsAttempt {
+      name: string;
+      run: () => Promise<{ buffer: Buffer; ext: string; provider: string }>;
+    }
+
+    const attempts: TtsAttempt[] = [];
+
+    const msEdge = (): TtsAttempt => ({
+      name: 'msedge-tts',
+      run: () =>
+        synthesizeWithMsEdge(cleanText, voice, rate, pitch).then((b) => ({
+          buffer: b,
+          ext: 'mp3',
+          provider: 'msedge-tts',
+        })),
+    });
+
+    const voicebox = (): TtsAttempt => ({
+      name: 'voicebox',
+      run: async () => {
+        const { buffer, ext: voiceboxExt } = await voiceboxSynthesize(cleanText, lang);
+        return { buffer, ext: voiceboxExt, provider: 'voicebox' };
+      },
+    });
+
+    const openRouter = (): TtsAttempt => ({
+      name: 'openrouter-deepgram',
+      run: async () => ({
+        buffer: await openrouterTTS(cleanText),
+        ext: 'mp3',
+        provider: 'openrouter-deepgram',
+      }),
+    });
+
+    if (isFilipino) {
+      attempts.push(msEdge());
+      if (isVoiceboxEnabled()) attempts.push(voicebox());
+      if (isOpenRouterConfigured()) attempts.push(openRouter());
+    } else {
+      if (isOpenRouterConfigured()) attempts.push(openRouter());
+      attempts.push(msEdge());
+      if (isVoiceboxEnabled()) attempts.push(voicebox());
+    }
+
+    for (const attempt of attempts) {
+      try {
+        const result = await attempt.run();
+        const target = path.join(this.cacheDir, `${hash}.${result.ext}`);
+        fs.writeFileSync(target, result.buffer);
+        return {
+          url: `/audio/tts/${hash}.${result.ext}`,
+          cached: false,
+          voice: voice.voiceName,
+          provider: result.provider,
+        };
+      } catch (err) {
+        console.warn(`[TTS] ${attempt.name} failed, trying next provider:`, (err as Error)?.message);
+      }
+    }
+
+    throw new Error('All TTS providers failed');
   }
 }
 

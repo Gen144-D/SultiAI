@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Platform } from 'react-native';
+import { BASE_URL } from './api';
 
 const CACHE_PREFIX = 'sultiai_cache_';
 const QUEUE_KEY = 'sultiai_sync_queue';
@@ -8,8 +8,7 @@ const LESSON_CACHE_KEY = CACHE_PREFIX + 'lessons';
 const VOCAB_CACHE_KEY = CACHE_PREFIX + 'vocabulary';
 const LEXICON_CACHE_KEY = CACHE_PREFIX + 'lexicon';
 
-const LOCALHOST = Platform.OS === 'android' ? '10.0.2.2' : 'localhost';
-const HEALTH_URL = `http://${LOCALHOST}:3001/api/health`;
+const HEALTH_URL = `${BASE_URL}/api/health`;
 
 export const offline = {
   async isOnline() {

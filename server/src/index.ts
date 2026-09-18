@@ -7,8 +7,6 @@ import { sql } from 'drizzle-orm';
 import { connectMongo, closeMongo } from './db/mongodb/connection';
 import { errorHandler, notFoundHandler } from './middleware/error';
 import { isGroqConfigured } from './utils/groq';
-import { isLocalLLMReady, ensureLocalLLM, getLocalLLMError } from './services/localLLM';
-import { isLocalSTTReady, ensureLocalSTT, getLocalSTTError } from './services/sttService';
 import { env, validateEnv } from './config';
 import { isRedisConfigured, checkRedisHealth } from './config/redis';
 import { initSentry, sentryErrorHandler } from './config/sentry';
@@ -39,6 +37,7 @@ import preservationRoutes from './routes/preservation.routes';
 import arRoutes from './routes/ar.routes';
 import whisperRoutes from './routes/whisper.routes';
 import agentRoutes from './routes/agent.routes';
+import voiceRoutes from './routes/voice.routes';
 import vocabularyIntelligenceRoutes from './routes/vocabulary.routes';
 import pronunciationIntelligenceRoutes from './routes/pronunciation.routes';
 import recommendationRoutes from './routes/recommendation.routes';
@@ -65,7 +64,10 @@ app.use(express.json({ limit: env.MAX_REQUEST_SIZE }));
 app.use(sanitizeInput());
 app.use(detectSqlInjection);
 app.use(requestLogger);
-app.use(globalRateLimit);
+app.use((req, res, next) => {
+  if (req.path === '/api/health') return next();
+  globalRateLimit(req, res, next);
+});
 
 app.use(
   '/audio/tts',
@@ -87,11 +89,7 @@ app.get('/api/health', async (_req, res) => {
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     groq: isGroqConfigured() ? 'configured' : 'not_set',
-    localLLM: isLocalLLMReady() ? 'ready' : 'initializing',
-    localLLMError: getLocalLLMError(),
-    localSTT: isLocalSTTReady() ? 'ready' : 'initializing',
-    localSTTError: getLocalSTTError(),
-    mode: isGroqConfigured() ? 'api' : isLocalLLMReady() ? 'local' : 'none',
+    mode: isGroqConfigured() ? 'api' : 'none',
     redis: isRedisConfigured() ? 'configured' : 'not_set',
     database: { status: 'unknown', dialect: getDialectName() },
   };
@@ -99,7 +97,7 @@ app.get('/api/health', async (_req, res) => {
   try {
     const db = getDb();
     const start = Date.now();
-    await db.select().from(sql.raw('1')).limit(1).execute();
+    await db.select().from(sql.raw('(SELECT 1 AS one)')).limit(1).execute();
     health.database = { status: 'ok', dialect: getDialectName(), latencyMs: Date.now() - start };
   } catch (error) {
     health.database = {
@@ -147,6 +145,7 @@ app.use(
 app.use('/api/ar', arRoutes);
 app.use('/api/whisper', whisperRoutes);
 app.use('/api/agent', agentRoutes);
+app.use('/api/voice', voiceRoutes);
 app.use('/api/v2/vocabulary', vocabularyIntelligenceRoutes);
 app.use('/api/v2/pronunciation', pronunciationIntelligenceRoutes);
 app.use('/api/v2/recommendations', recommendationRoutes);
@@ -236,34 +235,10 @@ async function start() {
       }
     }
 
-    if (!isGroqConfigured()) {
-      logger.info('Initializing local LLM model...');
-      try {
-        await ensureLocalLLM();
-        logger.info('Local LLM ready', { status: isLocalLLMReady() });
-        if (getLocalLLMError()) {
-          logger.error('Local LLM error', { error: getLocalLLMError() });
-        }
-      } catch (err) {
-        logger.error('Local LLM init failed', { error: (err as Error).message });
-      }
-
-      logger.info('Initializing local STT model...');
-      try {
-        await ensureLocalSTT();
-        logger.info('Local STT ready', { status: isLocalSTTReady() });
-        if (getLocalSTTError()) {
-          logger.error('Local STT error', { error: getLocalSTTError() });
-        }
-      } catch (err) {
-        logger.error('Local STT init failed', { error: (err as Error).message });
-      }
-    }
-
     app.listen(env.PORT, '0.0.0.0', () => {
       logger.info(`Server running on http://localhost:${env.PORT}`);
       logger.info(
-        `Mode: ${isGroqConfigured() ? 'API (Groq)' : isLocalLLMReady() ? 'Local LLM' : 'No LLM available'}`
+        `Mode: ${isGroqConfigured() ? 'API (Groq)' : 'No LLM available'}`
       );
       logger.info(`Environment: ${env.NODE_ENV}`);
     });

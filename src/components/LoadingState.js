@@ -7,7 +7,7 @@ export default function LoadingState({ message = 'Loading...', fullScreen = fals
   const { colors } = useTheme();
 
   const content = (
-    <View style={[styles.container, fullScreen && styles.fullScreen]}>
+    <View style={[styles.container, fullScreen && styles.fullScreen]} accessibilityRole="progressbar" accessibilityLabel={message}>
       <ActivityIndicator size={size} color={colors.primary} />
       <Text style={[styles.text, { color: colors.textSecondary }]}>{message}</Text>
     </View>

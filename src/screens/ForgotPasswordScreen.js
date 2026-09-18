@@ -1,22 +1,64 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Alert, ActivityIndicator, TouchableOpacity } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import React, { useState, useEffect, useMemo } from 'react';
+import { View, Text, TextInput, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, TouchableOpacity, Animated } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { supabase } from '../lib/supabase';
 import { spacing, borderRadius, shadows } from '../theme';
 
+function FadeSlideIn({ delay = 0, children, style }) {
+  const fade = useMemo(() => new Animated.Value(0), []);
+  const slide = useMemo(() => new Animated.Value(24), []);
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fade, { toValue: 1, duration: 450, delay, useNativeDriver: true }),
+      Animated.spring(slide, { toValue: 0, friction: 8, tension: 50, delay, useNativeDriver: true }),
+    ]).start();
+  }, []);
+
+  return (
+    <Animated.View style={[{ opacity: fade, transform: [{ translateY: slide }] }, style]}>
+      {children}
+    </Animated.View>
+  );
+}
+
+function ScaleIn({ delay = 0, children, style }) {
+  const scale = useMemo(() => new Animated.Value(0.8), []);
+  const fade = useMemo(() => new Animated.Value(0), []);
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fade, { toValue: 1, duration: 400, delay, useNativeDriver: true }),
+      Animated.spring(scale, { toValue: 1, friction: 7, tension: 40, delay, useNativeDriver: true }),
+    ]).start();
+  }, []);
+
+  return (
+    <Animated.View style={[{ opacity: fade, transform: [{ scale }] }, style]}>
+      {children}
+    </Animated.View>
+  );
+}
+
 export default function ForgotPasswordScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
   const { colors } = useTheme();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState('');
+  const [focused, setFocused] = useState(false);
 
   const handleReset = async () => {
     setError('');
     if (!email.trim()) {
       setError('Please enter your email address.');
+      return;
+    }
+    if (!/^\S+@\S+\.\S+$/.test(email.trim())) {
+      setError('Please enter a valid email address.');
       return;
     }
 
@@ -38,8 +80,13 @@ export default function ForgotPasswordScreen({ navigation }) {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { paddingTop: 44 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backBtn}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+        >
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>Reset Password</Text>
@@ -49,44 +96,70 @@ export default function ForgotPasswordScreen({ navigation }) {
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           {/* Icon */}
-          <View style={[styles.iconWrap, { backgroundColor: colors.primaryLight }]}>
-            <Ionicons name="lock-closed" size={40} color={colors.primary} />
-          </View>
+          <FadeSlideIn delay={0}>
+            <View style={[styles.iconWrap, { backgroundColor: colors.primaryLight }]}>
+              <Ionicons name="lock-closed" size={40} color={colors.primary} />
+            </View>
+          </FadeSlideIn>
 
           {/* Title */}
-          <Text style={[styles.title, { color: colors.text }]}>Forgot Password?</Text>
-          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            Enter your email and we'll send you a link to reset your password.
-          </Text>
+          <FadeSlideIn delay={50}>
+            <Text style={[styles.title, { color: colors.text }]}>Forgot Password?</Text>
+          </FadeSlideIn>
+          <FadeSlideIn delay={100}>
+            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+              Enter your email and we&apos;ll send you a link to reset your password.
+            </Text>
+          </FadeSlideIn>
 
           {sent ? (
             /* Success state */
-            <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <View style={[styles.successIcon, { backgroundColor: '#34C75915' }]}>
-                <Ionicons name="checkmark-circle" size={48} color="#34C759" />
-              </View>
-              <Text style={[styles.sentTitle, { color: colors.text }]}>Email Sent!</Text>
-              <Text style={[styles.sentDesc, { color: colors.textSecondary }]}>
-                Check your inbox ({email}) for reset instructions.
-              </Text>
-              <Text style={[styles.sentNote, { color: colors.textLight }]}>
-                Didn't receive it? Check your spam folder or try again.
-              </Text>
-              <TouchableOpacity
-                activeOpacity={0.8}
-                onPress={() => navigation.goBack()}
-                style={[styles.primaryBtn, { backgroundColor: colors.primary }]}
+            <ScaleIn delay={0}>
+              <View
+                style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                accessibilityLiveRegion="polite"
               >
-                <Text style={styles.primaryBtnText}>Back to Sign In</Text>
-              </TouchableOpacity>
-            </View>
+                <View style={[styles.successIcon, { backgroundColor: colors.success + '15' }]}>
+                  <Ionicons name="checkmark-circle" size={48} color={colors.success} />
+                </View>
+                <Text style={[styles.sentTitle, { color: colors.text }]}>Email Sent!</Text>
+                <Text style={[styles.sentDesc, { color: colors.textSecondary }]}>
+                  Check your inbox ({email}) for reset instructions.
+                </Text>
+                <Text style={[styles.sentNote, { color: colors.textLight }]}>
+                  Didn&apos;t receive it? Check your spam folder or try again.
+                </Text>
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() => navigation.goBack()}
+                  style={[styles.primaryBtn, { backgroundColor: colors.primary }]}
+                  accessibilityRole="button"
+                  accessibilityLabel="Back to Sign In"
+                >
+                  <Text style={[styles.primaryBtnText, { color: colors.textOnGradient }]}>Back to Sign In</Text>
+                </TouchableOpacity>
+              </View>
+            </ScaleIn>
           ) : (
             /* Form state */
             <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               {/* Email input */}
               <Text style={[styles.label, { color: colors.textSecondary }]}>Email Address</Text>
-              <View style={[styles.inputWrap, { backgroundColor: colors.background, borderColor: colors.border }]}>
-                <Ionicons name="mail-outline" size={18} color={colors.textLight} style={styles.inputIcon} />
+              <View
+                style={[
+                  styles.inputWrap,
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: error ? colors.error : focused ? colors.primary : colors.border,
+                  },
+                ]}
+              >
+                <Ionicons
+                  name="mail-outline"
+                  size={18}
+                  color={error ? colors.error : focused ? colors.primary : colors.textLight}
+                  style={styles.inputIcon}
+                />
                 <TextInput
                   style={[styles.input, { color: colors.text }]}
                   value={email}
@@ -97,14 +170,22 @@ export default function ForgotPasswordScreen({ navigation }) {
                   autoComplete="email"
                   autoCapitalize="none"
                   autoCorrect={false}
+                  textContentType="emailAddress"
+                  returnKeyType="send"
+                  onSubmitEditing={handleReset}
+                  onFocus={() => setFocused(true)}
+                  onBlur={() => setFocused(false)}
                 />
               </View>
 
               {/* Error */}
               {!!error && (
-                <View style={[styles.errorBox, { backgroundColor: '#FF3B3015', borderColor: '#FF3B3030' }]}>
-                  <Ionicons name="alert-circle" size={16} color="#FF3B30" />
-                  <Text style={styles.errorText}>{error}</Text>
+                <View
+                  style={[styles.errorBox, { backgroundColor: colors.error + '15', borderColor: colors.error + '30' }]}
+                  accessibilityLiveRegion="polite"
+                >
+                  <Ionicons name="alert-circle" size={16} color={colors.error} />
+                  <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
                 </View>
               )}
 
@@ -114,16 +195,24 @@ export default function ForgotPasswordScreen({ navigation }) {
                 onPress={handleReset}
                 disabled={loading}
                 style={[styles.primaryBtn, { backgroundColor: colors.primary }]}
+                accessibilityRole="button"
+                accessibilityLabel="Send Reset Link"
+                accessibilityState={{ disabled: loading }}
               >
                 {loading ? (
-                  <ActivityIndicator size="small" color="#FFF" />
+                  <ActivityIndicator size="small" color={colors.textOnGradient} />
                 ) : (
-                  <Text style={styles.primaryBtnText}>Send Reset Link</Text>
+                  <Text style={[styles.primaryBtnText, { color: colors.textOnGradient }]}>Send Reset Link</Text>
                 )}
               </TouchableOpacity>
 
               {/* Back */}
-              <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backLink}>
+              <TouchableOpacity
+                onPress={() => navigation.goBack()}
+                style={styles.backLink}
+                accessibilityRole="button"
+                accessibilityLabel="Back to Sign In"
+              >
                 <Text style={[styles.backLinkText, { color: colors.primary }]}>Back to Sign In</Text>
               </TouchableOpacity>
             </View>
@@ -143,12 +232,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 12,
   },
-  backBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  backBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { fontSize: 17, fontWeight: '600' },
 
   scroll: { flexGrow: 1, paddingHorizontal: spacing.xl, paddingTop: spacing.xl, alignItems: 'center' },
 
-  iconWrap: { width: 80, height: 80, borderRadius: 24, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.lg },
+  iconWrap: { width: 80, height: 80, borderRadius: borderRadius.xxl, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.lg },
 
   title: { fontSize: 26, fontWeight: '800', textAlign: 'center', marginBottom: spacing.sm },
   subtitle: { fontSize: 15, textAlign: 'center', marginBottom: spacing.xxl, lineHeight: 22, paddingHorizontal: spacing.md },
@@ -161,15 +250,16 @@ const styles = StyleSheet.create({
     ...shadows.md,
   },
 
-  label: { fontSize: 13, fontWeight: '600', marginBottom: 6, marginLeft: 2 },
+  label: { fontSize: 14, fontWeight: '600', marginBottom: 8, marginLeft: 2 },
   inputWrap: {
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1.5,
     borderRadius: borderRadius.lg,
-    height: 52,
+    height: 56,
     paddingHorizontal: spacing.md,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.xl,
+    ...shadows.sm,
   },
   inputIcon: { marginRight: 10 },
   input: { flex: 1, fontSize: 16, paddingVertical: 0 },
@@ -183,7 +273,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginBottom: spacing.md,
   },
-  errorText: { fontSize: 13, fontWeight: '500', color: '#FF3B30', flex: 1 },
+  errorText: { fontSize: 13, fontWeight: '500', flex: 1 },
 
   primaryBtn: {
     height: 54,
@@ -193,7 +283,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     ...shadows.md,
   },
-  primaryBtnText: { fontSize: 17, fontWeight: '700', color: '#FFF' },
+  primaryBtnText: { fontSize: 17, fontWeight: '700' },
 
   backLink: { marginTop: spacing.md, alignItems: 'center' },
   backLinkText: { fontSize: 15, fontWeight: '600' },

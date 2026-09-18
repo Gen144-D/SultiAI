@@ -1,15 +1,14 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity,
-  KeyboardAvoidingView, Platform, ActivityIndicator, Alert, Modal,
+  KeyboardAvoidingView, Platform, Alert, Modal, ScrollView,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { XP_VALUES } from '../constants';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
-import { useAudioRecorder, useAudioRecorderState, RecordingPresets, requestRecordingPermissionsAsync, setAudioModeAsync } from 'expo-audio';
-import { File } from 'expo-file-system';
+import { useCrossPlatformRecorder } from '../hooks/useCrossPlatformRecorder';
 import Animated, {
   useSharedValue, useAnimatedStyle, withSpring, withTiming,
   withSequence, withDelay, withRepeat, Easing,
@@ -22,9 +21,12 @@ import { api } from '../services/api';
 import { speakTTS, stopTTS } from '../utils/tts';
 import GlassCard from '../components/GlassCard';
 import Badge from '../components/Badge';
-import AIAvatar from '../components/AIAvatar';
+import SultiTalkingAvatar from '../components/sulti/SultiTalkingAvatar';
 import AuroraBackground from '../components/AuroraBackground';
-import { spacing, borderRadius, getTabBarClearance } from '../theme';
+import SultiModeCard from '../components/sulti/SultiModeCard';
+import TopicCard from '../components/sulti/TopicCard';
+import RoleplayCard from '../components/sulti/RoleplayCard';
+import { spacing, borderRadius, getTabBarClearance, shadows, typography } from '../theme';
 import useAdaptiveTutor from '../hooks/useAdaptiveTutor';
 
 const CHAT_HISTORY_KEY = 'sultiai_chat_history';
@@ -150,6 +152,7 @@ export default function SultiTutorScreen({ navigation, route }) {
   const [loading, setLoading] = useState(false);
   const [sessionId, setSessionId] = useState(null);
   const [level, setLevel] = useState(null);
+  const [sultiMode, setSultiMode] = useState('hub');
   const [showRoleplay, setShowRoleplay] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [continuousMode, setContinuousMode] = useState(false);
@@ -164,23 +167,31 @@ export default function SultiTutorScreen({ navigation, route }) {
     messagesRef.current = messages;
   }, [messages]);
 
-  const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
-  const recorderState = useAudioRecorderState(audioRecorder);
+  const crossRecorder = useCrossPlatformRecorder();
 
   const micGlow = useSharedValue(0);
 
   useEffect(() => {
-    if (recorderState?.isRecording || isSpeaking) {
+    if (crossRecorder.isRecording || isSpeaking) {
       micGlow.value = withRepeat(withTiming(1, { duration: 800, easing: Easing.inOut(Easing.sin) }), -1, true);
     } else {
       micGlow.value = withTiming(0, { duration: 300 });
     }
-  }, [recorderState?.isRecording, isSpeaking]);
+  }, [crossRecorder.isRecording, isSpeaking]);
 
   const micGlowStyle = useAnimatedStyle(() => ({
-    boxShadow: `0 0 ${8 + micGlow.value * 12}px ${recorderState?.isRecording ? 'rgba(239,68,68,' : 'rgba(20,184,166,'}${0.4 + micGlow.value * 0.4})`,
+    boxShadow: `0 0 ${8 + micGlow.value * 12}px ${crossRecorder.isRecording ? 'rgba(239,68,68,' : 'rgba(20,184,166,'}${0.4 + micGlow.value * 0.4})`,
     elevation: 4 + micGlow.value * 6,
   }));
+
+  async function loadLevel() {
+    try {
+      const d = await api.getTutorLevel();
+      setLevel(d);
+    } catch (e) {
+      console.warn('[SultiTutor] Failed to load level:', e.message);
+    }
+  }
 
   async function loadChatHistory() {
     try {
@@ -192,7 +203,9 @@ export default function SultiTutorScreen({ navigation, route }) {
   }
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadLevel();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadChatHistory();
     adaptiveTutor.loadState();
     return () => {
@@ -200,15 +213,6 @@ export default function SultiTutorScreen({ navigation, route }) {
       stopTTS();
     };
   }, []);
-
-  const loadLevel = async () => {
-    try {
-      const d = await api.getTutorLevel();
-      setLevel(d);
-    } catch (e) {
-      console.warn('[SultiTutor] Failed to load level:', e.message);
-    }
-  };
 
   const persistChatHistory = async () => {
     const current = messagesRef.current;
@@ -241,11 +245,8 @@ export default function SultiTutorScreen({ navigation, route }) {
 
   const startRecording = async () => {
     try {
-      const { granted } = await requestRecordingPermissionsAsync();
-      if (!granted) return Alert.alert('Permission Denied', 'Microphone access is needed.');
-      await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: true });
-      await audioRecorder.prepareToRecordAsync();
-      audioRecorder.record();
+      const started = await crossRecorder.startRecording();
+      if (!started) return Alert.alert('Permission Denied', 'Microphone access is needed.');
       isRecordingRef.current = true;
       setRecordingDuration(0);
       durationInterval.current = setInterval(() => { setRecordingDuration(prev => prev + 1); }, 1000);
@@ -253,18 +254,14 @@ export default function SultiTutorScreen({ navigation, route }) {
   };
 
   const stopRecording = async () => {
-    if (!isRecordingRef.current && !recorderState.isRecording) return;
+    if (!isRecordingRef.current && !crossRecorder.isRecording) return;
     isRecordingRef.current = false;
     if (durationInterval.current) { clearInterval(durationInterval.current); durationInterval.current = null; }
     setRecordingDuration(0);
     setLoading(true);
 
     try {
-      if (recorderState.isRecording) await audioRecorder.stop();
-      const uri = audioRecorder.uri;
-      if (!uri) { addMessage('assistant', 'No audio captured. Please try again.'); setLoading(false); return; }
-      const audioFile = new File(uri);
-      const audioBase64 = await audioFile.base64();
+      const audioBase64 = await crossRecorder.stopRecording();
       if (!audioBase64 || audioBase64.length < 100) { addMessage('assistant', 'Recording too short.'); setLoading(false); return; }
 
       addMessage('user_voice', '', { audio: true, transcription: '' });
@@ -295,7 +292,7 @@ export default function SultiTutorScreen({ navigation, route }) {
 
   const toggleRecording = () => {
     if (isSpeaking) { stopTTS(); setIsSpeaking(false); if (continuousMode) setTimeout(() => startRecording(), 300); return; }
-    if (isRecordingRef.current || recorderState.isRecording) stopRecording();
+    if (isRecordingRef.current || crossRecorder.isRecording) stopRecording();
     else startRecording();
   };
 
@@ -317,6 +314,7 @@ export default function SultiTutorScreen({ navigation, route }) {
     const text = input.trim();
     if (!text || loading) return;
     if (hearts <= 0) { Alert.alert('No Hearts', "You're out of hearts! Refill to continue."); return; }
+    setSultiMode('chat');
     addMessage('user', text);
     setInput('');
     setLoading(true);
@@ -336,6 +334,7 @@ export default function SultiTutorScreen({ navigation, route }) {
   };
 
   const pickSituation = async (situation) => {
+    setSultiMode('chat');
     setLoading(true);
     addMessage('user', `Teach me about: ${situation}`);
     try {
@@ -349,12 +348,15 @@ export default function SultiTutorScreen({ navigation, route }) {
   useEffect(() => {
     const situation = route?.params?.situation;
     if (situation) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       pickSituation(situation);
       navigation.setParams({ situation: undefined, label: undefined });
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
   }, [route?.params?.situation]);
 
   const startRoleplay = async (rp) => {
+    setSultiMode('chat');
     setShowRoleplay(false);
     setLoading(true);
     const characterLine = rp.character ? ` (${rp.character})` : '';
@@ -373,8 +375,19 @@ export default function SultiTutorScreen({ navigation, route }) {
     navigation.navigate('VoiceMode', { sessionId });
   };
 
+  const startChat = () => {
+    setSultiMode('chat');
+  };
+
+  const backToHub = () => {
+    setSultiMode('hub');
+  };
+
+  // eslint-disable-next-line
   const renderMessage = useCallback(({ item, index }) => {
+    // eslint-disable-next-line
     if (item.role === 'lesson') return <AnimatedMessage index={index}>{renderLessonCard(item)}</AnimatedMessage>;
+    // eslint-disable-next-line
     if (item.role === 'assistant' && item.quickActions) return <AnimatedMessage index={index}>{renderWelcomeCard(item)}</AnimatedMessage>;
 
     const isUser = item.role === 'user' || item.role === 'user_voice';
@@ -401,13 +414,14 @@ export default function SultiTutorScreen({ navigation, route }) {
             {item.role === 'user_voice' && (
               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: item.transcription ? 4 : 0, gap: 4 }}>
                 <Ionicons name="mic" size={14} color="#fff" />
-                {item.transcription && <Text style={[styles.voiceLabel, { color: 'rgba(255,255,255,0.7)' }]}>Voice</Text>}
+                {item.transcription ? <Text style={[styles.voiceLabel, { color: 'rgba(255,255,255,0.7)' }]}>Voice</Text> : null}
               </View>
             )}
             <Text style={[styles.bubbleText, { color: isUser ? '#fff' : colors.text }]}>
               {item.role === 'user_voice' ? (item.transcription || 'Voice message') : item.text}
             </Text>
           </LinearGradient>
+          {/* eslint-disable-next-line */}
           {item.role === 'assistant' && item.pronunciation && renderPronunciationCard(item.pronunciation, item.transcription)}
           {!isUser && !item.pronunciation && !item.quickActions && (
             <TouchableOpacity
@@ -426,7 +440,7 @@ export default function SultiTutorScreen({ navigation, route }) {
   const renderWelcomeCard = (msg) => (
     <GlassCard variant="elevated" style={styles.welcomeCard}>
       <View style={styles.welcomeHeader}>
-        <AIAvatar size={56} mood={adaptiveTutor.difficulty === 'advanced' ? 'happy' : 'neutral'} />
+        <SultiTalkingAvatar size={56} mood="idle" />
         <View style={{ flex: 1 }}>
           <Text style={[styles.welcomeName, { color: colors.text }]}>Sulti!</Text>
           <Text style={[styles.welcomeTitle, { color: colors.textSecondary }]}>Your Bisaya Companion</Text>
@@ -488,7 +502,7 @@ export default function SultiTutorScreen({ navigation, route }) {
 
   const renderPronunciationCard = (pron, transcription) => {
     if (!pron) return null;
-    const scoreColor = pron.score >= 80 ? '#10B981' : pron.score >= 50 ? '#F59E0B' : '#EF4444';
+    const scoreColor = pron.score >= 80 ? colors.success : pron.score >= 50 ? colors.warning : colors.error;
     return (
       <GlassCard style={styles.pronCard} padding="md">
         <View style={styles.pronHeader}>
@@ -519,14 +533,14 @@ export default function SultiTutorScreen({ navigation, route }) {
         {pron.phoneme_breakdown?.length > 0 && (
           <View style={[styles.phonemeContainer, { borderTopColor: colors.border }]}>
             {pron.phoneme_breakdown.map((p, i) => (
-              <View key={i} style={[styles.phonemeRow, p.correct && { backgroundColor: '#10B981' + '08', borderRadius: 6 }]}>
+              <View key={i} style={[styles.phonemeRow, p.correct && { backgroundColor: colors.success + '08', borderRadius: 6 }]}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                   <Ionicons
                     name={p.correct ? 'checkmark-circle' : 'close-circle'}
                     size={14}
-                    color={p.correct ? '#10B981' : '#EF4444'}
+                    color={p.correct ? colors.success : colors.error}
                   />
-                  <Text style={[styles.phonemeText, { color: colors.text }, !p.correct && { color: '#EF4444' }]}>
+                  <Text style={[styles.phonemeText, { color: colors.text }, !p.correct && { color: colors.error }]}>
                     {p.expected}
                   </Text>
                 </View>
@@ -620,18 +634,20 @@ export default function SultiTutorScreen({ navigation, route }) {
     </View>
   );
 
-  return (
-    <AuroraBackground style={styles.container}>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={0}>
+  const renderHub = () => (
+    <>
+      {/* Gradient Header */}
       <LinearGradient
-        colors={[colors.primary, colors.secondary]}
+        colors={[colors.gradientStart, colors.gradientEnd]}
         start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-        style={[styles.header, { paddingTop: insets.top + 8 }]}
+        style={[styles.header, { paddingTop: insets.top + 6 }]}
       >
         <View style={styles.headerContent}>
           <View style={styles.headerLeft}>
-            <AIAvatar size={36} mood={isSpeaking ? 'speaking' : loading ? 'thinking' : 'neutral'} />
-            <View style={{ marginLeft: 8 }}>
+            <View style={styles.avatarWrapper}>
+              <SultiTalkingAvatar size={38} mood={crossRecorder.isRecording ? 'listening' : isSpeaking ? 'speaking' : loading ? 'thinking' : 'idle'} />
+            </View>
+            <View style={{ marginLeft: 12 }}>
               <Text style={styles.headerTitle}>Sulti</Text>
               <Text style={styles.headerSubtitle}>
                 {isSpeaking ? 'Speaking...' : loading ? 'Thinking...' : level?.level || 'Learning'}
@@ -639,23 +655,208 @@ export default function SultiTutorScreen({ navigation, route }) {
             </View>
           </View>
           <View style={styles.headerRight}>
-            <TouchableOpacity style={styles.headerBtn} onPress={openVoiceMode} activeOpacity={0.7}>
-              <Ionicons name="mic-circle" size={28} color="#fff" />
+            <TouchableOpacity style={styles.headerBtn} onPress={openVoiceMode} accessibilityLabel="Open voice mode">
+              <Ionicons name="mic-circle" size={24} color="#fff" />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.headerBtn} onPress={() => setShowHistory(true)} activeOpacity={0.7}>
-              <Ionicons name="time-outline" size={24} color="#fff" />
+            <TouchableOpacity style={styles.headerBtn} onPress={() => setShowHistory(true)} accessibilityLabel="Chat history">
+              <Ionicons name="time-outline" size={20} color="#fff" />
             </TouchableOpacity>
             <View style={styles.headerPill}>
-              <Ionicons name="heart" size={14} color="#FF6B6B" />
+              <Ionicons name="heart" size={12} color={colors.error} />
               <Text style={styles.headerPillText}>{hearts}</Text>
             </View>
-            {level?.level && (
-              <View style={styles.headerPill}>
-                <Text style={styles.headerPillText}>
-                  {level.level === 'advanced' ? 'A' : level.level === 'intermediate' ? 'T' : 'S'}
-                </Text>
+          </View>
+        </View>
+        {level && (
+          <Text style={styles.headerStat}>
+            {level.total_sessions || 0} sessions · {level.total_xp || 0} XP
+          </Text>
+        )}
+      </LinearGradient>
+
+      <ScrollView
+        style={styles.hubScroll}
+        contentContainerStyle={styles.hubContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Welcome Card */}
+        <GlassCard variant="elevated" style={styles.welcomeCard} padding="xxl">
+          <View style={styles.welcomeHeader}>
+            <View style={styles.avatarWrapperLarge}>
+              <SultiTalkingAvatar size={68} mood="idle" />
+            </View>
+            <View style={{ flex: 1, marginLeft: spacing.lg }}>
+              <Text style={styles.welcomeName}>Kumusta! 👋</Text>
+              <Text style={[styles.welcomeTitle, { color: colors.textSecondary }]}>
+                Your Bisaya language companion
+              </Text>
+              <View style={styles.welcomeBadges}>
+                {level && (
+                  <Badge
+                    title={level.level === 'advanced' ? 'Abante' : level.level === 'intermediate' ? 'Tunga' : 'Sugod'}
+                    variant={level.level === 'advanced' ? 'error' : level.level === 'intermediate' ? 'warning' : 'success'}
+                    size="sm"
+                  />
+                )}
+                {adaptiveTutor.difficulty && (
+                  <Badge title={`A-${adaptiveTutor.difficulty[0].toUpperCase()}`} variant="info" size="sm" />
+                )}
               </View>
-            )}
+            </View>
+          </View>
+        </GlassCard>
+
+        {/* Two AI Mode Cards */}
+        <View style={styles.hubModeSection}>
+          <SultiModeCard
+            title="Chat with SULTI"
+            subtitle="Type or speak and get instant responses."
+            icon="chatbubble-ellipses"
+            gradient={[colors.primary, colors.gradientA]}
+            badge="AI CHAT"
+            badgeColor="rgba(255,255,255,0.2)"
+            variant="chat"
+            onPress={startChat}
+          />
+          <SultiModeCard
+            title="Voice AI Agent"
+            subtitle="Speak naturally and chat with Sulti by voice."
+            icon="mic"
+            gradient={['#0D9488', '#06B6D4']}
+            badge="VOICE AGENT"
+            badgeColor="rgba(255,255,255,0.2)"
+            variant="voice"
+            onPress={openVoiceMode}
+          />
+        </View>
+
+        {/* Topic Practice */}
+        <View style={styles.hubSection}>
+          <Text style={[styles.hubSectionTitle, { color: colors.text }]}>Practice Topics</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.hubTopicGrid}
+          >
+            {SITUATIONS.map((s) => (
+              <TopicCard
+                key={s.label}
+                label={s.label}
+                icon={s.icon}
+                color={s.color}
+                desc={s.desc}
+                onPress={() => pickSituation(s.label)}
+                disabled={loading}
+              />
+            ))}
+          </ScrollView>
+        </View>
+
+        {/* Role-Play */}
+        <RoleplayCard
+          onPress={() => setShowRoleplay(!showRoleplay)}
+          expanded={showRoleplay}
+          colors={colors}
+        >
+          <View style={styles.hubRoleplayGrid}>
+            {ROLEPLAY_SITUATIONS.map((r) => (
+              <TouchableOpacity
+                key={r.label}
+                style={[styles.hubRoleplayChip, { backgroundColor: colors.primary + '15' }]}
+                onPress={() => startRoleplay(r)}
+                disabled={loading}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.hubRoleplayEmoji}>{r.emoji}</Text>
+                <Text style={[styles.hubRoleplayLabel, { color: colors.primary }]}>{r.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </RoleplayCard>
+
+        <View style={{ height: 100 }} />
+      </ScrollView>
+
+      {/* Quick Chat Input */}
+      <BlurView intensity={100} tint={isDark ? 'dark' : 'light'} style={[styles.composerContainer, { borderTopColor: colors.glassBorder, paddingBottom: getTabBarClearance(insets) }]}>
+        <View style={[styles.composerWrap, { borderColor: colors.border }]}>
+          <View style={[styles.inputWrap, { backgroundColor: colors.surfaceSecondary, borderColor: 'transparent' }]}>
+            <TextInput
+              style={[styles.input, { color: colors.text }]}
+              placeholder="Type in Bisaya or English..."
+              placeholderTextColor={colors.textLight}
+              value={input}
+              onChangeText={setInput}
+              onSubmitEditing={sendMessage}
+              editable={!loading}
+              multiline
+              autoComplete="off"
+              autoCorrect={false}
+            />
+          </View>
+          <View style={styles.composerActions}>
+            <TouchableOpacity
+              style={[styles.composerMic, { backgroundColor: colors.primary }, crossRecorder.isRecording && { backgroundColor: colors.error }, isSpeaking && { backgroundColor: colors.success }]}
+              onPress={toggleRecording}
+              disabled={loading}
+              accessibilityLabel="Record voice"
+              hitSlop={8}
+            >
+              <Ionicons
+                name={isSpeaking ? 'volume-high' : crossRecorder.isRecording ? 'stop' : 'mic'}
+                size={20}
+                color="#fff"
+              />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.composerSend, { backgroundColor: colors.primary }, (!input.trim() || loading) && { opacity: 0.5 }]}
+              onPress={sendMessage}
+              disabled={loading || !input.trim()}
+              accessibilityLabel="Send message"
+              hitSlop={8}
+            >
+              <Ionicons name="arrow-up" size={20} color="#fff" />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </BlurView>
+    </>
+  );
+
+  const renderChat = () => (
+    <>
+      {/* Chat Header with back button */}
+      <LinearGradient
+        colors={[colors.gradientStart, colors.gradientEnd]}
+        start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+        style={[styles.header, { paddingTop: insets.top + 6 }]}
+      >
+        <View style={styles.headerContent}>
+          <View style={styles.headerLeft}>
+            <TouchableOpacity onPress={backToHub} style={styles.headerBtn} accessibilityLabel="Back to Sulti hub">
+              <Ionicons name="arrow-back" size={22} color="#fff" />
+            </TouchableOpacity>
+            <View style={styles.avatarWrapper}>
+              <SultiTalkingAvatar size={34} mood={crossRecorder.isRecording ? 'listening' : isSpeaking ? 'speaking' : loading ? 'thinking' : 'idle'} />
+            </View>
+            <View style={{ marginLeft: 10 }}>
+              <Text style={styles.headerTitle}>Sulti</Text>
+              <Text style={styles.headerSubtitle}>
+                {isSpeaking ? 'Speaking...' : loading ? 'Thinking...' : level?.level || 'Learning'}
+              </Text>
+            </View>
+          </View>
+          <View style={styles.headerRight}>
+            <TouchableOpacity style={styles.headerBtn} onPress={openVoiceMode} accessibilityLabel="Open voice mode">
+              <Ionicons name="mic-circle" size={22} color="#fff" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.headerBtn} onPress={() => setShowHistory(true)} accessibilityLabel="Chat history">
+              <Ionicons name="time-outline" size={20} color="#fff" />
+            </TouchableOpacity>
+            <View style={styles.headerPill}>
+              <Ionicons name="heart" size={12} color={colors.error} />
+              <Text style={styles.headerPillText}>{hearts}</Text>
+            </View>
           </View>
         </View>
         {level && (
@@ -676,31 +877,32 @@ export default function SultiTutorScreen({ navigation, route }) {
         showsVerticalScrollIndicator={false}
       />
 
-      <BlurView intensity={90} tint={isDark ? 'dark' : 'light'} style={[styles.inputContainer, { borderTopColor: colors.glassBorder, paddingBottom: getTabBarClearance(insets) }]}>
-        {(recorderState.isRecording || isSpeaking) && (
-          <View style={[styles.statusBar, { backgroundColor: recorderState.isRecording ? '#EF4444' : colors.primary }]}>
-            <Ionicons name={recorderState.isRecording ? 'mic' : 'volume-high'} size={14} color="#fff" />
-            <Text style={styles.statusText}>
-              {recorderState.isRecording
-                ? `Listening ${String(Math.floor(recordingDuration / 60)).padStart(2, '0')}:${String(recordingDuration % 60).padStart(2, '0')}`
-                : isSpeaking ? 'Sulti is speaking...' : ''}
-            </Text>
-            {recorderState.isRecording && <AnimatedWaveform />}
-            {isSpeaking && (
-              <TouchableOpacity onPress={() => { stopTTS(); setIsSpeaking(false); }}>
-                <Text style={styles.statusActionText}>Skip</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        )}
-        <View style={styles.inputRow}>
+      {(crossRecorder.isRecording || isSpeaking) && (
+        <View style={[styles.statusBar, { backgroundColor: crossRecorder.isRecording ? colors.error : colors.primary }]}>
+          <Ionicons name={crossRecorder.isRecording ? 'mic' : 'volume-high'} size={14} color="#fff" />
+          <Text style={styles.statusText}>
+            {crossRecorder.isRecording
+              ? `Listening ${String(Math.floor(recordingDuration / 60)).padStart(2, '0')}:${String(recordingDuration % 60).padStart(2, '0')}`
+              : isSpeaking ? 'Sulti is speaking...' : ''}
+          </Text>
+          {crossRecorder.isRecording && <AnimatedWaveform />}
+          {isSpeaking && (
+            <TouchableOpacity onPress={() => { stopTTS(); setIsSpeaking(false); }}>
+              <Text style={styles.statusActionText}>Skip</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
+
+      <BlurView intensity={100} tint={isDark ? 'dark' : 'light'} style={[styles.composerContainer, { borderTopColor: colors.glassBorder, paddingBottom: getTabBarClearance(insets) }]}>
+        <View style={[styles.composerWrap, { borderColor: colors.border }]}>
           <TouchableOpacity
             style={[styles.continuousToggle, { borderColor: colors.border }, continuousMode && { backgroundColor: colors.primary, borderColor: colors.primary }]}
             onPress={() => setContinuousMode(!continuousMode)}
           >
             <Ionicons name="infinite" size={16} color={continuousMode ? '#fff' : colors.textLight} />
           </TouchableOpacity>
-          <View style={[styles.inputWrap, { backgroundColor: colors.surfaceSecondary, borderColor: colors.border }]}>
+          <View style={[styles.inputWrap, { backgroundColor: colors.surfaceSecondary, borderColor: 'transparent' }]}>
             <TextInput
               id="tutorInput"
               name="tutorInput"
@@ -719,93 +921,103 @@ export default function SultiTutorScreen({ navigation, route }) {
           </View>
           <Animated.View style={micGlowStyle}>
           <TouchableOpacity
-            style={[styles.micBtn, { backgroundColor: colors.primary }, recorderState.isRecording && { backgroundColor: '#EF4444' }, isSpeaking && { backgroundColor: '#10B981' }]}
+            style={[styles.composerMic, { backgroundColor: colors.primary }, crossRecorder.isRecording && { backgroundColor: colors.error }, isSpeaking && { backgroundColor: colors.success }]}
             onPress={toggleRecording}
             disabled={loading}
+            accessibilityLabel="Record voice"
+            hitSlop={8}
           >
             <Ionicons
-              name={isSpeaking ? 'volume-high' : recorderState.isRecording ? 'stop' : 'mic'}
+              name={isSpeaking ? 'volume-high' : crossRecorder.isRecording ? 'stop' : 'mic'}
               size={20}
               color="#fff"
             />
           </TouchableOpacity>
           </Animated.View>
           <TouchableOpacity
-            style={[styles.sendBtn, { backgroundColor: colors.primary }, (!input.trim() || loading) && { opacity: 0.5 }]}
+            style={[styles.composerSend, (!input.trim() || loading) && { opacity: 0.5 }]}
             onPress={sendMessage}
             disabled={loading || !input.trim()}
+            accessibilityLabel="Send message"
           >
-            <Ionicons name="send" size={18} color="#fff" />
+            <Ionicons name="arrow-up" size={20} color="#fff" />
           </TouchableOpacity>
         </View>
       </BlurView>
+    </>
+  );
 
-      <Modal visible={showHistory} transparent animationType="slide" onRequestClose={() => setShowHistory(false)}>
-        <View style={[styles.modalOverlay, { backgroundColor: isDark ? 'rgba(2,6,23,0.85)' : 'rgba(15,23,42,0.7)' }]}>
-          <View style={[styles.modalSheet, { backgroundColor: colors.background, borderColor: colors.border }]}>
-            <View style={styles.modalHeader}>
-              <View>
-                <Text style={[styles.modalTitle, { color: colors.text }]}>Sulti&apos;s Memory</Text>
-                <Text style={[styles.modalSubtitle, { color: colors.textSecondary }]}>History & what Sulti remembers about you</Text>
-              </View>
-              <TouchableOpacity style={[styles.modalClose, { backgroundColor: colors.surfaceSecondary }]} onPress={() => setShowHistory(false)}>
-                <Ionicons name="close" size={20} color={colors.textSecondary} />
-              </TouchableOpacity>
-            </View>
+  return (
+    <AuroraBackground style={styles.container}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={0}>
+        {sultiMode === 'hub' ? renderHub() : renderChat()}
 
-            <View style={[styles.memorySection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <Text style={[styles.memoryLabel, { color: colors.textSecondary }]}>AI MEMORY</Text>
-              <View style={styles.memoryChips}>
-                {[
-                  user?.fullname ? `Name: ${user.fullname.split(' ')[0]}` : null,
-                  user?.native_language ? `Native: ${user.native_language}` : null,
-                  user?.target_language ? `Learning: ${user.target_language}` : null,
-                  adaptiveTutor.difficulty ? `Level: ${adaptiveTutor.difficulty}` : null,
-                  level?.level ? `Tutor: ${level.level}` : null,
-                  level?.total_xp ? `${level.total_xp} total XP` : null,
-                ].filter(Boolean).map((m) => (
-                  <View key={m} style={[styles.memoryChip, { backgroundColor: colors.primary + '15' }]}>
-                    <Ionicons name="sparkles" size={12} color={colors.primary} />
-                    <Text style={[styles.memoryChipText, { color: colors.primary }]}>{m}</Text>
-                  </View>
-                ))}
+        <Modal visible={showHistory} transparent animationType="slide" onRequestClose={() => setShowHistory(false)}>
+          <View style={[styles.modalOverlay, { backgroundColor: colors.overlay }]}>
+            <View style={[styles.modalSheet, { backgroundColor: colors.background, borderColor: colors.border }]}>
+              <View style={styles.modalHeader}>
+                <View>
+                  <Text style={[styles.modalTitle, { color: colors.text }]}>Sulti&apos;s Memory</Text>
+                  <Text style={[styles.modalSubtitle, { color: colors.textSecondary }]}>History & what Sulti remembers about you</Text>
+                </View>
+                <TouchableOpacity style={[styles.modalClose, { backgroundColor: colors.surfaceSecondary }]} onPress={() => setShowHistory(false)}>
+                  <Ionicons name="close" size={20} color={colors.textSecondary} />
+                </TouchableOpacity>
               </View>
-            </View>
 
-            <Text style={[styles.memoryLabel, { color: colors.textSecondary, marginTop: spacing.lg }]}>CONVERSATIONS</Text>
-            {chatHistory.length === 0 ? (
-              <View style={styles.historyEmpty}>
-                <Ionicons name="chatbubble-ellipses-outline" size={32} color={colors.textLight} />
-                <Text style={[styles.historyEmptyText, { color: colors.textSecondary }]}>No past conversations yet</Text>
-              </View>
-            ) : (
-              <FlatList
-                data={chatHistory}
-                keyExtractor={(item) => item.id}
-                showsVerticalScrollIndicator={false}
-                renderItem={({ item }) => (
-                  <TouchableOpacity
-                    style={[styles.historyRow, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                    onPress={() => loadConversation(item)}
-                    activeOpacity={0.85}
-                  >
-                    <View style={[styles.historyIcon, { backgroundColor: colors.softPurple }]}>
-                      <Ionicons name="chatbubbles" size={16} color={colors.primary} />
+              <View style={[styles.memorySection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                <Text style={[styles.memoryLabel, { color: colors.textSecondary }]}>AI MEMORY</Text>
+                <View style={styles.memoryChips}>
+                  {[
+                    user?.fullname ? `Name: ${user.fullname.split(' ')[0]}` : null,
+                    user?.native_language ? `Native: ${user.native_language}` : null,
+                    user?.target_language ? `Learning: ${user.target_language}` : null,
+                    adaptiveTutor.difficulty ? `Level: ${adaptiveTutor.difficulty}` : null,
+                    level?.level ? `Tutor: ${level.level}` : null,
+                    level?.total_xp ? `${level.total_xp} total XP` : null,
+                  ].filter(Boolean).map((m) => (
+                    <View key={m} style={[styles.memoryChip, { backgroundColor: colors.primary + '15' }]}>
+                      <Ionicons name="sparkles" size={12} color={colors.primary} />
+                      <Text style={[styles.memoryChipText, { color: colors.primary }]}>{m}</Text>
                     </View>
-                    <View style={styles.historyInfo}>
-                      <Text style={[styles.historyTitle, { color: colors.text }]} numberOfLines={1}>{item.title}</Text>
-                      <Text style={[styles.historyMeta, { color: colors.textSecondary }]}>
-                        {item.count} msgs · {new Date(item.date).toLocaleDateString()}
-                      </Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={16} color={colors.textLight} />
-                  </TouchableOpacity>
-                )}
-              />
-            )}
+                  ))}
+                </View>
+              </View>
+
+              <Text style={[styles.memoryLabel, { color: colors.textSecondary, marginTop: spacing.lg }]}>CONVERSATIONS</Text>
+              {chatHistory.length === 0 ? (
+                <View style={styles.historyEmpty}>
+                  <Ionicons name="chatbubble-ellipses-outline" size={32} color={colors.textLight} />
+                  <Text style={[styles.historyEmptyText, { color: colors.textSecondary }]}>No past conversations yet</Text>
+                </View>
+              ) : (
+                <FlatList
+                  data={chatHistory}
+                  keyExtractor={(item) => item.id}
+                  showsVerticalScrollIndicator={false}
+                  renderItem={({ item }) => (
+                    <TouchableOpacity
+                      style={[styles.historyRow, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                      onPress={() => { loadConversation(item); setSultiMode('chat'); }}
+                      activeOpacity={0.85}
+                    >
+                      <View style={[styles.historyIcon, { backgroundColor: colors.softPurple }]}>
+                        <Ionicons name="chatbubbles" size={16} color={colors.primary} />
+                      </View>
+                      <View style={styles.historyInfo}>
+                        <Text style={[styles.historyTitle, { color: colors.text }]} numberOfLines={1}>{item.title}</Text>
+                        <Text style={[styles.historyMeta, { color: colors.textSecondary }]}>
+                          {item.count} msgs · {new Date(item.date).toLocaleDateString()}
+                        </Text>
+                      </View>
+                      <Ionicons name="chevron-forward" size={16} color={colors.textLight} />
+                    </TouchableOpacity>
+                  )}
+                />
+              )}
+            </View>
           </View>
-        </View>
-      </Modal>
+        </Modal>
       </KeyboardAvoidingView>
     </AuroraBackground>
   );
@@ -813,110 +1025,108 @@ export default function SultiTutorScreen({ navigation, route }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { paddingBottom: spacing.md, paddingHorizontal: spacing.xl },
+  header: { paddingBottom: spacing.xs, paddingHorizontal: spacing.xl },
   headerContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   headerLeft: { flexDirection: 'row', alignItems: 'center' },
-  headerTitle: { fontSize: 18, fontWeight: '800', color: '#fff', letterSpacing: 0.36 },
-  headerSubtitle: { fontSize: 11, color: 'rgba(255,255,255,0.7)', marginTop: 1 },
-  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  headerBtn: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
+  avatarWrapper: {
+    borderRadius: borderRadius.xxl,
+    ...shadows.soft,
+    overflow: 'hidden',
+  },
+  headerTitle: { fontSize: 22, fontWeight: '800', color: '#fff', letterSpacing: -0.3 },
+  headerSubtitle: { fontSize: 12, color: 'rgba(255,255,255,0.65)', marginTop: 1, fontWeight: '500' },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  headerBtn: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.12)' },
   headerPill: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 9999, paddingHorizontal: 10, paddingVertical: 4, gap: 4 },
   headerPillText: { color: '#fff', fontSize: 13, fontWeight: '700' },
-  headerStat: { color: 'rgba(255,255,255,0.6)', fontSize: 11, marginTop: 2, marginLeft: 44 },
+  headerStat: { color: 'rgba(255,255,255,0.55)', fontSize: 11, marginTop: 1, marginLeft: 50 },
   messageList: { padding: spacing.lg, paddingBottom: spacing.md },
   bubble: { maxWidth: '82%', borderRadius: borderRadius.lg, padding: spacing.md, marginBottom: 2, borderWidth: 1 },
   userBubble: { alignSelf: 'flex-end', borderBottomRightRadius: 4, borderWidth: 0 },
   assistantBubble: { alignSelf: 'flex-start', borderBottomLeftRadius: 4 },
   bubbleAvatar: { width: 22, height: 22, borderRadius: 11, justifyContent: 'center', alignItems: 'center' },
-  bubbleSender: { fontSize: 12, fontWeight: '700' },
-  bubbleText: { fontSize: 15, lineHeight: 22, letterSpacing: -0.24 },
-  voiceLabel: { fontSize: 11, fontWeight: '600' },
-  listenLabel: { fontSize: 11, fontWeight: '500' },
-  welcomeCard: { marginBottom: spacing.md },
-  welcomeHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.md },
-  welcomeName: { fontSize: 20, fontWeight: '800', letterSpacing: 0.35 },
-  welcomeTitle: { fontSize: 13, marginTop: 1 },
-  welcomeText: { fontSize: 14, lineHeight: 20, marginBottom: spacing.md },
-  promptLabel: { fontSize: 11, fontWeight: '700', marginBottom: spacing.sm, letterSpacing: 0.5, textTransform: 'uppercase' },
-  sectionHint: { fontSize: 11, marginBottom: spacing.sm, marginTop: -4, opacity: 0.8 },
-  situationGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.md },
-  situationChip: { flexDirection: 'row', alignItems: 'center', borderRadius: 9999, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, gap: spacing.xs, borderWidth: 1 },
+  bubbleSender: { ...typography.bodyBold, fontSize: 12 },
+  bubbleText: { ...typography.body, fontSize: 15, lineHeight: 22, letterSpacing: -0.24 },
+  voiceLabel: { ...typography.caption, fontSize: 11, fontWeight: '600' },
+  listenLabel: { ...typography.caption, fontSize: 11 },
+  welcomeCard: { marginBottom: spacing.lg, borderRadius: borderRadius.xxl, ...shadows.premium },
+  welcomeHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg },
+  avatarWrapperLarge: {
+    borderRadius: borderRadius.xxl,
+    ...shadows.premium,
+    overflow: 'hidden',
+  },
+  welcomeName: { ...typography.h2, fontSize: 26, fontWeight: '800', letterSpacing: -0.3 },
+  welcomeTitle: { ...typography.body, fontSize: 14, marginTop: 4, lineHeight: 19, opacity: 0.85 },
+  welcomeText: { ...typography.body, fontSize: 15, lineHeight: 22, marginTop: spacing.md },
+  promptLabel: { ...typography.body, fontSize: 14, fontWeight: '600', marginTop: spacing.md },
+  welcomeBadges: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md, flexWrap: 'wrap' },
+  hubModeSection: { flexDirection: 'row', gap: spacing.md, marginBottom: spacing.xxl },
+  hubSection: { marginBottom: spacing.xxl },
+  sectionHeader: { marginBottom: spacing.md },
+  hubSectionTitle: { ...typography.h4, fontSize: 18, fontWeight: '800', marginBottom: 4, letterSpacing: -0.3 },
+  hubSectionSubtitle: { ...typography.body, fontSize: 14, lineHeight: 19 },
+  hubTopicGrid: { flexDirection: 'row', gap: spacing.md, paddingHorizontal: spacing.xs },
+  // Welcome card styles
+  situationGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  situationChip: { flexDirection: 'row', alignItems: 'center', borderRadius: borderRadius.full, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, gap: spacing.xs },
   chipLabel: { fontSize: 12, fontWeight: '700' },
-  roleplayToggle: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingVertical: spacing.sm },
+  roleplayToggle: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: borderRadius.full },
   roleplayText: { fontSize: 13, fontWeight: '700' },
-  roleplayGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.sm },
-  roleplayChip: { flexDirection: 'row', alignItems: 'center', borderRadius: 9999, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, gap: spacing.xs },
+  sectionHint: { ...typography.caption, fontSize: 12, fontWeight: '500', marginTop: spacing.xs },
+  hubRoleplayGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.md },
+  hubRoleplayChip: { flexDirection: 'row', alignItems: 'center', borderRadius: borderRadius.full, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, gap: spacing.xs },
+  hubRoleplayEmoji: { fontSize: 16 },
+  hubRoleplayLabel: { fontSize: 12, fontWeight: '700' },
+  // Styles for welcome card roleplay section
+  roleplayGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.md },
+  roleplayChip: { flexDirection: 'row', alignItems: 'center', borderRadius: borderRadius.full, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, gap: spacing.xs },
   roleplayEmoji: { fontSize: 16 },
   roleplayLabel: { fontSize: 12, fontWeight: '700' },
-  pronCard: { marginTop: -4, marginBottom: spacing.md, marginLeft: spacing.xs },
-  pronHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm, gap: spacing.sm },
-  pronIcon: { width: 24, height: 24, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
-  pronLabel: { fontSize: 13, fontWeight: '700' },
-  pronScoreRow: { flexDirection: 'row', alignItems: 'baseline', gap: 4, marginBottom: spacing.sm },
-  pronScoreValue: { fontSize: 36, fontWeight: '800' },
-  pronScoreUnit: { fontSize: 14, fontWeight: '600' },
-  pronScoreBar: { flex: 1, height: 4, borderRadius: 2, marginLeft: 8, overflow: 'hidden' },
-  pronScoreFill: { height: '100%', borderRadius: 2 },
-  pronTranscription: { marginBottom: spacing.sm },
-  pronLabelSmall: { fontSize: 11, fontWeight: '600', marginBottom: 2 },
-  pronValue: { fontSize: 15 },
-  pronFeedbackBox: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, borderRadius: 8, padding: 8, borderWidth: 1, marginBottom: spacing.sm },
-  pronFeedback: { fontSize: 13, lineHeight: 18, flex: 1 },
-  phonemeContainer: { borderTopWidth: 1, paddingTop: spacing.sm },
-  phonemeRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 6, paddingHorizontal: 4 },
-  phonemeText: { fontSize: 14, fontWeight: '700', fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' },
-  phonemeTip: { fontSize: 12, flex: 1, textAlign: 'right', marginLeft: spacing.sm },
-  lessonCard: { marginBottom: spacing.md },
-  lessonHeader: { flexDirection: 'row', alignItems: 'center', borderRadius: borderRadius.md, padding: spacing.md, marginBottom: spacing.md, gap: spacing.sm },
-  lessonHeaderIcon: { width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center' },
-  lessonTitle: { fontSize: 15, fontWeight: '700', color: '#fff', flex: 1 },
-  lessonIntro: { fontSize: 14, lineHeight: 20, marginBottom: spacing.md },
-  lessonSection: { marginBottom: spacing.md },
-  sectionBadge: { marginBottom: spacing.sm },
-  phraseRow: { borderRadius: borderRadius.md, padding: spacing.md, marginBottom: spacing.xs, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', flexDirection: 'row', alignItems: 'center' },
-  phraseBisaya: { fontSize: 16, fontWeight: '700' },
-  phraseEnglish: { fontSize: 13, marginTop: 2 },
-  phrasePron: { fontSize: 12, fontStyle: 'italic', marginTop: 2 },
-  phraseListenBtn: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center', marginLeft: spacing.sm },
-  dialogueRow: { marginBottom: spacing.xs, borderLeftWidth: 2, paddingLeft: spacing.md, paddingVertical: 4 },
-  dialogueSpeaker: { fontSize: 13, fontWeight: '700', marginBottom: 1 },
-  dialogueText: { fontSize: 14 },
-  dialogueEnglish: { fontSize: 12, marginTop: 1 },
-  cultureNote: { borderRadius: borderRadius.md, padding: spacing.md, marginTop: spacing.md, borderWidth: 1 },
-  cultureText: { fontSize: 13, lineHeight: 18 },
-  typingBubble: { borderWidth: 1 },
-  inputContainer: { borderTopWidth: 1 },
-  statusBar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.lg, paddingVertical: 8, gap: spacing.sm },
-  statusText: { color: '#fff', fontSize: 12, fontWeight: '600', flex: 1 },
-  statusActionText: { color: 'rgba(255,255,255,0.8)', fontSize: 12, fontWeight: '600' },
-  inputRow: { flexDirection: 'row', paddingHorizontal: spacing.md, paddingVertical: spacing.sm, alignItems: 'flex-end', gap: spacing.sm },
-  inputWrap: { flex: 1, borderRadius: 9999, borderWidth: 1, paddingHorizontal: spacing.md, minHeight: 44, justifyContent: 'center' },
-  input: { fontSize: 15, maxHeight: 100, paddingVertical: 10 },
-  micBtn: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
-  sendBtn: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
-  continuousToggle: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center', borderWidth: 1.5 },
+  composerContainer: { paddingHorizontal: spacing.md, paddingTop: spacing.xs },
+  composerWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: borderRadius.xxl,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    gap: spacing.sm,
+    borderWidth: 1,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    ...shadows.lg,
+    ...shadows.premium,
+  },
+  composerActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  composerMic: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
+  composerSend: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center', ...shadows.md },
+  continuousToggle: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center', borderWidth: 1.5 },
+  inputWrap: { flex: 1, borderRadius: borderRadius.xl, borderWidth: 1, paddingHorizontal: spacing.lg, minHeight: 48, justifyContent: 'center' },
+  input: { ...typography.body, fontSize: 15, maxHeight: 100, paddingVertical: 10, lineHeight: 20 },
   modalOverlay: { flex: 1, justifyContent: 'flex-end' },
   modalSheet: {
     borderTopLeftRadius: borderRadius.xxl, borderTopRightRadius: borderRadius.xxl,
     padding: spacing.lg, paddingBottom: spacing.xxl, maxHeight: '80%', borderWidth: 1,
   },
   modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.lg },
-  modalTitle: { fontSize: 20, fontWeight: '800', letterSpacing: -0.3 },
-  modalSubtitle: { fontSize: 12, fontWeight: '500', marginTop: 2 },
-  modalClose: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  modalTitle: { ...typography.h3, fontSize: 20, fontWeight: '800', letterSpacing: -0.3 },
+  modalSubtitle: { ...typography.caption, fontSize: 12, fontWeight: '500', marginTop: 2 },
+  modalClose: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   memorySection: { borderRadius: borderRadius.lg, padding: spacing.md, borderWidth: 1, gap: spacing.sm },
-  memoryLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 0.8 },
+  memoryLabel: { ...typography.small, fontSize: 11, fontWeight: '700', letterSpacing: 0.8 },
   memoryChips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   memoryChip: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingHorizontal: spacing.sm, paddingVertical: 6, borderRadius: borderRadius.full },
-  memoryChipText: { fontSize: 12, fontWeight: '600' },
+  memoryChipText: { ...typography.caption, fontSize: 12, fontWeight: '600' },
   historyEmpty: { alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.xl },
-  historyEmptyText: { fontSize: 14, fontWeight: '600' },
+  historyEmptyText: { ...typography.body, fontSize: 14, fontWeight: '600' },
   historyRow: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.md,
     padding: spacing.md, borderRadius: borderRadius.lg, borderWidth: 1, marginBottom: spacing.sm,
   },
   historyIcon: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   historyInfo: { flex: 1 },
-  historyTitle: { fontSize: 14, fontWeight: '600' },
-  historyMeta: { fontSize: 12, marginTop: 2 },
+  historyTitle: { ...typography.body, fontSize: 14, fontWeight: '600' },
+  historyMeta: { ...typography.caption, fontSize: 12, marginTop: 2 },
+  hubScroll: { flex: 1 },
+  hubContent: { padding: spacing.lg, paddingBottom: spacing.md, paddingTop: spacing.xs },
+  typingBubble: { borderWidth: 1 },
 });

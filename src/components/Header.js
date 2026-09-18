@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../context/ThemeContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { spacing, typography } from '../theme';
+import { spacing } from '../theme';
 
 export default function Header({
   title, subtitle, leftIcon, onLeftPress, rightIcon, onRightPress,
@@ -12,14 +12,21 @@ export default function Header({
 }) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
-  const padTop = Platform.OS === 'ios' ? insets.top : spacing.xl;
+  const padTop = Platform.OS === 'ios' ? insets.top : insets.top || spacing.xl;
 
   const content = (
     <View style={[styles.container, { paddingTop: padTop }, style]}>
       <View style={styles.row}>
         {leftIcon && onLeftPress && (
-          <TouchableOpacity onPress={onLeftPress} style={styles.iconBtn}>
-            <Ionicons name={leftIcon} size={24} color="#fff" />
+          <TouchableOpacity
+            onPress={onLeftPress}
+            style={styles.leftBtn}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Back"
+            hitSlop={8}
+          >
+            <Ionicons name={leftIcon} size={24} color={colors.textOnGradient} />
           </TouchableOpacity>
         )}
         <View style={styles.textContainer}>
@@ -27,8 +34,14 @@ export default function Header({
           {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
         </View>
         {rightIcon && onRightPress && (
-          <TouchableOpacity onPress={onRightPress} style={styles.iconBtn}>
-            <Ionicons name={rightIcon} size={24} color="#fff" />
+          <TouchableOpacity
+            onPress={onRightPress}
+            style={styles.rightBtn}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            hitSlop={8}
+          >
+            <Ionicons name={rightIcon} size={24} color={colors.textOnGradient} />
           </TouchableOpacity>
         )}
         {children}
@@ -51,7 +64,8 @@ const styles = StyleSheet.create({
   container: { paddingBottom: spacing.lg, paddingHorizontal: spacing.xl },
   row: { flexDirection: 'row', alignItems: 'center', minHeight: 48 },
   textContainer: { flex: 1 },
-  title: { fontSize: 24, fontWeight: '800', color: '#fff', ...typography.h2 },
-  subtitle: { fontSize: 13, color: 'rgba(255,255,255,0.75)', marginTop: 2 },
-  iconBtn: { padding: spacing.sm, marginLeft: spacing.sm },
+  title: { fontSize: 24, fontWeight: '800', color: '#fff' },
+  subtitle: { fontSize: 13, color: 'rgba(255,255,255,0.75)', marginTop: spacing.xs },
+  leftBtn: { padding: spacing.sm, marginRight: spacing.sm, marginLeft: -spacing.sm },
+  rightBtn: { padding: spacing.sm, marginLeft: spacing.sm },
 });

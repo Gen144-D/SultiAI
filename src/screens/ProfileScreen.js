@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, TextInput, Animated, Modal } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, TextInput, Animated, Modal, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useUser } from '../context/UserContext';
 import { useTheme } from '../context/ThemeContext';
 import { useGame } from '../context/GameContext';
@@ -9,7 +10,7 @@ import { useOfflineSync } from '../hooks/useOfflineSync';
 import { useToast } from '../components/Toast';
 import { api } from '../services/api';
 import GlassCard from '../components/GlassCard';
-import Avatar from '../components/Avatar';
+import UserAvatar from '../components/profile/UserAvatar';
 import StreakFlame from '../components/StreakFlame';
 import Badge from '../components/Badge';
 import Button from '../components/Button';
@@ -17,6 +18,7 @@ import ConfirmModal from '../components/ConfirmModal';
 import AuroraBackground from '../components/AuroraBackground';
 import { spacing, borderRadius, shadows } from '../theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { USER_AVATARS } from '../constants/avatars';
 
 const MOCK_CERTIFICATES = [
   { id: 'cert1', title: 'Beginner Bisaya', date: 'Mar 2026', icon: 'ribbon', color: '#10B981' },
@@ -61,6 +63,8 @@ export default function ProfileScreen({ navigation }) {
   const [weeklyActivity, setWeeklyActivity] = useState([]);
   const [moduleMastery, setModuleMastery] = useState([]);
   const [history, setHistory] = useState([]);
+  const [selectedAvatarId, setSelectedAvatarId] = useState('avatar-01');
+  const [showAvatarPicker, setShowAvatarPicker] = useState(false);
 
   const DAY_KEYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -142,6 +146,12 @@ export default function ProfileScreen({ navigation }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
+  useEffect(() => {
+    AsyncStorage.getItem('user_avatar_id').then((id) => {
+      if (id) setSelectedAvatarId(id);
+    }).catch(() => {});
+  }, []);
+
   const handleSaveProfile = async () => {
     setSaving(true);
     try {
@@ -159,6 +169,16 @@ export default function ProfileScreen({ navigation }) {
       setSavedPhrases(prev => prev.filter(p => p.phrase_id !== id));
       enqueueAction({ endpoint: `/api/saved-phrases/${id}`, method: 'POST', payload: { deleted: true } });
     } catch (err) { toast.error(err.message || 'Failed to delete phrase.'); }
+  };
+
+  const handleAvatarSelect = async (avatarId) => {
+    setSelectedAvatarId(avatarId);
+    setShowAvatarPicker(false);
+    try {
+      await AsyncStorage.setItem('user_avatar_id', avatarId);
+    } catch (e) {
+      console.warn('[Profile] Failed to save avatar:', e.message);
+    }
   };
 
   const handleSignOut = async () => {
@@ -185,7 +205,12 @@ export default function ProfileScreen({ navigation }) {
       <AuroraBackground>
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
           <LinearGradient colors={[colors.primary, colors.secondary]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.header, { paddingTop: insets.top + 20 }]}>
-            <Avatar name={user?.name} uri={user?.avatar?.image} size={80} />
+            <TouchableOpacity onPress={() => setShowAvatarPicker(true)} activeOpacity={0.8}>
+              <UserAvatar avatarId={selectedAvatarId} name={user?.name} uri={user?.avatar?.image} size={80} />
+              <View style={styles.avatarEditBadge}>
+                <Ionicons name="camera" size={14} color="#fff" />
+              </View>
+            </TouchableOpacity>
             <Text style={styles.name}>{user?.name || 'Learner'}</Text>
             <Text style={styles.email}>{user?.email || ''}</Text>
             {user?.username && <Text style={styles.username}>@{user.username.length > 12 ? user.username.slice(0, 12) + '...' : user.username}</Text>}
@@ -663,6 +688,39 @@ export default function ProfileScreen({ navigation }) {
           </View>
         </View>
       </Modal>
+
+      <Modal visible={showAvatarPicker} transparent animationType="slide" onRequestClose={() => setShowAvatarPicker(false)}>
+        <View style={[styles.modalOverlay, { backgroundColor: isDark ? 'rgba(2,6,23,0.85)' : 'rgba(15,23,42,0.7)' }]}>
+          <View style={[styles.modalSheet, { backgroundColor: colors.background, borderColor: colors.border }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Choose Avatar</Text>
+              <TouchableOpacity style={[styles.modalClose, { backgroundColor: colors.surfaceSecondary }]} onPress={() => setShowAvatarPicker(false)}>
+                <Ionicons name="close" size={20} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.avatarGrid}>
+              {USER_AVATARS.map((avatar) => {
+                const isSelected = selectedAvatarId === avatar.id;
+                return (
+                  <TouchableOpacity
+                    key={avatar.id}
+                    style={[styles.avatarOption, isSelected && { borderColor: colors.primary, borderWidth: 3 }]}
+                    onPress={() => handleAvatarSelect(avatar.id)}
+                    activeOpacity={0.7}
+                  >
+                    <Image source={avatar.source} style={styles.avatarOptionImage} />
+                    {isSelected && (
+                      <View style={[styles.avatarCheck, { backgroundColor: colors.primary }]}>
+                        <Ionicons name="checkmark" size={16} color="#fff" />
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -765,4 +823,28 @@ const styles = StyleSheet.create({
   infoRowTitle: { fontSize: 14, fontWeight: '700' },
   infoRowMeta: { fontSize: 12, marginTop: 2 },
   privacyText: { fontSize: 14, lineHeight: 22 },
+  avatarEditBadge: {
+    position: 'absolute', bottom: 0, right: 0,
+    width: 28, height: 28, borderRadius: 14,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2, borderColor: '#fff',
+  },
+  avatarGrid: {
+    flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md, justifyContent: 'center',
+  },
+  avatarOption: {
+    width: 100, height: 100, borderRadius: 50,
+    borderWidth: 3, borderColor: 'transparent',
+    overflow: 'hidden', position: 'relative',
+  },
+  avatarOptionImage: {
+    width: '100%', height: '100%', borderRadius: 50,
+  },
+  avatarCheck: {
+    position: 'absolute', bottom: 4, right: 4,
+    width: 24, height: 24, borderRadius: 12,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2, borderColor: '#fff',
+  },
 });

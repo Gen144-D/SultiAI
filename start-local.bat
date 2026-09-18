@@ -5,53 +5,45 @@ echo ============================================
 echo.
 echo   Port Map:
 echo   -----------------------------------------
-echo   Web:        http://localhost:3000
-echo   Server:     http://localhost:3001
-echo   Admin:      http://localhost:3002
-echo   AI Service: http://localhost:8000
-echo   MySQL:      localhost:3306
-echo   Expo:       http://localhost:8081
+echo   Node Gateway: http://localhost:3000
+echo   Web:          http://localhost:3001
+echo   Admin:        http://localhost:3002
+echo   AI Service:   http://localhost:8001
+echo   Expo:         http://localhost:8081
 echo   -----------------------------------------
 echo.
 echo Starting services...
 echo.
 
-REM Check if XAMPP MySQL is running
-echo [1/4] Checking MySQL (XAMPP)...
-netstat -an | findstr ":3306" >nul 2>&1
-if %errorlevel%==0 (
-    echo   MySQL is running on port 3306
-) else (
-    echo   WARNING: MySQL not detected on port 3306
-    echo   Please start MySQL from XAMPP Control Panel
-    echo.
-)
+echo [1/5] Starting AI Service on port 8001...
+start "SultiAI AI Service" cmd /c "cd /d %~dp0ai-service && .venv\Scripts\python -m uvicorn main:app --host 0.0.0.0 --port 8001 --reload"
+timeout /t 5 >nul
 
-REM Start Server
-echo [2/4] Starting Express API server on port 3001...
-start "SultiAI Server" cmd /c "cd /d %~dp0server && npm run dev"
+echo [2/5] Starting Node Gateway on port 3000...
+start "SultiAI Server" cmd /c "cd /d %~dp0server && node index.js"
 timeout /t 3 >nul
 
-REM Start Admin
-echo [3/4] Starting Admin Dashboard on port 3002...
+echo [3/5] Starting Web on port 3001...
+start "SultiAI Web" cmd /c "cd /d %~dp0web && npm run dev"
+timeout /t 2 >nul
+
+echo [4/5] Starting Admin on port 3002...
 start "SultiAI Admin" cmd /c "cd /d %~dp0admin && npm run dev"
 timeout /t 2 >nul
 
-REM Start Web
-echo [4/4] Starting Web on port 3000...
-start "SultiAI Web" cmd /c "cd /d %~dp0web && npm run dev"
+echo [5/5] Starting Expo on port 8081...
+start "SultiAI Expo" cmd /c "cd /d %~dp0 && npx expo start"
 
 echo.
 echo ============================================
-echo   All services started!
+echo   All services starting!
 echo ============================================
 echo.
-echo   Web:        http://localhost:3000
-echo   Server:     http://localhost:3001
-echo   Admin:      http://localhost:3002
-echo   AI Service: http://localhost:8000 (start manually if needed)
-echo   Expo:       Run "npx expo start" in root directory
+echo   Node Gateway: http://localhost:3000
+echo   AI Service:   http://localhost:8001
+echo   Web:          http://localhost:3001
+echo   Admin:        http://localhost:3002
+echo   Expo:         http://localhost:8081
 echo.
-echo   Press any key to open Admin Dashboard...
+echo   Press any key to exit...
 pause >nul
-start http://localhost:3002

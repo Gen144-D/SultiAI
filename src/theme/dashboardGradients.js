@@ -1,19 +1,19 @@
 export const dashboardGradients = {
-  header: ['#5B5FEF', '#2EC4B6', '#0B1121'],
-  headerFade: ['rgba(255, 255, 255, 0.12)', 'transparent'],
-  xpWidget: ['#5B5FEF', '#2EC4B6'],
-  progressFill: ['#38BDF8', '#2DD4BF'],
+  header: ['#00A896', '#00D4BD', '#00B8A3'],
+  headerFade: ['rgba(255,255,255,0.12)', 'transparent'],
+  xpWidget: ['#00D4BD', '#34D399'],
+  progressFill: ['#00D4BD', '#34D399'],
 };
 
 export const FEATURES = [
-  { id: 'tutor', title: 'Sulti Tutor', iconName: 'sparkles', gradient: ['#10B981', '#059669'], path: 'SULTI' },
-  { id: 'whisper', title: 'Whisper AI', iconName: 'language', gradient: ['#8B5CF6', '#7C3AED'], path: 'WhisperAI' },
-  { id: 'practice', title: 'Practice', iconName: 'chatbubbles', gradient: ['#3B82F6', '#2563EB'], path: 'Learn' },
-  { id: 'voice', title: 'AI Voice', iconName: 'mic-circle', gradient: ['#14B8A6', '#06B6D4'], path: 'VoiceMode' },
-  { id: 'pronunciation', title: 'Pronunciation', iconName: 'mic', gradient: ['#EC4899', '#DB2777'], path: 'Pronunciation' },
-  { id: 'ar', title: 'AR Explore', iconName: 'camera', gradient: ['#10B981', '#059669'], path: 'ARScene' },
-  { id: 'rewards', title: 'Rewards', iconName: 'trophy', gradient: ['#F97316', '#EA580C'], path: 'Achievements' },
-  { id: 'challenge', title: 'Daily Challenge', iconName: 'flame', gradient: ['#F59E0B', '#EF4444'], path: 'SULTI' },
+  { id: 'tutor', title: 'Sulti Tutor', iconName: 'sparkles', gradient: ['#00D4BD', '#00B8A3'], path: 'SULTI' },
+  { id: 'whisper', title: 'Whisper AI', iconName: 'language', gradient: ['#5EEAD4', '#00A896'], path: 'WhisperAI' },
+  { id: 'practice', title: 'Practice', iconName: 'chatbubbles', gradient: ['#34D399', '#00D4BD'], path: 'Learn' },
+  { id: 'voice', title: 'AI Voice', iconName: 'mic-circle', gradient: ['#00D4BD', '#5EEAD4'], path: 'VoiceMode' },
+  { id: 'pronunciation', title: 'Pronunciation', iconName: 'mic', gradient: ['#00A896', '#00D4BD'], path: 'Pronunciation' },
+  { id: 'ar', title: 'AR Explore', iconName: 'camera', gradient: ['#00B8A3', '#00D4BD'], path: 'ARScene' },
+  { id: 'rewards', title: 'Rewards', iconName: 'trophy', gradient: ['#FCD34D', '#FB923C'], path: 'Achievements' },
+  { id: 'challenge', title: 'Daily Challenge', iconName: 'flame', gradient: ['#FCD34D', '#FB7185'], path: 'SULTI' },
 ];
 
 export const TAB_ROUTES = [

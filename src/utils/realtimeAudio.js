@@ -1,4 +1,3 @@
-import { File, Paths } from 'expo-file-system';
 import { getAudioPlayer } from './tts';
 
 let rtListener = null;
@@ -42,17 +41,25 @@ export function playRealtimePcm(base64, sampleRate = 24000, { onDone, onError } 
       return;
     }
     const wavBytes = new Uint8Array(pcmBytesToWav(pcm, sampleRate));
-    const file = new File(Paths.cache, `sulti-reply-${Date.now()}.wav`);
-    if (!file.exists) file.create({ idempotent: true });
-    file.write(wavBytes);
+    const blob = new Blob([wavBytes], { type: 'audio/wav' });
+    const uri = URL.createObjectURL(blob);
+
+    if (typeof window !== 'undefined' && window.Audio) {
+      const audio = new window.Audio(uri);
+      audio.onended = () => { URL.revokeObjectURL(uri); if (onDone) onDone(); };
+      audio.onerror = (e) => { URL.revokeObjectURL(uri); if (onError) onError(e); };
+      audio.play().catch((e) => { URL.revokeObjectURL(uri); if (onError) onError(e); });
+      return;
+    }
 
     const player = getAudioPlayer();
+    if (!player) { if (onDone) onDone(); return; }
     player.pause();
     if (rtListener) {
       player.removeListener(rtListener);
       rtListener = null;
     }
-    player.replace({ uri: file.uri });
+    player.replace({ uri });
     rtListener = player.addListener('playbackStatusUpdate', (status) => {
       if (status && status.didJustFinish) {
         player.removeListener(rtListener);
@@ -61,11 +68,7 @@ export function playRealtimePcm(base64, sampleRate = 24000, { onDone, onError } 
       }
     });
     player.play();
-    setTimeout(() => {
-      try {
-        if (file.exists) file.delete();
-      } catch {}
-    }, 60000);
+    setTimeout(() => { URL.revokeObjectURL(uri); }, 60000);
   } catch (e) {
     if (onError) onError(e);
   }

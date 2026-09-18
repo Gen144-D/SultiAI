@@ -60,7 +60,7 @@ export default function ConversationScreen({ navigation, route }) {
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
-      <LinearGradient colors={[colors.primary, colors.secondary]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.header, { paddingTop: insets.top + 16 }]}>
+      <LinearGradient colors={[colors.primary, colors.primaryDark]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.header, { paddingTop: insets.top + 16 }]}>
         <Text style={styles.headerTitle}>Practice</Text>
         <Text style={styles.headerSubtitle}>Master essential Bisaya phrases & pronunciation</Text>
       </LinearGradient>
@@ -82,7 +82,7 @@ export default function ConversationScreen({ navigation, route }) {
                 styles.tab,
                 activeTab === t.key
                   ? [styles.tabActive, { backgroundColor: colors.primary }]
-                  : { backgroundColor: isDark ? colors.surface : '#F1F5F9' },
+                  : { backgroundColor: colors.surfaceSecondary },
               ]}
               onPress={() => {
                 setActiveTab(t.key);
@@ -90,8 +90,8 @@ export default function ConversationScreen({ navigation, route }) {
                 if (t.key === 'speech') handlePronunciation();
               }}
             >
-              <Ionicons name={t.icon} size={16} color={activeTab === t.key ? '#fff' : colors.textSecondary} />
-              <Text style={[styles.tabText, { color: activeTab === t.key ? '#fff' : colors.textSecondary }]}>{t.label}</Text>
+              <Ionicons name={t.icon} size={16} color={activeTab === t.key ? colors.textOnGradient : colors.textSecondary} />
+              <Text style={[styles.tabText, { color: activeTab === t.key ? colors.textOnGradient : colors.textSecondary }]}>{t.label}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -99,7 +99,7 @@ export default function ConversationScreen({ navigation, route }) {
         <View style={styles.content}>
           <GlassCard variant="elevated" style={styles.dailyCard}>
             <LinearGradient
-              colors={isDark ? ['#1E293B', '#0F172A'] : ['#0F172A', '#1E293B']}
+              colors={isDark ? ['#0A1626', '#0B1120'] : ['#00A896', '#008F7F']}
               style={styles.dailyInner}
             >
               <View style={styles.dailyLeft}>
@@ -110,9 +110,9 @@ export default function ConversationScreen({ navigation, route }) {
                 <Text style={styles.dailyPhrase}>{'"'}{DAILY_DRILL.phrase}{'"'}</Text>
                 <Text style={styles.dailyTranslation}>{DAILY_DRILL.translation}</Text>
               </View>
-              <TouchableOpacity style={[styles.dailyBtn, { backgroundColor: colors.primary }]} onPress={handleDailyDrill} activeOpacity={0.8}>
-                <Ionicons name="play" size={18} color="#fff" />
-                <Text style={styles.dailyBtnText}>Start</Text>
+              <TouchableOpacity style={[styles.dailyBtn, { backgroundColor: colors.primary }]} onPress={handleDailyDrill} activeOpacity={0.8} hitSlop={8}>
+                <Ionicons name="play" size={18} color={colors.textOnGradient} />
+                <Text style={[styles.dailyBtnText, { color: colors.textOnGradient }]}>Start</Text>
               </TouchableOpacity>
             </LinearGradient>
           </GlassCard>
@@ -149,7 +149,7 @@ const styles = StyleSheet.create({
   root: { flex: 1 },
   header: { paddingBottom: spacing.xxl, paddingHorizontal: spacing.xl },
   headerTitle: { fontSize: 28, fontWeight: '800', color: '#fff', letterSpacing: 0.36 },
-  headerSubtitle: { fontSize: 13, color: 'rgba(255,255,255,0.75)', marginTop: 4, letterSpacing: -0.08 },
+  headerSubtitle: { fontSize: 13, color: 'rgba(255,255,255,0.8)', marginTop: 4, letterSpacing: -0.08 },
   tabRow: { flexDirection: 'row', paddingHorizontal: spacing.xl, gap: spacing.sm, marginTop: -spacing.lg, marginBottom: spacing.lg },
   categoryBanner: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
@@ -157,7 +157,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm, borderRadius: borderRadius.full, borderWidth: 1,
   },
   categoryBannerText: { fontSize: 13, fontWeight: '700' },
-  tab: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: spacing.sm, borderRadius: borderRadius.md, gap: spacing.xs, ...shadows.sm },
+  tab: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', minHeight: 44, paddingVertical: spacing.sm, borderRadius: borderRadius.md, gap: spacing.xs, ...shadows.sm },
   tabActive: { boxShadow: '0 2px 8px rgba(13,148,136,0.3)', elevation: 4 },
   tabText: { fontSize: 12, fontWeight: '600', letterSpacing: 0.07 },
   content: { padding: spacing.xl, paddingTop: 0 },
@@ -168,8 +168,8 @@ const styles = StyleSheet.create({
   dailyTitle: { fontSize: 18, fontWeight: '700', color: '#fff', marginBottom: spacing.sm },
   dailyPhrase: { fontSize: 15, color: 'rgba(255,255,255,0.8)', fontStyle: 'italic', marginBottom: 2 },
   dailyTranslation: { fontSize: 13, color: 'rgba(255,255,255,0.55)' },
-  dailyBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 12, borderRadius: borderRadius.full, gap: 6, ...shadows.md },
-  dailyBtnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
+  dailyBtn: { flexDirection: 'row', alignItems: 'center', minHeight: 44, paddingHorizontal: 20, paddingVertical: 12, borderRadius: borderRadius.full, gap: 6, ...shadows.md },
+  dailyBtnText: { fontSize: 14, fontWeight: '700' },
   sectionTitle: { fontSize: 18, fontWeight: '700', marginBottom: spacing.xs },
   sectionSubtitle: { fontSize: 13, marginBottom: spacing.lg, lineHeight: 18 },
   catCard: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm, gap: spacing.md },

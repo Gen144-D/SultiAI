@@ -31,3 +31,41 @@ body {
   background: var(--color-brand-light);
   color: var(--color-brand-dark);
 }
+
+/* Fix browser autofill styling */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+textarea:-webkit-autofill:hover,
+textarea:-webkit-autofill:focus,
+select:-webkit-autofill,
+select:-webkit-autofill:hover,
+select:-webkit-autofill:focus {
+  -webkit-text-fill-color: #1a1a2e;
+  -webkit-box-shadow: 0 0 0px 1000px #ffffff inset;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+/* Fix dropdown z-index issues */
+.cl-internal-k3d6k4,
+.cl-internal-1x9b9h0,
+.cl-internal-1l8k9h0 {
+  z-index: 9999 !important;
+}
+
+/* Ensure dropdowns render above other elements */
+[class*="cl-"] [role="listbox"],
+[class*="cl-"] [role="combobox"] {
+  z-index: 9999 !important;
+  position: relative !important;
+}
+
+/* Fix label spacing */
+[class*="cl-"] .cl-formFieldLabel {
+  margin-bottom: 8px !important;
+}
+
+[class*="cl-"] .cl-formFieldAction {
+  margin-top: 16px !important;
+}

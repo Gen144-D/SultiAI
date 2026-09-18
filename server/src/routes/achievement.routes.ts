@@ -176,6 +176,11 @@ router.post('/check', authMiddleware, async (req: Request, res: Response) => {
       return;
     }
     const userId = req.user!.userId;
+    // Guard: user must have a valid local userId (> 0) to earn achievements
+    if (!userId || userId <= 0) {
+      res.json({ newlyEarned: [] });
+      return;
+    }
     const earnedRows = sqlite
       .prepare('SELECT achievement_id FROM user_achievements WHERE user_id = ?')
       .all(userId) as Array<{ achievement_id: string }>;

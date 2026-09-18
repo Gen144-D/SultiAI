@@ -1,17 +1,18 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo, Fragment } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  KeyboardAvoidingView, Platform, Animated, TextInput, ActivityIndicator,
+  KeyboardAvoidingView, Platform, Animated, TextInput,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useUser } from '../context/UserContext';
 import { useTheme } from '../context/ThemeContext';
 import { spacing, borderRadius, shadows } from '../theme';
+import Button from '../components/Button';
 
 function FadeSlideIn({ delay = 0, children, style }) {
-  const fade = useRef(new Animated.Value(0)).current;
-  const slide = useRef(new Animated.Value(24)).current;
+  const fade = useMemo(() => new Animated.Value(0), []);
+  const slide = useMemo(() => new Animated.Value(24), []);
 
   useEffect(() => {
     Animated.parallel([
@@ -27,43 +28,6 @@ function FadeSlideIn({ delay = 0, children, style }) {
   );
 }
 
-function LanguagePicker({ label, value, onSelect, colors }) {
-  const [open, setOpen] = useState(false);
-  const languages = ['Bisaya', 'Tagalog', 'English'];
-
-  return (
-    <View>
-      <Text style={[styles.label, { color: colors.textSecondary }]}>{label}</Text>
-      <TouchableOpacity
-        activeOpacity={0.7}
-        onPress={() => setOpen(!open)}
-        style={[styles.picker, { backgroundColor: colors.surface, borderColor: open ? colors.primary : colors.border }]}
-      >
-        <Text style={[styles.pickerText, { color: value ? colors.text : colors.textLight }]}>
-          {value || `Select ${label.toLowerCase()}`}
-        </Text>
-        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={18} color={colors.textLight} />
-      </TouchableOpacity>
-      {open && (
-        <View style={[styles.pickerDropdown, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          {languages.map((lang) => (
-            <TouchableOpacity
-              key={lang}
-              onPress={() => { onSelect(lang); setOpen(false); }}
-              style={[styles.pickerOption, value === lang && { backgroundColor: colors.primary + '15' }]}
-            >
-              <Text style={[styles.pickerOptionText, { color: value === lang ? colors.primary : colors.text }]}>
-                {lang}
-              </Text>
-              {value === lang && <Ionicons name="checkmark" size={16} color={colors.primary} />}
-            </TouchableOpacity>
-          ))}
-        </View>
-      )}
-    </View>
-  );
-}
-
 export default function SignUpScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
@@ -73,15 +37,9 @@ export default function SignUpScreen({ navigation }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [nativeLang, setNativeLang] = useState('');
-  const [targetLang, setTargetLang] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [focusedField, setFocusedField] = useState('');
-
-  useEffect(() => {
-    if (error) setError('');
-  }, [name, email, password, nativeLang, targetLang]);
 
   useEffect(() => {
     if (authError) setError(authError);
@@ -107,7 +65,7 @@ export default function SignUpScreen({ navigation }) {
     }
 
     setLoading(true);
-    const result = await signUp(email.trim(), password, name.trim(), nativeLang || 'English', targetLang || 'Bisaya');
+    const result = await signUp(email.trim(), password, name.trim());
     setLoading(false);
 
     if (!result.success) {
@@ -120,14 +78,19 @@ export default function SignUpScreen({ navigation }) {
     styles.inputWrap,
     {
       backgroundColor: colors.surface,
-      borderColor: focusedField === field ? colors.primary : colors.border,
+      borderColor: error ? colors.error : focusedField === field ? colors.primary : colors.border,
     },
   ];
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backBtn}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+        >
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>Create Account</Text>
@@ -145,16 +108,39 @@ export default function SignUpScreen({ navigation }) {
             </Text>
           </FadeSlideIn>
 
-          {/* Full Name */}
+          {/* Social Sign Up */}
           <FadeSlideIn delay={100}>
+            <View style={styles.socialRow}>
+              <TouchableOpacity
+                style={[styles.socialBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel="Sign up with Google"
+              >
+                <Ionicons name="logo-google" size={22} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+          </FadeSlideIn>
+
+          {/* Divider */}
+          <FadeSlideIn delay={150}>
+            <View style={styles.dividerRow}>
+              <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+              <Text style={[styles.dividerText, { color: colors.textLight }]}>or continue with email</Text>
+              <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+            </View>
+          </FadeSlideIn>
+
+          {/* Full Name */}
+          <FadeSlideIn delay={200}>
             <Text style={[styles.label, { color: colors.textSecondary }]}>Full Name</Text>
             <View style={inputStyle('name')}>
-              <Ionicons name="person-outline" size={18} color={focusedField === 'name' ? colors.primary : colors.textLight} style={styles.inputIcon} />
+              <Ionicons name="person-outline" size={18} color={error ? colors.error : focusedField === 'name' ? colors.primary : colors.textLight} style={styles.inputIcon} />
               <TextInput
                 style={[styles.input, { color: colors.text }]}
                 value={name}
-                onChangeText={setName}
-                placeholder="Juan Dela Cruz"
+                onChangeText={(v) => { setName(v); if (error) setError(''); }}
+                placeholder="Genesis Diaz"
                 placeholderTextColor={colors.textLight}
                 autoComplete="name"
                 onFocus={() => setFocusedField('name')}
@@ -164,14 +150,14 @@ export default function SignUpScreen({ navigation }) {
           </FadeSlideIn>
 
           {/* Email */}
-          <FadeSlideIn delay={150}>
+          <FadeSlideIn delay={250}>
             <Text style={[styles.label, { color: colors.textSecondary }]}>Email Address</Text>
             <View style={inputStyle('email')}>
-              <Ionicons name="mail-outline" size={18} color={focusedField === 'email' ? colors.primary : colors.textLight} style={styles.inputIcon} />
+              <Ionicons name="mail-outline" size={18} color={error ? colors.error : focusedField === 'email' ? colors.primary : colors.textLight} style={styles.inputIcon} />
               <TextInput
                 style={[styles.input, { color: colors.text }]}
                 value={email}
-                onChangeText={setEmail}
+                onChangeText={(v) => { setEmail(v); if (error) setError(''); }}
                 placeholder="your@email.com"
                 placeholderTextColor={colors.textLight}
                 keyboardType="email-address"
@@ -185,14 +171,14 @@ export default function SignUpScreen({ navigation }) {
           </FadeSlideIn>
 
           {/* Password */}
-          <FadeSlideIn delay={200}>
+          <FadeSlideIn delay={300}>
             <Text style={[styles.label, { color: colors.textSecondary }]}>Password</Text>
             <View style={inputStyle('password')}>
-              <Ionicons name="lock-closed-outline" size={18} color={focusedField === 'password' ? colors.primary : colors.textLight} style={styles.inputIcon} />
+              <Ionicons name="lock-closed-outline" size={18} color={error ? colors.error : focusedField === 'password' ? colors.primary : colors.textLight} style={styles.inputIcon} />
               <TextInput
                 style={[styles.input, { color: colors.text, flex: 1 }]}
                 value={password}
-                onChangeText={setPassword}
+                onChangeText={(v) => { setPassword(v); if (error) setError(''); }}
                 placeholder="At least 6 characters"
                 placeholderTextColor={colors.textLight}
                 secureTextEntry={!showPassword}
@@ -200,58 +186,56 @@ export default function SignUpScreen({ navigation }) {
                 onFocus={() => setFocusedField('password')}
                 onBlur={() => setFocusedField('')}
               />
-              <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeBtn}>
+              <TouchableOpacity
+                onPress={() => setShowPassword(!showPassword)}
+                style={styles.eyeBtn}
+                hitSlop={4}
+                accessibilityRole="button"
+                accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+              >
                 <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={18} color={colors.textLight} />
               </TouchableOpacity>
             </View>
           </FadeSlideIn>
 
-          {/* Language selectors */}
-          <FadeSlideIn delay={250}>
-            <View style={styles.langRow}>
-              <View style={{ flex: 1, marginRight: spacing.sm }}>
-                <LanguagePicker label="I speak" value={nativeLang} onSelect={setNativeLang} colors={colors} />
-              </View>
-              <View style={{ flex: 1, marginLeft: spacing.sm }}>
-                <LanguagePicker label="Learning" value={targetLang} onSelect={setTargetLang} colors={colors} />
-              </View>
-            </View>
-          </FadeSlideIn>
 
           {/* Error */}
           {!!error && (
             <FadeSlideIn delay={0}>
-              <View style={[styles.errorBox, { backgroundColor: '#FF3B3015', borderColor: '#FF3B3030' }]}>
-                <Ionicons name="alert-circle" size={16} color="#FF3B30" />
-                <Text style={styles.errorText}>{error}</Text>
+              <View
+                style={[styles.errorBox, { backgroundColor: colors.error + '15', borderColor: colors.error + '30' }]}
+                accessibilityLiveRegion="polite"
+              >
+                <Ionicons name="alert-circle" size={16} color={colors.error} />
+                <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
               </View>
             </FadeSlideIn>
           )}
 
           {/* Create Account Button */}
           <FadeSlideIn delay={300}>
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={handleSignUp}
-              disabled={loading}
-              style={styles.submitBtn}
-            >
-              <View style={[styles.submitBtnInner, { backgroundColor: colors.primary }]}>
-                {loading ? (
-                  <ActivityIndicator size="small" color="#FFF" />
-                ) : (
-                  <>
-                    <Text style={styles.submitBtnText}>Create Account</Text>
-                    <Ionicons name="arrow-forward" size={18} color="#FFF" style={{ marginLeft: 6 }} />
-                  </>
-                )}
-              </View>
-            </TouchableOpacity>
+            <View style={styles.submitBtn}>
+              <Button
+                title="Create Account"
+                icon="arrow-forward"
+                iconPosition="right"
+                onPress={handleSignUp}
+                variant="primary"
+                gradient
+                loading={loading}
+                fullWidth
+              />
+            </View>
           </FadeSlideIn>
 
           {/* Switch to sign in */}
           <FadeSlideIn delay={350}>
-            <TouchableOpacity onPress={() => navigation.navigate('SignIn')} style={styles.switchRow}>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('SignIn')}
+              style={styles.switchRow}
+              accessibilityRole="link"
+              accessibilityLabel="Go to Sign In"
+            >
               <Text style={[styles.switchText, { color: colors.textSecondary }]}>
                 Already have an account?
               </Text>
@@ -261,11 +245,26 @@ export default function SignUpScreen({ navigation }) {
 
           {/* Terms */}
           <FadeSlideIn delay={400}>
-            <Text style={[styles.terms, { color: colors.textLight }]}>
-              By continuing, you agree to our{' '}
-              <Text style={{ color: colors.primary, fontWeight: '600' }}>Terms</Text> and{' '}
-              <Text style={{ color: colors.primary, fontWeight: '600' }}>Privacy Policy</Text>
-            </Text>
+            <View style={styles.termsRow}>
+              <Text style={[styles.terms, { color: colors.textLight }]}>By continuing, you agree to our </Text>
+              <TouchableOpacity
+                accessibilityRole="link"
+                accessibilityLabel="Terms"
+                style={styles.termsLink}
+                onPress={() => {}}
+              >
+                <Text style={[styles.terms, { color: colors.primary, fontWeight: '600' }]}>Terms</Text>
+              </TouchableOpacity>
+              <Text style={[styles.terms, { color: colors.textLight }]}> and </Text>
+              <TouchableOpacity
+                accessibilityRole="link"
+                accessibilityLabel="Privacy Policy"
+                style={styles.termsLink}
+                onPress={() => {}}
+              >
+                <Text style={[styles.terms, { color: colors.primary, fontWeight: '600' }]}>Privacy Policy</Text>
+              </TouchableOpacity>
+            </View>
           </FadeSlideIn>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -282,7 +281,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.md,
   },
-  backBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  backBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { fontSize: 17, fontWeight: '600' },
 
   scroll: { flexGrow: 1, paddingHorizontal: spacing.xl, paddingTop: spacing.lg },
@@ -290,53 +289,36 @@ const styles = StyleSheet.create({
   title: { fontSize: 28, fontWeight: '800', marginBottom: spacing.sm },
   subtitle: { fontSize: 15, marginBottom: spacing.xxl, lineHeight: 22 },
 
-  label: { fontSize: 13, fontWeight: '600', marginBottom: 6, marginLeft: 2 },
+  label: { fontSize: 14, fontWeight: '600', marginBottom: 8, marginLeft: 2 },
   inputWrap: {
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1.5,
     borderRadius: borderRadius.lg,
-    height: 52,
+    height: 56,
     paddingHorizontal: spacing.md,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.xl,
     ...shadows.sm,
   },
   inputIcon: { marginRight: 10 },
   input: { flex: 1, fontSize: 16, paddingVertical: 0 },
-  eyeBtn: { padding: 4 },
+  eyeBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
 
-  langRow: { flexDirection: 'row', marginBottom: spacing.lg },
-
-  picker: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderWidth: 1.5,
-    borderRadius: borderRadius.lg,
+  socialRow: { flexDirection: 'row', gap: spacing.md, marginBottom: spacing.lg },
+  socialBtn: {
+    flex: 1,
     height: 52,
-    paddingHorizontal: spacing.md,
-    marginBottom: spacing.lg,
-  },
-  pickerText: { fontSize: 15, fontWeight: '500' },
-  pickerDropdown: {
-    position: 'absolute',
-    top: 34,
-    left: 0,
-    right: 0,
-    borderWidth: 1,
-    borderRadius: borderRadius.md,
-    overflow: 'hidden',
-    zIndex: 10,
-    ...shadows.md,
-  },
-  pickerOption: {
+    borderRadius: borderRadius.lg,
+    borderWidth: 1.5,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 12,
-    paddingHorizontal: spacing.md,
+    justifyContent: 'center',
+    ...shadows.sm,
   },
-  pickerOptionText: { fontSize: 15, fontWeight: '500' },
+
+  dividerRow: { flexDirection: 'row', alignItems: 'center', marginVertical: spacing.lg },
+  dividerLine: { flex: 1, height: 1 },
+  dividerText: { marginHorizontal: spacing.md, fontSize: 13, fontWeight: '500' },
 
   errorBox: {
     flexDirection: 'row',
@@ -347,15 +329,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginBottom: spacing.sm,
   },
-  errorText: { fontSize: 13, fontWeight: '500', color: '#FF3B30', flex: 1 },
+  errorText: { fontSize: 13, fontWeight: '500', flex: 1 },
 
   submitBtn: { marginTop: spacing.sm, marginBottom: spacing.md },
-  submitBtnInner: { height: 54, borderRadius: borderRadius.lg, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', ...shadows.md },
-  submitBtnText: { fontSize: 17, fontWeight: '700', color: '#FFF' },
 
-  switchRow: { flexDirection: 'row', justifyContent: 'center', marginTop: spacing.sm, paddingBottom: spacing.md },
+  switchRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', minHeight: 44, marginTop: spacing.sm, paddingBottom: spacing.md },
   switchText: { fontSize: 15 },
   switchLink: { fontSize: 15, fontWeight: '700' },
 
-  terms: { fontSize: 12, textAlign: 'center', lineHeight: 18, paddingBottom: spacing.xl },
+  terms: { fontSize: 12, textAlign: 'center', lineHeight: 18 },
+  termsRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', paddingBottom: spacing.xl },
+  termsLink: { minHeight: 44, justifyContent: 'center' },
 });

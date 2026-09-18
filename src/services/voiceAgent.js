@@ -4,23 +4,27 @@ export const REALTIME_INPUT_RATE = 24000;
 
 export async function fetchVoiceAgentConfig() {
   try {
-    return await api.agentToken();
-  } catch (err) {
-    const status = await api.agentStatus().catch(() => ({ realtime: false, local_available: true }));
-    if (status.local_available) {
-      return { local: true, url: null, token: null, session: null };
+    const status = await api.voiceStatus();
+    if (status.mode === 'not_configured') {
+      throw new Error('Voice pipeline not configured');
     }
+    return { pipeline: true, groq: status.groq, openrouter_tts: status.openrouter_tts };
+  } catch (err) {
     throw err;
   }
 }
 
 export async function checkVoiceMode() {
-  const status = await api.agentStatus();
-  return {
-    realtime: status.realtime,
-    local_available: status.local_available ?? true,
-    voicebox_available: !!(status.voicebox && status.voicebox.available),
-  };
+  try {
+    const status = await api.voiceStatus();
+    return {
+      pipeline: status.mode === 'full_pipeline',
+      groq: status.groq,
+      openrouter_tts: status.openrouter_tts,
+    };
+  } catch {
+    return { pipeline: false, groq: false, openrouter_tts: false };
+  }
 }
 
 export function encodePcm16ToBase64(arrayBuffer) {
@@ -83,112 +87,4 @@ export function resampleInt16(arrayBuffer, fromRate, toRate) {
     out[i] = src[Math.min(src.length - 1, Math.round(i * ratio))];
   }
   return out.buffer;
-}
-
-export function buildSessionUpdate(session) {
-  return {
-    type: 'session.update',
-    session: {
-      instructions: session.instructions,
-      voice: session.voice,
-      turn_detection: null,
-      audio: {
-        input: {
-          transcription: { model: 'grok-transcribe' },
-        },
-      },
-    },
-  };
-}
-
-export class VoiceRealtimeSession {
-  constructor({ url, token, onEvent, onError, onClose }) {
-    this.url = url;
-    this.token = token;
-    this.onEvent = onEvent;
-    this.onError = onError;
-    this.onClose = onClose;
-    this.ws = null;
-    this._resolveOpen = null;
-    this._rejectOpen = null;
-  }
-
-  open() {
-    if (this.ws) this.close();
-    return new Promise((resolve, reject) => {
-      this._resolveOpen = resolve;
-      this._rejectOpen = reject;
-      let ws;
-      try {
-        ws = new WebSocket(this.url, [`xai-client-secret.${this.token}`]);
-      } catch (e) {
-        reject(e);
-        return;
-      }
-      this.ws = ws;
-      ws.onopen = () => {
-        if (this._resolveOpen) {
-          this._resolveOpen();
-          this._resolveOpen = null;
-          this._rejectOpen = null;
-        }
-      };
-      ws.onmessage = (event) => {
-        let msg;
-        try {
-          msg = JSON.parse(event.data);
-        } catch {
-          return;
-        }
-        if (this.onEvent) this.onEvent(msg);
-      };
-      ws.onerror = () => {
-        if (this._rejectOpen) {
-          this._rejectOpen(new Error('WebSocket error'));
-          this._resolveOpen = null;
-          this._rejectOpen = null;
-        }
-        if (this.onError) this.onError(event);
-      };
-      ws.onclose = () => {
-        if (this._rejectOpen) {
-          this._rejectOpen(new Error('WebSocket closed before opening'));
-          this._resolveOpen = null;
-          this._rejectOpen = null;
-        }
-        if (this.onClose) this.onClose(event);
-      };
-    });
-  }
-
-  isOpen() {
-    return !!(this.ws && this.ws.readyState === WebSocket.OPEN);
-  }
-
-  _send(obj) {
-    if (!this.isOpen()) return false;
-    this.ws.send(JSON.stringify(obj));
-    return true;
-  }
-
-  configure(session) {
-    return this._send(buildSessionUpdate(session));
-  }
-
-  appendAudio(base64) {
-    return this._send({ type: 'input_audio_buffer.append', audio: base64 });
-  }
-
-  commitAndRespond() {
-    if (!this.isOpen()) return;
-    this.ws.send(JSON.stringify({ type: 'input_audio_buffer.commit' }));
-    this.ws.send(JSON.stringify({ type: 'response.create' }));
-  }
-
-  close() {
-    try {
-      if (this.ws) this.ws.close();
-    } catch {}
-    this.ws = null;
-  }
 }

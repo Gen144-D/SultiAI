@@ -25,6 +25,14 @@ _TAGALOG_PHONEMES: dict[str, str] = {
 # Common Bisaya/Tagalog affricates and clusters
 _BISAYA_DIGRAPHS = {"ng", "ts", "dy", "ly", "sy"}
 
+# Language codes/aliases routed through the Philippine-language G2P rules.
+# "bisaya" / "cebuano" are the human-friendly names used by the app's API
+# (the request default is language="bisaya"); "ceb" is the ISO 639-2 code.
+_PHILIPPINE_LANGUAGE_CODES = {
+    "ceb", "bisaya", "cebuano", "fil", "tl", "tagalog", "filipino",
+    "hil", "hiligaynon", "war", "waray", "bcl", "bikol",
+}
+
 # ── English fallback (rule-based) ─────────────────────────────────────
 
 _ENGLISH_PHONEMES: dict[str, str] = {
@@ -57,7 +65,7 @@ def text_to_phonemes(text: str, language: str = "ceb") -> list[str]:
     text = text.lower().strip()
     lang = language.lower()
 
-    if lang in ("ceb", "fil", "tl", "hil", "war", "bcl"):
+    if lang in _PHILIPPINE_LANGUAGE_CODES:
         return _philippine_g2p(text)
     elif lang == "en":
         return _english_g2p(text)
@@ -141,7 +149,7 @@ def _english_g2p(text: str) -> list[str]:
 def get_phoneme_inventory(language: str = "ceb") -> list[str]:
     """Return the full phoneme inventory for a language."""
     lang = language.lower()
-    if lang in ("ceb", "fil", "tl", "hil", "war", "bcl"):
+    if lang in _PHILIPPINE_LANGUAGE_CODES:
         return sorted(set(_TAGALOG_PHONEMES.values()))
     elif lang == "en":
         return sorted(set(_ENGLISH_PHONEMES.values()))

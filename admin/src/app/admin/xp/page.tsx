@@ -1,8 +1,8 @@
 'use client';
 
-import { BarChart } from '@/components/ChartCard';
+import { BarChart, chartColor } from '@/components/ChartCard';
 import { StatCard } from '@/components/StatCard';
-import { Avatar, Card, CardHeader, ErrorState, LoadingState } from '@/components/ui';
+import { Avatar, Card, CardHeader, ErrorState, LoadingState, ghostBtn } from '@/components/ui';
 import { useAsync } from '@/hooks/useAsync';
 import { api } from '@/lib/api';
 import { downloadCsv } from '@/lib/export';
@@ -18,7 +18,7 @@ export default function AdminXpPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-extrabold text-ink">XP & Rewards</h1>
+          <h1 className="text-xl font-semibold tracking-tight text-ink">XP & Rewards</h1>
           <p className="mt-1 text-sm text-ink-soft">Gamification metrics and top learners.</p>
         </div>
         <button
@@ -35,7 +35,7 @@ export default function AdminXpPage() {
               `sultiai-top-learners-${new Date().toISOString().split('T')[0]}.csv`
             )
           }
-          className="rounded-xl border border-line bg-white px-4 py-2.5 text-sm font-semibold text-ink transition-colors hover:border-brand"
+          className={ghostBtn}
         >
           Export Top Learners
         </button>
@@ -67,7 +67,7 @@ export default function AdminXpPage() {
         <Card>
           <CardHeader title="Level distribution" subtitle="Active users by level" />
           <div className="p-6">
-            <BarChart data={data.levelDistribution} color="#ffb347" />
+            <BarChart data={data.levelDistribution} color={chartColor(2)} />
           </div>
         </Card>
 
@@ -77,7 +77,7 @@ export default function AdminXpPage() {
             {data.topUsers.map((u, i) => (
               <li key={u.id} className="flex items-center gap-4 px-6 py-3.5">
                 <span
-                  className={`w-6 text-center text-sm font-extrabold ${i === 0 ? 'text-accent' : 'text-ink-faint'}`}
+                  className={`w-6 text-center text-sm font-semibold ${i === 0 ? 'text-warning' : 'text-ink-faint'}`}
                 >
                   {i + 1}
                 </span>
@@ -88,7 +88,7 @@ export default function AdminXpPage() {
                     Level {u.level} · {u.streak > 0 ? `${u.streak}-day streak` : 'no streak'}
                   </p>
                 </div>
-                <span className="text-sm font-bold tabular-nums text-brand-dark">
+                <span className="text-sm font-bold tabular-nums text-brand">
                   {u.xp.toLocaleString()} XP
                 </span>
               </li>

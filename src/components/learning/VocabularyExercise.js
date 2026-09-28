@@ -2,14 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../../services/api';
-
-const DIFFICULTY_COLORS = {
-  beginner: '#4CAF50',
-  intermediate: '#FF9800', 
-  advanced: '#F44336'
-};
+import { useTheme } from '../../context/ThemeContext';
+import { readableOnGradient } from '../../theme/moduleColors';
 
 export default function VocabularyExercise({ onBack }) {
+  const { colors, onPrimary } = useTheme();
   const [loading, setLoading] = useState(false);
   const [robertaAvailable, setRobertaAvailable] = useState(false);
   const [currentExercise, setCurrentExercise] = useState(null);
@@ -19,9 +16,11 @@ export default function VocabularyExercise({ onBack }) {
   const [score, setScore] = useState(0);
   const [totalAttempts, setTotalAttempts] = useState(0);
 
-  useEffect(() => {
-    checkRobertaStatus();
-  }, []);
+  const difficultyColor = (level) => {
+    if (level === 'beginner') return colors.success;
+    if (level === 'intermediate') return colors.warning;
+    return colors.error;
+  };
 
   const checkRobertaStatus = async () => {
     try {
@@ -39,6 +38,13 @@ export default function VocabularyExercise({ onBack }) {
       setRobertaAvailable(false);
     }
   };
+
+  useEffect(() => {
+    // setRobertaAvailable runs after `await`, so it cannot cascade renders on
+    // mount; the Compiler rule cannot prove that boundary.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    checkRobertaStatus();
+  }, []);
 
   const generateExercise = async () => {
     if (!robertaAvailable) {
@@ -80,15 +86,18 @@ export default function VocabularyExercise({ onBack }) {
 
   if (!robertaAvailable) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.errorContainer}>
-          <Ionicons name="alert-circle" size={48} color="#F44336" />
-          <Text style={styles.errorTitle}>RoBERTa Not Available</Text>
-          <Text style={styles.errorMessage}>
+          <Ionicons name="alert-circle" size={48} color={colors.error} />
+          <Text style={[styles.errorTitle, { color: colors.text }]}>RoBERTa Not Available</Text>
+          <Text style={[styles.errorMessage, { color: colors.textSecondary }]}>
             The RoBERTa Tagalog model is not available. Please ensure the Python AI service is running.
           </Text>
-          <TouchableOpacity style={styles.backButton} onPress={onBack}>
-            <Text style={styles.backButtonText}>Go Back</Text>
+          <TouchableOpacity
+            style={[styles.backButton, { borderColor: colors.primary }]}
+            onPress={onBack}
+          >
+            <Text style={[styles.backButtonText, { color: colors.primary }]}>Go Back</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -96,113 +105,185 @@ export default function VocabularyExercise({ onBack }) {
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <View
+        style={[
+          styles.header,
+          { backgroundColor: colors.surface, borderBottomColor: colors.border },
+        ]}
+      >
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#333" />
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.title}>Vocabulary Exercise</Text>
-        <View style={styles.scoreContainer}>
-          <Text style={styles.scoreText}>{score}/{totalAttempts}</Text>
+        <Text style={[styles.title, { color: colors.text }]}>Vocabulary Exercise</Text>
+        <View style={[styles.scoreContainer, { backgroundColor: colors.success }]}>
+          <Text style={[styles.scoreText, { color: readableOnGradient([colors.success]) }]}>
+            {score}/{totalAttempts}
+          </Text>
         </View>
       </View>
 
-      <View style={styles.difficultySelector}>
-        {['beginner', 'intermediate', 'advanced'].map((level) => (
-          <TouchableOpacity
-            key={level}
-            style={[
-              styles.difficultyButton,
-              difficulty === level && { backgroundColor: DIFFICULTY_COLORS[level] }
-            ]}
-            onPress={() => setDifficulty(level)}
-          >
-            <Text style={[
-              styles.difficultyText,
-              difficulty === level && styles.difficultyTextActive
-            ]}>
-              {level.charAt(0).toUpperCase() + level.slice(1)}
-            </Text>
-          </TouchableOpacity>
-        ))}
+      <View
+        style={[
+          styles.difficultySelector,
+          { backgroundColor: colors.surface, borderBottomColor: colors.border },
+        ]}
+      >
+        {['beginner', 'intermediate', 'advanced'].map((level) => {
+          const active = difficulty === level;
+          const tone = difficultyColor(level);
+          return (
+            <TouchableOpacity
+              key={level}
+              style={[
+                styles.difficultyButton,
+                { backgroundColor: active ? tone : colors.surfaceSecondary },
+              ]}
+              onPress={() => setDifficulty(level)}
+            >
+              <Text
+                style={[
+                  styles.difficultyText,
+                  { color: active ? readableOnGradient([tone]) : colors.textSecondary },
+                ]}
+              >
+                {level.charAt(0).toUpperCase() + level.slice(1)}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
 
       <ScrollView style={styles.content}>
         {!currentExercise ? (
           <View style={styles.startContainer}>
-            <Ionicons name="book-outline" size={64} color="#4CAF50" />
-            <Text style={styles.startTitle}>Tagalog Vocabulary Practice</Text>
-            <Text style={styles.startDescription}>
+            <Ionicons name="book-outline" size={64} color={colors.success} />
+            <Text style={[styles.startTitle, { color: colors.text }]}>
+              Tagalog Vocabulary Practice
+            </Text>
+            <Text style={[styles.startDescription, { color: colors.textSecondary }]}>
               Practice your Tagalog vocabulary with fill-in-the-blank exercises powered by RoBERTa Tagalog Base.
             </Text>
-            <TouchableOpacity 
-              style={styles.startButton} 
+            <TouchableOpacity
+              style={[styles.startButton, { backgroundColor: colors.success }]}
               onPress={generateExercise}
               disabled={loading}
             >
               {loading ? (
-                <ActivityIndicator color="#fff" />
+                <ActivityIndicator color={readableOnGradient([colors.success])} />
               ) : (
-                <Text style={styles.startButtonText}>Start Exercise</Text>
+                <Text
+                  style={[
+                    styles.startButtonText,
+                    { color: readableOnGradient([colors.success]) },
+                  ]}
+                >
+                  Start Exercise
+                </Text>
               )}
             </TouchableOpacity>
           </View>
         ) : (
           <View style={styles.exerciseContainer}>
-            <View style={styles.exerciseCard}>
-              <Text style={styles.instruction}>Complete the sentence:</Text>
-              <Text style={styles.template}>
+            <View style={[styles.exerciseCard, { backgroundColor: colors.surface }]}>
+              <Text style={[styles.instruction, { color: colors.text }]}>
+                Complete the sentence:
+              </Text>
+              <Text style={[styles.template, { color: colors.text }]}>
                 {currentExercise.exercise.template.replace('<mask>', '_____')}
               </Text>
-              
+
               {showResult ? (
                 <View style={styles.resultContainer}>
-                  <Text style={[
-                    styles.resultText,
-                    { color: userAnswer.trim().toLowerCase() === currentExercise.exercise.correct_answer?.toLowerCase() ? '#4CAF50' : '#F44336' }
-                  ]}>
-                    {userAnswer.trim().toLowerCase() === currentExercise.exercise.correct_answer?.toLowerCase() ? '✓ Correct!' : '✗ Try again'}
+                  <Text
+                    style={[
+                      styles.resultText,
+                      {
+                        color:
+                          userAnswer.trim().toLowerCase() ===
+                          currentExercise.exercise.correct_answer?.toLowerCase()
+                            ? colors.success
+                            : colors.error,
+                      },
+                    ]}
+                  >
+                    {userAnswer.trim().toLowerCase() ===
+                    currentExercise.exercise.correct_answer?.toLowerCase()
+                      ? '✓ Correct!'
+                      : '✗ Try again'}
                   </Text>
-                  <Text style={styles.correctAnswer}>
+                  <Text style={[styles.correctAnswer, { color: colors.textSecondary }]}>
                     Correct answer: {currentExercise.exercise.correct_answer}
                   </Text>
-                  <TouchableOpacity style={styles.nextButton} onPress={getNextExercise}>
-                    <Text style={styles.nextButtonText}>Next Exercise</Text>
+                  <TouchableOpacity
+                    style={[styles.nextButton, { backgroundColor: colors.primary }]}
+                    onPress={getNextExercise}
+                  >
+                    <Text style={[styles.nextButtonText, { color: onPrimary }]}>
+                      Next Exercise
+                    </Text>
                   </TouchableOpacity>
                 </View>
               ) : (
                 <View style={styles.inputContainer}>
                   <TextInput
-                    style={styles.input}
+                    style={[
+                      styles.input,
+                      {
+                        backgroundColor: colors.surfaceSecondary,
+                        borderColor: colors.border,
+                        color: colors.text,
+                      },
+                    ]}
                     placeholder="Type your answer..."
+                    placeholderTextColor={colors.textLight}
                     value={userAnswer}
                     onChangeText={setUserAnswer}
                     onSubmitEditing={checkAnswer}
                     autoCapitalize="none"
                   />
-                  <TouchableOpacity style={styles.checkButton} onPress={checkAnswer}>
-                    <Text style={styles.checkButtonText}>Check</Text>
+                  <TouchableOpacity
+                    style={[styles.checkButton, { backgroundColor: colors.success }]}
+                    onPress={checkAnswer}
+                  >
+                    <Text
+                      style={[
+                        styles.checkButtonText,
+                        { color: readableOnGradient([colors.success]) },
+                      ]}
+                    >
+                      Check
+                    </Text>
                   </TouchableOpacity>
                 </View>
               )}
 
-              <View style={styles.predictionsContainer}>
-                <Text style={styles.predictionsTitle}>AI Suggestions:</Text>
+              <View style={[styles.predictionsContainer, { borderTopColor: colors.border }]}>
+                <Text style={[styles.predictionsTitle, { color: colors.textSecondary }]}>
+                  AI Suggestions:
+                </Text>
                 {currentExercise.exercise.predictions.slice(0, 3).map((pred, index) => (
                   <TouchableOpacity
                     key={index}
-                    style={styles.predictionItem}
+                    style={[styles.predictionItem, { borderBottomColor: colors.border }]}
                     onPress={() => setUserAnswer(pred.word)}
                   >
-                    <Text style={styles.predictionWord}>{pred.word}</Text>
-                    <Text style={styles.predictionScore}>{(pred.score * 100).toFixed(1)}%</Text>
+                    <Text style={[styles.predictionWord, { color: colors.text }]}>{pred.word}</Text>
+                    <Text style={[styles.predictionScore, { color: colors.textSecondary }]}>
+                      {(pred.score * 100).toFixed(1)}%
+                    </Text>
                   </TouchableOpacity>
                 ))}
               </View>
             </View>
 
-            <TouchableOpacity style={styles.skipButton} onPress={getNextExercise}>
-              <Text style={styles.skipButtonText}>Skip Exercise</Text>
+            <TouchableOpacity
+              style={[styles.skipButton, { backgroundColor: colors.surfaceSecondary }]}
+              onPress={getNextExercise}
+            >
+              <Text style={[styles.skipButtonText, { color: colors.textSecondary }]}>
+                Skip Exercise
+              </Text>
             </TouchableOpacity>
           </View>
         )}
@@ -214,33 +295,29 @@ export default function VocabularyExercise({ onBack }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: 16,
-    backgroundColor: '#fff',
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
   },
   backButton: {
     padding: 8,
+    borderWidth: 1,
+    borderRadius: 8,
   },
   title: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
   },
   scoreContainer: {
-    backgroundColor: '#4CAF50',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
   },
   scoreText: {
-    color: '#fff',
     fontWeight: 'bold',
     fontSize: 14,
   },
@@ -248,24 +325,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     padding: 16,
-    backgroundColor: '#fff',
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
   },
   difficultyButton: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
     marginHorizontal: 4,
-    backgroundColor: '#e0e0e0',
   },
   difficultyText: {
-    color: '#666',
     fontWeight: '600',
     fontSize: 12,
-  },
-  difficultyTextActive: {
-    color: '#fff',
   },
   content: {
     flex: 1,
@@ -280,26 +350,22 @@ const styles = StyleSheet.create({
   startTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#333',
     marginTop: 24,
     textAlign: 'center',
   },
   startDescription: {
     fontSize: 16,
-    color: '#666',
     textAlign: 'center',
     marginTop: 12,
     lineHeight: 24,
   },
   startButton: {
-    backgroundColor: '#4CAF50',
     paddingHorizontal: 32,
     paddingVertical: 16,
     borderRadius: 12,
     marginTop: 32,
   },
   startButtonText: {
-    color: '#fff',
     fontSize: 18,
     fontWeight: 'bold',
   },
@@ -307,7 +373,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   exerciseCard: {
-    backgroundColor: '#fff',
     borderRadius: 16,
     padding: 24,
     marginBottom: 16,
@@ -320,12 +385,10 @@ const styles = StyleSheet.create({
   instruction: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
     marginBottom: 12,
   },
   template: {
     fontSize: 20,
-    color: '#333',
     marginBottom: 20,
     lineHeight: 32,
   },
@@ -337,20 +400,17 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     borderWidth: 2,
-    borderColor: '#e0e0e0',
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
     marginRight: 12,
   },
   checkButton: {
-    backgroundColor: '#4CAF50',
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: 8,
   },
   checkButtonText: {
-    color: '#fff',
     fontWeight: 'bold',
   },
   resultContainer: {
@@ -363,30 +423,25 @@ const styles = StyleSheet.create({
   },
   correctAnswer: {
     fontSize: 16,
-    color: '#666',
     marginBottom: 12,
   },
   nextButton: {
-    backgroundColor: '#2196F3',
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: 8,
     alignSelf: 'flex-start',
   },
   nextButtonText: {
-    color: '#fff',
     fontWeight: 'bold',
   },
   predictionsContainer: {
     marginTop: 16,
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
   },
   predictionsTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#666',
     marginBottom: 12,
   },
   predictionItem: {
@@ -395,24 +450,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
   },
   predictionWord: {
     fontSize: 16,
-    color: '#333',
   },
   predictionScore: {
     fontSize: 14,
-    color: '#666',
   },
   skipButton: {
-    backgroundColor: '#f0f0f0',
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',
   },
   skipButtonText: {
-    color: '#666',
     fontWeight: '600',
   },
   errorContainer: {
@@ -424,19 +474,16 @@ const styles = StyleSheet.create({
   errorTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#333',
     marginTop: 16,
     textAlign: 'center',
   },
   errorMessage: {
     fontSize: 16,
-    color: '#666',
     textAlign: 'center',
     marginTop: 12,
     lineHeight: 24,
   },
   backButtonText: {
-    color: '#2196F3',
     fontSize: 16,
     fontWeight: '600',
     marginTop: 24,

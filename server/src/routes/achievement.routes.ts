@@ -1,6 +1,9 @@
 import { Router, Request, Response } from 'express';
+import { eq } from 'drizzle-orm';
 import { authMiddleware } from '../middleware/auth';
-import { getSqliteRaw } from '../db/connection';
+import { getDb } from '../db/connection';
+import * as schema from '../db/schema-pg';
+import { addXp, addCoins } from '../db/repositories/learner.repo';
 
 const router = Router();
 
@@ -170,32 +173,43 @@ router.get('/badges', authMiddleware, async (req: Request, res: Response) => {
 router.post('/check', authMiddleware, async (req: Request, res: Response) => {
   try {
     const { xp = 0, streak = 0, dailyXp = 0, dailyGoal = 50 } = req.body || {};
-    const sqlite = getSqliteRaw();
-    if (!sqlite) {
-      res.json({ newlyEarned: [] });
-      return;
-    }
     const userId = req.user!.userId;
-    // Guard: user must have a valid local userId (> 0) to earn achievements
     if (!userId || userId <= 0) {
       res.json({ newlyEarned: [] });
       return;
     }
-    const earnedRows = sqlite
-      .prepare('SELECT achievement_id FROM user_achievements WHERE user_id = ?')
-      .all(userId) as Array<{ achievement_id: string }>;
-    const earnedSet = new Set(earnedRows.map((r) => r.achievement_id));
+
+    const db = getDb();
+    const earnedRows = await (db as any)
+      .select({ achievementId: schema.userAchievements.achievementId })
+      .from(schema.userAchievements)
+      .where(eq(schema.userAchievements.userId, userId));
+    const earnedSet = new Set(earnedRows.map((r: any) => r.achievementId));
     const now = new Date().toISOString();
-    const insert = sqlite.prepare(
-      'INSERT OR IGNORE INTO user_achievements (user_id, achievement_id, unlocked_at) VALUES (?, ?, ?)'
-    );
+
     const newlyEarned: any[] = [];
     for (const a of ACHIEVEMENTS) {
       if (earnedSet.has(a.id)) continue;
-      if (meetsCriterion(a.id, { xp, streak, dailyXp, dailyGoal })) {
-        insert.run(userId, a.id, now);
-        newlyEarned.push({ ...a, unlockedAt: now });
-      }
+      if (!meetsCriterion(a.id, { xp, streak, dailyXp, dailyGoal })) continue;
+
+      // Relies on the unique(user_id, achievement_id) constraint already present
+      // on user_achievements — a concurrent duplicate request inserts nothing.
+      const inserted = await (db as any)
+        .insert(schema.userAchievements)
+        .values({ userId, achievementId: a.id, unlockedAt: now })
+        .onConflictDoNothing({
+          target: [schema.userAchievements.userId, schema.userAchievements.achievementId],
+        })
+        .returning({ id: schema.userAchievements.userAchievementId });
+
+      if (!inserted.length) continue; // someone else's concurrent request won the race
+
+      await addXp(userId, a.xpReward, {
+        source: 'achievement',
+        idempotencyKey: `achievement:${userId}:${a.id}`,
+      });
+      await addCoins(userId, a.coinReward);
+      newlyEarned.push({ ...a, unlockedAt: now });
     }
     res.json({ newlyEarned });
   } catch (err) {
@@ -205,17 +219,16 @@ router.post('/check', authMiddleware, async (req: Request, res: Response) => {
 });
 
 async function getUserAchievements(userId: number): Promise<any[]> {
-  const sqlite = getSqliteRaw();
-  if (!sqlite) return [];
-  const rows = sqlite.prepare('SELECT * FROM user_achievements WHERE user_id = ?').all(userId);
-  return rows;
+  const db = getDb();
+  return (db as any)
+    .select()
+    .from(schema.userAchievements)
+    .where(eq(schema.userAchievements.userId, userId));
 }
 
 async function getUserBadges(userId: number): Promise<any[]> {
-  const sqlite = getSqliteRaw();
-  if (!sqlite) return [];
-  const rows = sqlite.prepare('SELECT * FROM user_badges WHERE user_id = ?').all(userId);
-  return rows;
+  const db = getDb();
+  return (db as any).select().from(schema.userBadges).where(eq(schema.userBadges.userId, userId));
 }
 
 export default router;

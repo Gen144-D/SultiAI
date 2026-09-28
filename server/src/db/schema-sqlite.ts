@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, real } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, real, unique } from 'drizzle-orm/sqlite-core';
 
 export const avatars = sqliteTable('avatars', {
   avatarId: integer('avatar_id').primaryKey({ autoIncrement: true }),
@@ -150,8 +150,23 @@ export const phraseRecommendations = sqliteTable('phrase_recommendations', {
 export const learningModules = sqliteTable('learning_modules', {
   moduleId: integer('module_id').primaryKey({ autoIncrement: true }),
   moduleTitle: text('module_title').notNull(),
+  moduleKey: text('module_key'),
+  sortOrder: integer('sort_order').default(0),
   difficulty: text('difficulty').default('beginner'),
   language: text('language'),
+  createdAt: text('created_at').default(`datetime('now')`),
+});
+
+export const lessonItems = sqliteTable('lesson_items', {
+  itemId: integer('item_id').primaryKey({ autoIncrement: true }),
+  moduleId: integer('module_id')
+    .notNull()
+    .references(() => learningModules.moduleId, { onDelete: 'cascade' }),
+  sectionTitle: text('section_title'),
+  nativeText: text('native_text').notNull(),
+  englishText: text('english_text'),
+  note: text('note'),
+  sortOrder: integer('sort_order').default(0),
   createdAt: text('created_at').default(`datetime('now')`),
 });
 
@@ -164,7 +179,9 @@ export const learningProgress = sqliteTable('learning_progress', {
     .notNull()
     .references(() => learningModules.moduleId, { onDelete: 'cascade' }),
   completionPercent: real('completion_percent').default(0),
+  masteryScore: real('mastery_score').default(0),
   createdAt: text('created_at').default(`datetime('now')`),
+  updatedAt: text('updated_at').default(`datetime('now')`),
 });
 
 export const communityPosts = sqliteTable('community_posts', {
@@ -319,16 +336,23 @@ export const conversationSummaries = sqliteTable('conversation_summaries', {
   timestamp: text('timestamp').default(`datetime('now')`),
 });
 
-export const xpLogs = sqliteTable('xp_logs', {
-  id: text('id').primaryKey(),
-  userId: integer('user_id')
-    .notNull()
-    .references(() => users.userId, { onDelete: 'cascade' }),
-  amount: integer('amount').notNull(),
-  source: text('source').notNull(),
-  description: text('description'),
-  timestamp: text('timestamp').default(`datetime('now')`),
-});
+export const xpLogs = sqliteTable(
+  'xp_logs',
+  {
+    id: text('id').primaryKey(),
+    userId: integer('user_id')
+      .notNull()
+      .references(() => users.userId, { onDelete: 'cascade' }),
+    amount: integer('amount').notNull(),
+    source: text('source').notNull(),
+    description: text('description'),
+    idempotencyKey: text('idempotency_key'),
+    timestamp: text('timestamp').default(`datetime('now')`),
+  },
+  (table) => ({
+    uniqueUserIdempotency: unique('idx_xp_logs_idempotency').on(table.userId, table.idempotencyKey),
+  })
+);
 
 export const aiRecommendations = sqliteTable('ai_recommendations', {
   id: text('id').primaryKey(),
@@ -422,14 +446,20 @@ export const auditLogs = sqliteTable('audit_logs', {
   timestamp: text('timestamp').default(`datetime('now')`),
 });
 
-export const dailyActivity = sqliteTable('daily_activity', {
-  activityId: integer('activity_id').primaryKey({ autoIncrement: true }),
-  userId: integer('user_id')
-    .notNull()
-    .references(() => users.userId, { onDelete: 'cascade' }),
-  activityDate: text('activity_date').notNull(),
-  xpEarned: integer('xp_earned').default(0),
-});
+export const dailyActivity = sqliteTable(
+  'daily_activity',
+  {
+    activityId: integer('activity_id').primaryKey({ autoIncrement: true }),
+    userId: integer('user_id')
+      .notNull()
+      .references(() => users.userId, { onDelete: 'cascade' }),
+    activityDate: text('activity_date').notNull(),
+    xpEarned: integer('xp_earned').default(0),
+  },
+  (table) => ({
+    uniqueUserDate: unique('idx_daily_activity_user_date').on(table.userId, table.activityDate),
+  })
+);
 
 export const userAchievements = sqliteTable('user_achievements', {
   userAchievementId: integer('user_achievement_id').primaryKey({ autoIncrement: true }),
@@ -449,13 +479,40 @@ export const userBadges = sqliteTable('user_badges', {
   earnedAt: text('earned_at'),
 });
 
-export const completedChallenges = sqliteTable('completed_challenges', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
+export const completedChallenges = sqliteTable(
+  'completed_challenges',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    userId: integer('user_id')
+      .notNull()
+      .references(() => users.userId, { onDelete: 'cascade' }),
+    challengeId: text('challenge_id').notNull(),
+    type: text('type').notNull().default('daily'),
+    completedDate: text('completed_date').notNull(),
+    completedAt: text('completed_at').default(`datetime('now')`),
+  },
+  (table) => ({
+    uniqueUserChallengeDate: unique('idx_completed_challenges_user_challenge_date').on(
+      table.userId,
+      table.challengeId,
+      table.completedDate
+    ),
+  })
+);
+
+export const learningSessions = sqliteTable('learning_sessions', {
+  sessionId: integer('session_id').primaryKey({ autoIncrement: true }),
   userId: integer('user_id')
     .notNull()
     .references(() => users.userId, { onDelete: 'cascade' }),
-  challengeId: text('challenge_id').notNull(),
-  completedAt: text('completed_at').default(`datetime('now')`),
+  moduleId: integer('module_id').references(() => learningModules.moduleId, {
+    onDelete: 'set null',
+  }),
+  activityType: text('activity_type').notNull(),
+  startedAt: text('started_at').default(`datetime('now')`),
+  endedAt: text('ended_at'),
+  durationSeconds: integer('duration_seconds').default(0),
+  xpEarned: integer('xp_earned').default(0),
 });
 
 export const follows = sqliteTable('follows', {

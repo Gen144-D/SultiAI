@@ -4,12 +4,12 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { speakTTS } from '../utils/tts';
 import { useTheme } from '../context/ThemeContext';
 import { useUser } from '../context/UserContext';
 import { useGame } from '../context/GameContext';
 import { api } from '../services/api';
-import { communityMock, FEED_FILTERS, MOCK_CULTURE, MOCK_EVENTS, MOCK_EXPERTS, MOCK_PHRASES } from '../services/communityMock';
+import { FEED_FILTERS } from '../constants/community';
+import { normalizeNotification } from '../utils/notifications';
 import { getLevel } from '../constants';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Card from '../components/Card';
@@ -19,13 +19,13 @@ import BottomSheet from '../components/BottomSheet';
 import EmptyState from '../components/EmptyState';
 import LoadingState from '../components/LoadingState';
 import ErrorState from '../components/ErrorState';
+import AuroraBackground from '../components/AuroraBackground';
 import PostCard from './community/PostCard';
 import CreatePostSheet from './community/CreatePostSheet';
 import { spacing, borderRadius } from '../theme';
 
 const PRIMARY_TABS = [
   { key: 'feed', label: 'Feed', icon: 'home', iconOutline: 'home-outline' },
-  { key: 'discover', label: 'Discover', icon: 'compass', iconOutline: 'compass-outline' },
   { key: 'challenges', label: 'Challenges', icon: 'trophy', iconOutline: 'trophy-outline' },
   { key: 'leaderboard', label: 'Leaderboard', icon: 'podium', iconOutline: 'podium-outline' },
   { key: 'me', label: 'Me', icon: 'person', iconOutline: 'person-outline' },
@@ -61,15 +61,11 @@ export default function CommunityScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [loadError, setLoadError] = useState(false);
-  const [live, setLive] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [createType, setCreateType] = useState('question');
   const [showNotifications, setShowNotifications] = useState(false);
   const [expandedPost, setExpandedPost] = useState(null);
   const [comments, setComments] = useState({});
-  const [translated, setTranslated] = useState({});
-  const [bookmarked, setBookmarked] = useState({});
-  const [liked, setLiked] = useState({});
   const [leaderboard, setLeaderboard] = useState([]);
   const [lbLoading, setLbLoading] = useState(true);
   const [lbError, setLbError] = useState(false);
@@ -79,11 +75,8 @@ export default function CommunityScreen({ navigation }) {
   const [challengeLoading, setChallengeLoading] = useState(true);
   const [challengeError, setChallengeError] = useState(false);
   const [notifications, setNotifications] = useState([]);
-  const [savedPosts, setSavedPosts] = useState([]);
+  const [notifError, setNotifError] = useState(false);
   const [myActivity, setMyActivity] = useState([]);
-  const [savedPhrases, setSavedPhrases] = useState([]);
-  const [followed, setFollowed] = useState({});
-  const [joinedEvents, setJoinedEvents] = useState({});
   const listRef = useRef(null);
 
   const scrollY = useRef(new Animated.Value(0)).current;
@@ -152,19 +145,17 @@ export default function CommunityScreen({ navigation }) {
   }, [posts]);
 
   const unread = notifications.filter((n) => !n.read).length;
-  const canPost = activeTab === 'feed' || activeTab === 'discover';
+  const canPost = activeTab === 'feed';
   const searching = searchFocused && query.trim().length > 0;
 
   const loadPosts = useCallback(async () => {
     setLoadError(false);
     try {
-      const { posts: data, live: isLive } = await communityMock.getPosts();
+      const data = await api.getCommunityPosts();
       setPosts(Array.isArray(data) ? data : []);
-      setLive(isLive);
-      const saves = await communityMock.getSaved();
-      setSavedPosts(saves);
     } catch {
       setLoadError(true);
+      setPosts([]);
     } finally {
       setLoading(false);
     }
@@ -175,43 +166,29 @@ export default function CommunityScreen({ navigation }) {
     return () => clearTimeout(t);
   }, [loadPosts]);
 
-  useEffect(() => {
-    communityMock.getNotifications().then(setNotifications).catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    api.getSavedPhrases().then((d) => { if (Array.isArray(d)) setSavedPhrases(d); }).catch(() => {});
-  }, []);
-
-  const speakPhrase = (text) => {
-    speakTTS(text, { language: 'ceb', rate: 0.8 });
-  };
-
-  const toggleSavePhrase = async (phrase) => {
-    const isSaved = savedPhrases.some((s) => s.phrase === phrase.native);
+  const loadNotifications = useCallback(async () => {
+    setNotifError(false);
     try {
-      if (isSaved) {
-        const found = savedPhrases.find((s) => s.phrase === phrase.native);
-        if (found?.id) await api.deleteSavedPhrase(found.id);
-        setSavedPhrases((prev) => prev.filter((s) => s.phrase !== phrase.native));
-      } else {
-        const res = await api.savePhrase(phrase.native, 'Bisaya', phrase.category);
-        setSavedPhrases((prev) => [...prev, { id: res?.id, phrase: phrase.native, category: phrase.category }]);
-      }
-    } catch (e) {
-      console.warn('[Community] Failed to toggle save phrase:', e.message);
+      const data = await api.getNotifications();
+      setNotifications(
+        (Array.isArray(data) ? data : []).map(normalizeNotification).filter(Boolean)
+      );
+    } catch {
+      setNotifError(true);
+      setNotifications([]);
     }
-  };
+  }, []);
 
-  const practicePhrase = (phrase) => {
-    navigation.navigate('Pronunciation');
-  };
+  useEffect(() => {
+    const t = setTimeout(loadNotifications, 0);
+    return () => clearTimeout(t);
+  }, [loadNotifications]);
 
   const loadLeaderboard = useCallback(async (period = lbPeriod) => {
     setLbLoading(true);
     setLbError(false);
     try {
-      const data = await communityMock.getLeaderboard(period);
+      const data = await api.getLeaderboard(period);
       setLeaderboard(Array.isArray(data) ? data : []);
     } catch {
       setLbError(true);
@@ -255,14 +232,18 @@ export default function CommunityScreen({ navigation }) {
   }, [activeTab]);
 
   const loadMyActivity = useCallback(async () => {
-    const { posts: all } = await communityMock.getPosts();
-    const mine = all.filter((p) => p.author_name === (user?.fullname?.split(' ')[0] || 'You'));
-    setMyActivity(mine);
+    try {
+      const all = await api.getCommunityPosts();
+      const rows = Array.isArray(all) ? all : [];
+      const myName = (user?.fullname || '').trim().toLowerCase();
+      setMyActivity(myName ? rows.filter((p) => (p.author_name || '').trim().toLowerCase() === myName) : []);
+    } catch {
+      setMyActivity([]);
+    }
   }, [user]);
 
   useEffect(() => {
     if (activeTab === 'me') {
-      communityMock.getSaved().then(setSavedPosts).catch(() => {});
       const t = setTimeout(loadMyActivity, 0);
       return () => clearTimeout(t);
     }
@@ -270,7 +251,7 @@ export default function CommunityScreen({ navigation }) {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadPosts();
+    await Promise.allSettled([loadPosts(), loadNotifications()]);
     setRefreshing(false);
   };
 
@@ -279,9 +260,24 @@ export default function CommunityScreen({ navigation }) {
     setShowCreate(true);
   };
 
-  const handleCreatePost = async ({ type, native, english, tags }) => {
+  const handleCreatePost = async ({ type, native, english }) => {
+    const bisaya = (native || '').trim();
+    const translation = (english || '').trim();
+    if (!bisaya) {
+      Alert.alert('Empty post', 'Write something in Bisaya first.');
+      return;
+    }
     try {
-      const post = await communityMock.createPost({ type, native, english, tags });
+      // The server requires both title and content, so the first line becomes
+      // the headline and the remainder the body.
+      const [firstLine, ...rest] = bisaya.split('\n');
+      const post = await api.createCommunityPost({
+        type,
+        title: (firstLine || bisaya).slice(0, 160),
+        content: rest.join('\n').trim() || bisaya,
+        phrase: bisaya,
+        translation: translation || null,
+      });
       setPosts((prev) => [post, ...prev]);
       setShowCreate(false);
       setActiveTab('feed');
@@ -292,7 +288,7 @@ export default function CommunityScreen({ navigation }) {
         Alert.alert('Posted', 'Thanks for sharing with the community!');
       }
     } catch (err) {
-      Alert.alert('Error', err.message);
+      Alert.alert('Could not post', err.message || 'Something went wrong. Please try again.');
     }
   };
 
@@ -300,53 +296,37 @@ export default function CommunityScreen({ navigation }) {
     if (expandedPost === postId) { setExpandedPost(null); return; }
     setExpandedPost(postId);
     try {
-      const data = await communityMock.getComments(postId);
-      setComments((prev) => ({ ...prev, [postId]: data }));
+      const data = await api.getPostComments(postId);
+      setComments((prev) => ({ ...prev, [postId]: Array.isArray(data) ? data : [] }));
     } catch (e) {
       console.warn('[Community] Failed to load comments:', e.message);
+      setComments((prev) => ({ ...prev, [postId]: [] }));
     }
   };
 
   const handleAddComment = async (postId, comment) => {
     if (!comment.trim()) return;
     try {
-      await communityMock.addComment(postId, comment);
-      const data = await communityMock.getComments(postId);
-      setComments((prev) => ({ ...prev, [postId]: data }));
+      await api.createPostComment(postId, comment);
+      const data = await api.getPostComments(postId);
+      const rows = Array.isArray(data) ? data : [];
+      setComments((prev) => ({ ...prev, [postId]: rows }));
+      setPosts((prev) =>
+        prev.map((p) => (p.id === postId ? { ...p, comments: (Number(p.comments) || 0) + 1 } : p))
+      );
     } catch (e) {
       console.warn('[Community] Failed to add comment:', e.message);
+      Alert.alert('Could not comment', 'Your comment was not saved. Please try again.');
     }
-  };
-
-  const handleToggleLike = async (postId) => {
-    const isLiked = !!liked[postId];
-    const next = await communityMock.toggleLike(postId, isLiked);
-    setLiked((prev) => ({ ...prev, [postId]: next }));
-  };
-
-  const handleToggleSave = async (postId) => {
-    const isSaved = !!bookmarked[postId];
-    const next = await communityMock.toggleSave(postId, isSaved);
-    setBookmarked((prev) => ({ ...prev, [postId]: next }));
-    if (next) {
-      const saves = await communityMock.getSaved();
-      setSavedPosts(saves);
-    }
-  };
-
-  const handleMarkHelpful = async (post) => {
-    await addXp(5, 'community_helpful');
-    Alert.alert('Marked helpful', 'The author earned +15 XP for their answer. +5 XP to you for engaging!');
   };
 
   const handleReport = async (post) => {
-    Alert.alert('Report sent', `Thanks for keeping the community safe. We have been notified about "${post.native}".`);
+    Alert.alert('Not available', 'Reporting is not enabled yet.');
   };
 
   const filteredPosts = posts.filter((p) => {
     if (typeFilter !== 'all' && p.type !== typeFilter) return false;
     if (feedFilter === 'popular') return (p.likes || 0) >= 20;
-    if (feedFilter === 'following') return p.is_native === true;
     return true;
   });
 
@@ -358,14 +338,12 @@ export default function CommunityScreen({ navigation }) {
 
   const searchResults = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return { posts: [], phrases: [], culture: [], experts: [] };
-    const matchPosts = posts.filter((p) =>
-      `${p.native} ${p.english} ${p.content || ''} ${(p.tags || []).join(' ')} ${p.author_name}`.toLowerCase().includes(q),
+    if (!q) return [];
+    return posts.filter((p) =>
+      `${p.title || ''} ${p.native || ''} ${p.english || ''} ${p.content || ''} ${p.author_name || ''}`
+        .toLowerCase()
+        .includes(q)
     );
-    const matchPhrases = MOCK_PHRASES.filter((p) => `${p.native} ${p.english}`.toLowerCase().includes(q));
-    const matchCulture = MOCK_CULTURE.filter((c) => `${c.title} ${c.text}`.toLowerCase().includes(q));
-    const matchExperts = MOCK_EXPERTS.filter((e) => `${e.name} ${e.bio}`.toLowerCase().includes(q));
-    return { posts: matchPosts, phrases: matchPhrases, culture: matchCulture, experts: matchExperts };
   }, [query, posts]);
 
   const myRank = useMemo(() => {
@@ -454,12 +432,8 @@ export default function CommunityScreen({ navigation }) {
               </View>
               <View>
                 <Text style={styles.dashHeroTitle}>Community Pulse</Text>
-                <Text style={styles.dashHeroSubtitle}>Live overview of learner activity</Text>
+                <Text style={styles.dashHeroSubtitle}>Overview of learner activity</Text>
               </View>
-            </View>
-            <View style={[styles.livePill, { backgroundColor: 'rgba(255,255,255,0.16)' }]}>
-              <View style={styles.liveDot} />
-              <Text style={styles.liveText}>{live ? 'LIVE' : 'SAMPLE'}</Text>
             </View>
           </View>
           <View style={styles.kpiGrid}>
@@ -581,12 +555,6 @@ export default function CommunityScreen({ navigation }) {
       {...scrollProps}
       ListHeaderComponent={
         <>
-          {!live && (
-            <View style={[styles.sampleBanner, { backgroundColor: colors.primary + '12', borderColor: colors.primary + '30' }]}>
-              <Ionicons name="cloud-offline-outline" size={16} color={colors.primary} />
-              <Text style={[styles.sampleBannerText, { color: colors.primary }]}>Showing sample posts — connect to the server to see the live community feed.</Text>
-            </View>
-          )}
           {renderDashboard()}
           <View style={styles.filterRow}>
             <FlatList
@@ -634,10 +602,10 @@ export default function CommunityScreen({ navigation }) {
               }}
             />
           </View>
-          {feedFilter === 'following' && (
+          {feedFilter === 'popular' && (
             <Card style={styles.hintCard}>
-              <Ionicons name="people" size={18} color={colors.primary} />
-              <Text style={[styles.hintText, { color: colors.textSecondary }]}>Posts from native speakers and verified learners you follow.</Text>
+              <Ionicons name="flame" size={18} color={colors.primary} />
+              <Text style={[styles.hintText, { color: colors.textSecondary }]}>Posts with 20 or more likes.</Text>
             </Card>
           )}
         </>
@@ -645,17 +613,10 @@ export default function CommunityScreen({ navigation }) {
       renderItem={({ item }) => (
         <PostCard
           post={item}
-          liked={!!liked[item.id]}
-          saved={!!bookmarked[item.id]}
-          translated={!!translated[item.id]}
           expanded={expandedPost === item.id}
           comments={comments[item.id] || []}
           onToggleComments={toggleComments}
           onAddComment={handleAddComment}
-          onToggleLike={handleToggleLike}
-          onToggleSave={handleToggleSave}
-          onToggleTranslate={(id) => setTranslated((prev) => ({ ...prev, [id]: !prev[id] }))}
-          onMarkHelpful={handleMarkHelpful}
           onReport={handleReport}
         />
       )}
@@ -702,226 +663,6 @@ export default function CommunityScreen({ navigation }) {
       }
     />
   );
-
-  const renderDiscover = () => {
-    const sections = [
-      { key: 'experts', title: 'Native Speakers', subtitle: 'Learn from real Bisaya speakers', icon: 'shield-checkmark', color: '#14B8A6', data: MOCK_EXPERTS },
-      { key: 'phrases', title: 'Daily Phrases', subtitle: 'Tap to hear pronunciation', icon: 'chatbubble', color: '#8B5CF6', data: MOCK_PHRASES },
-      { key: 'culture', title: 'Culture & Tradition', subtitle: 'Understand the heart of the Bisaya people', icon: 'color-palette', color: '#EC4899', data: MOCK_CULTURE },
-      { key: 'events', title: 'Local Events', subtitle: 'Connect with learners in real life', icon: 'calendar', color: '#F59E0B', data: MOCK_EVENTS },
-    ];
-
-    const renderExpert = (d) => (
-      <Card key={d.id} style={styles.discoverCard}>
-        <Avatar name={d.name} size={40} />
-        <View style={styles.discoverInfo}>
-          <View style={styles.discoverNameRow}>
-            <Text style={[styles.discoverName, { color: colors.text }]}>{d.name}</Text>
-            <Badge icon="shield-checkmark" title="Native" variant="success" size="sm" />
-          </View>
-          <Text style={[styles.discoverDesc, { color: colors.textSecondary }]}>{d.bio}</Text>
-          <View style={styles.discoverMetaRow}>
-            <Ionicons name="people" size={11} color={colors.textLight} />
-            <Text style={[styles.discoverMeta, { color: colors.textLight }]}>{d.followers.toLocaleString()} followers · {d.answers} answers</Text>
-          </View>
-          <View style={[styles.statusPill, { backgroundColor: d.lastActive === 'today' ? colors.success + '14' : colors.surfaceSecondary }]}>
-            <View style={[styles.statusDot, { backgroundColor: d.lastActive === 'today' ? colors.success : colors.textLight }]} />
-            <Text style={[styles.statusText, { color: d.lastActive === 'today' ? colors.success : colors.textSecondary }]}>
-              {d.lastActive === 'today' ? 'Active today' : 'Active this week'}
-            </Text>
-          </View>
-        </View>
-        <View style={styles.discoverActions}>
-          <TouchableOpacity
-            style={[styles.followBtn, { backgroundColor: followed[d.id] ? colors.surfaceSecondary : colors.primary }]}
-            onPress={() => {
-              setFollowed((prev) => ({ ...prev, [d.id]: !prev[d.id] }));
-              Alert.alert(followed[d.id] ? 'Unfollowed' : 'Following', followed[d.id] ? `You unfollowed ${d.name}.` : `You are now following ${d.name}!`);
-            }}
-            activeOpacity={0.8}
-          >
-            <Text style={[styles.followBtnText, { color: followed[d.id] ? colors.text : '#fff' }]}>{followed[d.id] ? 'Following' : 'Follow'}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.askBtn, { borderColor: colors.primary }]}
-            onPress={() => openCreate('question')}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="help-circle" size={14} color={colors.primary} />
-            <Text style={[styles.askBtnText, { color: colors.primary }]}>Ask a Question</Text>
-          </TouchableOpacity>
-        </View>
-      </Card>
-    );
-
-    const renderPhrase = (d) => {
-      const isSaved = savedPhrases.some((s) => s.phrase === d.native);
-      return (
-        <Card key={d.id} style={styles.phraseCard}>
-          <View style={styles.phraseRow}>
-            <View style={[styles.discoverIcon, { backgroundColor: d.color + '20' }]}>
-              <Ionicons name="chatbubble" size={18} color={d.color} />
-            </View>
-            <View style={styles.discoverInfo}>
-              <Text style={[styles.phraseNative, { color: colors.text }]}>{d.native}</Text>
-              <Text style={[styles.discoverDesc, { color: colors.textSecondary }]}>
-                &quot;{d.english}&quot;
-              </Text>
-              <Text style={[styles.discoverMeta, { color: colors.textLight }]}>{d.category} · shared by {d.user}</Text>
-            </View>
-          </View>
-          {d.bisaya_note && (
-            <View style={[styles.phraseNote, { backgroundColor: colors.primary + '0D' }]}>
-              <Ionicons name="information-circle" size={13} color={colors.primary} />
-              <Text style={[styles.phraseNoteText, { color: colors.primary }]}>{d.bisaya_note}</Text>
-            </View>
-          )}
-          <View style={styles.phraseActions}>
-            <TouchableOpacity style={styles.phraseAction} onPress={() => speakPhrase(d.native)} activeOpacity={0.7}>
-              <Ionicons name="volume-high" size={16} color={colors.primary} />
-              <Text style={[styles.phraseActionText, { color: colors.primary }]}>Listen</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.phraseAction} onPress={() => toggleSavePhrase(d)} activeOpacity={0.7}>
-              <Ionicons name={isSaved ? 'star' : 'star-outline'} size={16} color={isSaved ? colors.accent : colors.textSecondary} />
-              <Text style={[styles.phraseActionText, { color: isSaved ? colors.accent : colors.textSecondary }]}>{isSaved ? 'Saved' : 'Save'}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.phraseAction} onPress={() => practicePhrase(d)} activeOpacity={0.7}>
-              <Ionicons name="mic" size={16} color={colors.success} />
-              <Text style={[styles.phraseActionText, { color: colors.success }]}>Practice</Text>
-            </TouchableOpacity>
-          </View>
-        </Card>
-      );
-    };
-
-    const renderCulture = (d) => (
-      <Card key={d.id} style={styles.discoverCard}>
-        <View style={[styles.discoverIcon, { backgroundColor: d.color + '20' }]}>
-          <Ionicons name={d.icon} size={20} color={d.color} />
-        </View>
-        <View style={styles.discoverInfo}>
-          <View style={styles.discoverNameRow}>
-            <Text style={[styles.discoverName, { color: colors.text }]}>{d.title}</Text>
-            <Badge title={d.category} variant="default" size="sm" />
-          </View>
-          <Text style={[styles.discoverDesc, { color: colors.textSecondary }]} numberOfLines={2}>{d.text}</Text>
-          <Text style={[styles.discoverMeta, { color: colors.textLight }]}>{d.length}</Text>
-        </View>
-        <View style={styles.discoverActions}>
-          <TouchableOpacity
-            style={[styles.askBtn, { borderColor: colors.primary }]}
-            onPress={() => Alert.alert(d.title, `${d.text}\n\nFull article coming soon.`)}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="book-outline" size={14} color={colors.primary} />
-            <Text style={[styles.askBtnText, { color: colors.primary }]}>Read more</Text>
-          </TouchableOpacity>
-        </View>
-      </Card>
-    );
-
-    const renderEvent = (d) => {
-      const joined = !!joinedEvents[d.id];
-      return (
-        <Card key={d.id} style={styles.eventCard}>
-          <View style={styles.eventHeader}>
-            <View style={[styles.eventIcon, { backgroundColor: d.color + '20' }]}>
-              <Ionicons name={d.icon} size={20} color={d.color} />
-            </View>
-            <View style={styles.discoverInfo}>
-              <Text style={[styles.discoverName, { color: colors.text }]}>{d.title}</Text>
-              {d.online && <Badge icon="videocam" title="Online" variant="primary" size="sm" />}
-            </View>
-          </View>
-          <View style={styles.eventDetails}>
-            <View style={styles.eventRow}>
-              <Ionicons name="calendar-outline" size={14} color={colors.textSecondary} />
-              <Text style={[styles.eventText, { color: colors.textSecondary }]}>{d.date} · {d.time}</Text>
-            </View>
-            <View style={styles.eventRow}>
-              <Ionicons name={d.online ? 'globe-outline' : 'location-outline'} size={14} color={colors.textSecondary} />
-              <Text style={[styles.eventText, { color: colors.textSecondary }]}>{d.location}</Text>
-            </View>
-            <View style={styles.eventRow}>
-              <Ionicons name="people" size={14} color={colors.textSecondary} />
-              <Text style={[styles.eventText, { color: colors.textSecondary }]}>{d.going} going{d.spots ? ` · ${d.spots} spots left` : ''}</Text>
-            </View>
-          </View>
-          <View style={styles.eventActions}>
-            <TouchableOpacity
-              style={[styles.joinBtn, { backgroundColor: joined ? colors.surfaceSecondary : colors.primary }]}
-              onPress={() => {
-                setJoinedEvents((prev) => ({ ...prev, [d.id]: !prev[d.id] }));
-                Alert.alert(joined ? 'Left event' : 'Joined event', joined ? `You left ${d.title}.` : `You joined ${d.title}! We'll remind you before it starts.`);
-              }}
-              activeOpacity={0.85}
-            >
-              <Text style={[styles.joinBtnText, { color: joined ? colors.text : '#fff' }]}>{joined ? 'Joined ✓' : 'Join Event'}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.remindBtn, { borderColor: colors.primary }]}
-              onPress={() => Alert.alert('Reminder set', `We'll remind you before "${d.title}".`)}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="notifications-outline" size={14} color={colors.primary} />
-              <Text style={[styles.remindBtnText, { color: colors.primary }]}>Remind Me</Text>
-            </TouchableOpacity>
-          </View>
-        </Card>
-      );
-    };
-
-    const renderItemFor = (key, d) => {
-      switch (key) {
-        case 'experts': return renderExpert(d);
-        case 'phrases': return renderPhrase(d);
-        case 'culture': return renderCulture(d);
-        case 'events': return renderEvent(d);
-        default: return null;
-      }
-    };
-
-    return (
-      <FlatList
-        ref={listRef}
-        data={sections}
-        keyExtractor={(item) => item.key}
-        contentContainerStyle={styles.list}
-        {...scrollProps}
-        ListFooterComponent={
-          <TouchableOpacity
-            style={[styles.backTop, { borderColor: colors.border }]}
-            onPress={() => listRef.current?.scrollToOffset({ offset: 0, animated: true })}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="arrow-up" size={16} color={colors.primary} />
-            <Text style={[styles.backTopText, { color: colors.primary }]}>Back to Top</Text>
-          </TouchableOpacity>
-        }
-        renderItem={({ item }) => (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <View style={styles.sectionTitleWrap}>
-                <Ionicons name={item.icon} size={16} color={item.color} />
-                <View>
-                  <Text style={[styles.sectionTitle, { color: colors.text }]}>{item.title}</Text>
-                  <Text style={[styles.sectionSubtitle, { color: colors.textLight }]}>{item.subtitle}</Text>
-                </View>
-              </View>
-              <TouchableOpacity
-                onPress={() => Alert.alert(item.title, `Full ${item.title.toLowerCase()} list coming soon.`)}
-                activeOpacity={0.7}
-                accessibilityRole="button"
-              >
-                <Text style={[styles.viewAllText, { color: colors.primary }]}>View All →</Text>
-              </TouchableOpacity>
-            </View>
-            {item.data.map((d) => renderItemFor(item.key, d))}
-          </View>
-        )}
-      />
-    );
-  };
 
   const renderChallenges = () => {
     const daily = Array.isArray(challengeData) ? challengeData : [];
@@ -1089,7 +830,6 @@ export default function CommunityScreen({ navigation }) {
     const completedChallenges = [...challengeData, ...weeklyChallenge].filter((c) => c.completed).length;
     const tabs = [
       { key: 'notifications', label: 'Notifications', icon: 'notifications', count: unread },
-      { key: 'saved', label: 'Saved Posts', icon: 'bookmark', count: savedPosts.length },
       { key: 'activity', label: 'My Activity', icon: 'time', count: myActivity.length },
     ];
     const stats = [
@@ -1145,18 +885,10 @@ export default function CommunityScreen({ navigation }) {
           <TouchableOpacity style={[styles.meRow, { borderBottomColor: colors.border }]} onPress={() => {
             if (item.key === 'notifications') {
               setShowNotifications(true);
-            } else if (item.key === 'saved') {
-              if (savedPosts.length === 0) {
-                Alert.alert('No saved posts', 'Tap the bookmark icon on any post to save it for later.');
-              } else {
-                Alert.alert('Saved Posts', savedPosts.map((p) => p.native).join('\n\n'));
-              }
+            } else if (myActivity.length === 0) {
+              Alert.alert('No activity yet', 'Your questions and shared posts will appear here.');
             } else {
-              if (myActivity.length === 0) {
-                Alert.alert('No activity yet', 'Your questions and shared posts will appear here.');
-              } else {
-                Alert.alert('My Activity', myActivity.map((p) => p.native).join('\n\n'));
-              }
+              Alert.alert('My Activity', myActivity.map((p) => p.title).join('\n\n'));
             }
           }} activeOpacity={0.8}>
             <View style={[styles.meIcon, { backgroundColor: colors.primary + '12' }]}>
@@ -1172,59 +904,8 @@ export default function CommunityScreen({ navigation }) {
   };
 
   const renderSearch = () => {
-    const { posts: sp, phrases, culture, experts } = searchResults;
-    const groups = [
-      { key: 'posts', title: 'Posts', icon: 'newspaper', color: colors.primary, data: sp, render: (d) => (
-        <PostCard
-          post={d}
-          liked={!!liked[d.id]}
-          saved={!!bookmarked[d.id]}
-          translated={!!translated[d.id]}
-          expanded={expandedPost === d.id}
-          comments={comments[d.id] || []}
-          onToggleComments={toggleComments}
-          onAddComment={handleAddComment}
-          onToggleLike={handleToggleLike}
-          onToggleSave={handleToggleSave}
-          onToggleTranslate={(id) => setTranslated((prev) => ({ ...prev, [id]: !prev[id] }))}
-          onMarkHelpful={handleMarkHelpful}
-          onReport={handleReport}
-        />
-      ) },
-      { key: 'phrases', title: 'Phrases', icon: 'chatbubble', color: '#8B5CF6', data: phrases, render: (d) => (
-        <Card style={styles.discoverCard}>
-          <View style={[styles.discoverIcon, { backgroundColor: d.color + '20' }]}>
-            <Ionicons name="chatbubble" size={20} color={d.color} />
-          </View>
-          <View style={styles.discoverInfo}>
-            <Text style={[styles.discoverName, { color: colors.text }]}>{d.native}</Text>
-            <Text style={[styles.discoverDesc, { color: colors.textSecondary }]}>{d.english}</Text>
-          </View>
-        </Card>
-      ) },
-      { key: 'culture', title: 'Culture', icon: 'color-palette', color: '#EC4899', data: culture, render: (d) => (
-        <Card style={styles.discoverCard}>
-          <View style={[styles.discoverIcon, { backgroundColor: d.color + '20' }]}>
-            <Ionicons name={d.icon} size={20} color={d.color} />
-          </View>
-          <View style={styles.discoverInfo}>
-            <Text style={[styles.discoverName, { color: colors.text }]}>{d.title}</Text>
-            <Text style={[styles.discoverDesc, { color: colors.textSecondary }]}>{d.text}</Text>
-          </View>
-        </Card>
-      ) },
-      { key: 'experts', title: 'Native Speakers', icon: 'shield-checkmark', color: '#14B8A6', data: experts, render: (d) => (
-        <Card style={styles.discoverCard}>
-          <Avatar name={d.name} size={36} />
-          <View style={styles.discoverInfo}>
-            <Text style={[styles.discoverName, { color: colors.text }]}>{d.name}</Text>
-            <Text style={[styles.discoverDesc, { color: colors.textSecondary }]}>{d.bio}</Text>
-          </View>
-        </Card>
-      ) },
-    ].filter((g) => g.data.length > 0);
-
-    if (groups.length === 0) {
+    const rows = searchResults;
+    if (rows.length === 0) {
       return (
         <View style={styles.list}>
           <EmptyState icon="search" title="No results" message={`Nothing found for "${query}". Try a different word.`} />
@@ -1233,45 +914,76 @@ export default function CommunityScreen({ navigation }) {
     }
     return (
       <FlatList
-        data={groups}
-        keyExtractor={(item) => item.key}
+        data={rows}
+        keyExtractor={(item, index) => `${item.id ?? index}`}
         contentContainerStyle={styles.list}
         {...scrollProps}
+        ListHeaderComponent={
+          <Text style={[styles.searchResultCount, { color: colors.textSecondary }]}>
+            {rows.length} {rows.length === 1 ? 'result' : 'results'} for &quot;{query}&quot;
+          </Text>
+        }
         renderItem={({ item }) => (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Ionicons name={item.icon} size={16} color={item.color} />
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>{item.title} ({item.data.length})</Text>
-            </View>
-            {item.data.map((d) => <View key={d.id}>{item.render(d)}</View>)}
-          </View>
+          <PostCard
+            post={item}
+            expanded={expandedPost === item.id}
+            comments={comments[item.id] || []}
+            onToggleComments={toggleComments}
+            onAddComment={handleAddComment}
+            onReport={handleReport}
+          />
         )}
       />
     );
   };
 
+  const markNotificationRead = useCallback((id) => {
+    setNotifications((prev) => prev.map((x) => (x.id === id ? { ...x, read: true } : x)));
+    api.markNotificationRead(id).catch(() => {});
+  }, []);
+
+  const markAllNotificationsRead = useCallback(() => {
+    setNotifications((prev) => prev.map((x) => ({ ...x, read: true })));
+    api.markAllNotificationsRead().catch(() => {});
+  }, []);
+
   const renderNotificationsSheet = () => (
     <BottomSheet visible={showNotifications} onClose={() => setShowNotifications(false)} title="Notifications" height={480} bottomInset={96}>
+      {unread > 0 && (
+        <TouchableOpacity
+          onPress={markAllNotificationsRead}
+          activeOpacity={0.8}
+          accessibilityRole="button"
+          accessibilityLabel="Mark all notifications as read"
+          style={[styles.sheetClearAll, { backgroundColor: colors.primaryLight, borderColor: colors.primary + '33' }]}
+        >
+          <Ionicons name="checkmark-done" size={16} color={colors.primary} />
+          <Text style={[styles.sheetClearAllText, { color: colors.primary }]}>Mark all as read</Text>
+        </TouchableOpacity>
+      )}
       {notifications.length === 0 ? (
         <View style={styles.sheetEmpty}>
           <Ionicons name="notifications-off-outline" size={28} color={colors.textLight} />
-          <Text style={[styles.sheetEmptyText, { color: colors.textSecondary }]}>No notifications yet.</Text>
+          <Text style={[styles.sheetEmptyText, { color: colors.textSecondary }]}>
+            {notifError ? 'Could not load notifications.' : 'No notifications yet.'}
+          </Text>
         </View>
       ) : (
         notifications.map((n) => (
           <TouchableOpacity
             key={n.id}
             style={[styles.notifRow, !n.read && { backgroundColor: colors.primary + '08' }]}
-            onPress={() => setNotifications((prev) => prev.map((x) => (x.id === n.id ? { ...x, read: true } : x)))}
+            onPress={() => markNotificationRead(n.id)}
+            disabled={n.read}
             activeOpacity={0.8}
           >
             <View style={[styles.notifIcon, { backgroundColor: (n.read ? colors.surfaceSecondary : colors.primary) + '18' }]}>
-              <Ionicons name={n.icon || 'notifications'} size={18} color={n.read ? colors.textSecondary : colors.primary} />
+              <Ionicons name={n.icon} size={18} color={n.read ? colors.textSecondary : colors.primary} />
             </View>
             <View style={styles.notifBody}>
               <Text style={[styles.notifTitle, { color: colors.text }]}>{n.title}</Text>
-              <Text style={[styles.notifDesc, { color: colors.textSecondary }]}>{n.body}</Text>
-              <Text style={[styles.notifTime, { color: colors.textLight }]}>{n.time}</Text>
+              {!!n.body && <Text style={[styles.notifDesc, { color: colors.textSecondary }]}>{n.body}</Text>}
+              {!!n.time && <Text style={[styles.notifTime, { color: colors.textLight }]}>{n.time}</Text>}
             </View>
             {!n.read && <View style={[styles.notifDot, { backgroundColor: colors.primary }]} />}
           </TouchableOpacity>
@@ -1282,7 +994,6 @@ export default function CommunityScreen({ navigation }) {
 
   const renderTab = () => {
     switch (activeTab) {
-      case 'discover': return renderDiscover();
       case 'challenges': return renderChallenges();
       case 'leaderboard': return renderLeaderboard();
       case 'me': return renderMe();
@@ -1294,7 +1005,7 @@ export default function CommunityScreen({ navigation }) {
   if (loading && activeTab === 'feed') return <LoadingState fullScreen />;
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <AuroraBackground style={styles.container} atmosphere="community">
       <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border, paddingTop: padTop }]}>
         <View style={styles.headerRow}>
           <View style={[styles.headerAvatar, { backgroundColor: colors.softPurple }]}>
@@ -1317,19 +1028,6 @@ export default function CommunityScreen({ navigation }) {
             </Animated.View>
           </View>
           <View style={styles.headerActions}>
-            <TouchableOpacity
-              onPress={() => setShowNotifications(true)}
-              style={[styles.iconBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
-              accessibilityRole="button"
-              accessibilityLabel="Notifications"
-            >
-              <Ionicons name="notifications-outline" size={20} color={colors.textSecondary} />
-              {unread > 0 && (
-                <View style={[styles.unreadDot, { backgroundColor: colors.error }]}>
-                  <Text style={styles.unreadText}>{unread > 9 ? '9+' : unread}</Text>
-                </View>
-              )}
-            </TouchableOpacity>
             {canPost && (
               <TouchableOpacity
                 onPress={() => openCreate()}
@@ -1352,7 +1050,7 @@ export default function CommunityScreen({ navigation }) {
             name="communitySearch"
             testID="communitySearch-input"
             style={[styles.searchInput, { color: colors.text }]}
-            placeholder="Search posts, phrases, questions..."
+            placeholder="Search community posts..."
             placeholderTextColor={colors.textLight}
             value={query}
             onChangeText={setQuery}
@@ -1382,9 +1080,9 @@ export default function CommunityScreen({ navigation }) {
         onSubmit={handleCreatePost}
       />
       {renderNotificationsSheet()}
-    </View>
+    </AuroraBackground>
   );
-}
+  }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
@@ -1398,8 +1096,6 @@ const styles = StyleSheet.create({
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   iconBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', borderWidth: 1, position: 'relative' },
   createBtn: { width: 40, height: 40, borderRadius: 20, padding: 0 },
-  unreadDot: { position: 'absolute', top: 6, right: 6, minWidth: 16, height: 16, borderRadius: 8, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3 },
-  unreadText: { fontSize: 9, fontWeight: '800', color: '#fff' },
   searchBar: { paddingHorizontal: spacing.xl, paddingVertical: spacing.sm, borderBottomWidth: 1 },
   searchBox: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, borderWidth: 1, borderRadius: borderRadius.lg, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
   searchInput: { flex: 1, fontSize: 14, paddingVertical: 0 },

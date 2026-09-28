@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert } from 'reac
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import BottomSheet from '../../components/BottomSheet';
-import { POST_TYPES, POST_TYPE_KEYS } from '../../services/communityMock';
+import { POST_TYPES, POST_TYPE_KEYS } from '../../constants/community';
 import { spacing, borderRadius, shadows } from '../../theme';
 
 const AI_HELPERS = [

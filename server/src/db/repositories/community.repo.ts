@@ -1,6 +1,6 @@
-import { eq, desc, asc } from 'drizzle-orm';
+import { eq, desc, asc, sql } from 'drizzle-orm';
 import { getDb } from '../connection';
-import * as schema from '../schema-sqlite';
+import * as schema from '../schema-pg';
 
 export async function getPosts(): Promise<any[]> {
   const db = getDb();
@@ -13,8 +13,12 @@ export async function getPosts(): Promise<any[]> {
       phrase: schema.communityPosts.phrase,
       translation: schema.communityPosts.translation,
       category: schema.communityPosts.category,
+      likesCount: schema.communityPosts.likesCount,
       createdAt: schema.communityPosts.createdAt,
       authorName: schema.users.fullname,
+      authorRole: schema.users.role,
+      authorVerified: schema.users.isVerified,
+      commentsCount: sql<number>`(select count(*) from ${schema.comments} where ${schema.comments.postId} = ${schema.communityPosts.postId})`,
     })
     .from(schema.communityPosts)
     .leftJoin(schema.users, eq(schema.communityPosts.userId, schema.users.userId))
@@ -74,7 +78,6 @@ export async function createPost(
     .returning();
   return result[0].postId;
 }
-
 export async function getComments(postId: number): Promise<any[]> {
   const db = getDb();
   return await (db as any)

@@ -1,6 +1,4 @@
 import crypto from 'crypto';
-import fs from 'fs';
-import path from 'path';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -27,19 +25,40 @@ const sig = crypto
 
 const token = `${header}.${payload}.${sig}`;
 
-// Read test WAV generated earlier
-const wavPath = path.join(__dirname, '..', '..', 'ai-service', 'test_audio.wav');
-console.log('WAV path:', wavPath, '| exists:', fs.existsSync(wavPath));
-const audioB64 = fs.existsSync(wavPath)
-  ? fs.readFileSync(wavPath).toString('base64')
-  : '';
+// Synthesize a 1s 440Hz tone as 16-bit mono 16kHz PCM WAV so this test is
+// self-contained (the old ai-service/test_audio.wav fixture was removed).
+function makeTestWav(): Buffer {
+  const sampleRate = 16000;
+  const numSamples = sampleRate;
+  const wav = Buffer.alloc(44 + numSamples * 2);
+  wav.write('RIFF', 0);
+  wav.writeUInt32LE(36 + numSamples * 2, 4);
+  wav.write('WAVE', 8);
+  wav.write('fmt ', 12);
+  wav.writeUInt32LE(16, 16);
+  wav.writeUInt16LE(1, 20);
+  wav.writeUInt16LE(1, 22);
+  wav.writeUInt32LE(sampleRate, 24);
+  wav.writeUInt32LE(sampleRate * 2, 28);
+  wav.writeUInt16LE(2, 32);
+  wav.writeUInt16LE(16, 34);
+  wav.write('data', 36);
+  wav.writeUInt32LE(numSamples * 2, 40);
+  for (let i = 0; i < numSamples; i++) {
+    wav.writeInt16LE(Math.round(Math.sin((2 * Math.PI * 440 * i) / sampleRate) * 8000), 44 + i * 2);
+  }
+  return wav;
+}
+
+const audioB64 = makeTestWav().toString('base64');
+console.log('Synthesized test WAV, base64 bytes:', audioB64.length);
 
 async function main() {
-  // Step 1: verify Python service reachable via Node's isPythonServiceAvailable logic
-  const health = await fetch('http://localhost:8000/health');
-  console.log('Python /health:', await health.json());
+  // Step 1: verify the Node backend is reachable
+  const health = await fetch('http://localhost:3001/api/health');
+  console.log('Backend /api/health:', await health.json());
 
-  // Step 2: call Node pronunciation/check with audio (should hit Python path)
+  // Step 2: call the pronunciation check with audio
   const res = await fetch('http://localhost:3001/api/speech/pronunciation/check', {
     method: 'POST',
     headers: {
@@ -63,7 +82,7 @@ async function main() {
 
   // Detect which path was used
   if (data?.metrics) {
-    console.log('\n>>> USED PYTHON ACOUSTIC ANALYSIS (metrics present)');
+    console.log('\n>>> Acoustic metrics present');
   } else {
     console.log('\n>>> Used LLM fallback (no metrics)');
   }

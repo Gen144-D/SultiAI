@@ -1,6 +1,16 @@
 'use client';
 
-import { Avatar, Card, EmptyState, ErrorState, LoadingState, StatusBadge } from '@/components/ui';
+import {
+  Avatar,
+  Card,
+  EmptyState,
+  ErrorState,
+  LoadingState,
+  StatusBadge,
+  dangerSoftBtn,
+  ghostBtn,
+  successSoftBtn,
+} from '@/components/ui';
 import { useToast } from '@/components/Toast';
 import { useAsync } from '@/hooks/useAsync';
 import { api } from '@/lib/api';
@@ -27,7 +37,7 @@ export default function AdminPreservationPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-extrabold text-ink">Preservation</h1>
+          <h1 className="text-xl font-semibold tracking-tight text-ink">Preservation</h1>
           <p className="mt-1 text-sm text-ink-soft">
             Living Lexicon moderation — {words.length} words · {pending} pending review
           </p>
@@ -50,7 +60,7 @@ export default function AdminPreservationPage() {
                 `sultiai-preserved-words-${new Date().toISOString().split('T')[0]}.csv`
               )
             }
-            className="rounded-xl border border-line bg-white px-4 py-2.5 text-sm font-semibold text-ink transition-colors hover:border-brand"
+            className={ghostBtn}
           >
             Export CSV
           </button>
@@ -70,7 +80,7 @@ export default function AdminPreservationPage() {
             <Card key={w.id} className="flex flex-col p-6">
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-xl font-extrabold text-brand-dark">{w.word}</p>
+                  <p className="text-base font-semibold tracking-tight text-ink">{w.word}</p>
                   <p className="text-xs text-ink-faint">{w.dialect}</p>
                 </div>
                 <StatusBadge status={w.status} />
@@ -81,7 +91,7 @@ export default function AdminPreservationPage() {
                 {w.variations.map((v) => (
                   <span
                     key={v}
-                    className="rounded-full bg-surface px-2.5 py-1 text-[10px] font-medium text-ink-faint"
+                    className="rounded-md bg-surface-2 px-2 py-0.5 text-[10px] font-medium text-ink-faint"
                   >
                     {v}
                   </span>
@@ -98,14 +108,14 @@ export default function AdminPreservationPage() {
                   <button
                     type="button"
                     onClick={() => handleVerify(w, 'approved')}
-                    className="flex-1 rounded-lg bg-success/10 py-2 text-xs font-semibold text-success hover:bg-success hover:text-white"
+                    className={`${successSoftBtn} flex-1 py-1.5`}
                   >
                     Approve
                   </button>
                   <button
                     type="button"
                     onClick={() => handleVerify(w, 'rejected')}
-                    className="flex-1 rounded-lg bg-danger/10 py-2 text-xs font-semibold text-danger hover:bg-danger hover:text-white"
+                    className={`${dangerSoftBtn} flex-1 py-1.5`}
                   >
                     Reject
                   </button>

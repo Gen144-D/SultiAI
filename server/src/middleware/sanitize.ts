@@ -75,8 +75,14 @@ export function detectSqlInjection(req: Request, res: Response, next: NextFuncti
     /(\bBENCHMARK\s*\()/i,
   ];
 
+  const isBase64Like = (value: string): boolean =>
+    value.length >= 64 && /^[A-Za-z0-9+/=\r\n]+$/.test(value);
+
   const checkValue = (value: unknown): boolean => {
     if (typeof value !== 'string') return false;
+    // Skip audio/image base64 blobs — they are not user SQL and routinely
+    // contain false-positive matches like "0x<hex>".
+    if (isBase64Like(value)) return false;
     return sqlPatterns.some((pattern) => pattern.test(value));
   };
 

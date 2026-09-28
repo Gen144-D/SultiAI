@@ -5,6 +5,7 @@ import type { AdminSettings } from '@/types';
 import { useToast } from '@/components/Toast';
 import { useAsync } from '@/hooks/useAsync';
 import { api } from '@/lib/api';
+import { useTheme } from '@/lib/themes';
 import {
   Avatar,
   Card,
@@ -13,6 +14,7 @@ import {
   LoadingState,
   RoleBadge,
   ghostBtn,
+  inputCls,
   primaryBtn,
   selectCls,
 } from '@/components/ui';
@@ -24,11 +26,14 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
       role="switch"
       aria-checked={checked}
       onClick={() => onChange(!checked)}
-      className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${checked ? 'bg-success' : 'bg-line'}`}
+      className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${
+        checked ? 'bg-brand-solid' : 'bg-line-strong'
+      }`}
     >
       <span
-        className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${checked ? 'translate-x-5.5 left-0' : 'translate-x-0.5 left-0'}`}
-        style={{ transform: checked ? 'translateX(1.375rem)' : 'translateX(0.125rem)' }}
+        className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-surface transition-transform ${
+          checked ? 'translate-x-4' : 'translate-x-0'
+        }`}
       />
     </button>
   );
@@ -36,6 +41,7 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
 
 export default function AdminSettingsPage() {
   const toast = useToast();
+  const { themeName, themeList, setTheme } = useTheme();
   const { data, loading, error, reload } = useAsync(() => api.getSettings(), []);
   const [form, setForm] = useState<Partial<AdminSettings> | null>(null);
   const [saving, setSaving] = useState(false);
@@ -75,7 +81,7 @@ export default function AdminSettingsPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-extrabold text-ink">Settings</h1>
+          <h1 className="text-xl font-semibold tracking-tight text-ink">Settings</h1>
           <p className="mt-1 text-sm text-ink-soft">Platform-wide configuration.</p>
         </div>
         <div className="flex gap-3">
@@ -158,7 +164,7 @@ export default function AdminSettingsPage() {
               <input
                 type="number"
                 min={10}
-                className="w-full rounded-xl border border-line px-3.5 py-2.5 text-sm text-ink outline-none focus:border-brand"
+                className={inputCls}
                 value={current.dailyXpGoal}
                 onChange={(e) => set({ dailyXpGoal: Number(e.target.value) })}
               />
@@ -170,7 +176,7 @@ export default function AdminSettingsPage() {
               <input
                 type="number"
                 min={1}
-                className="w-full rounded-xl border border-line px-3.5 py-2.5 text-sm text-ink outline-none focus:border-brand"
+                className={inputCls}
                 value={current.maxDailyAiRequests}
                 onChange={(e) => set({ maxDailyAiRequests: Number(e.target.value) })}
               />
@@ -194,6 +200,66 @@ export default function AdminSettingsPage() {
           ))}
         </ul>
       </Card>
+
+      <Card>
+          <CardHeader title="Appearance" subtitle="Choose a theme for the admin dashboard" />
+          <div className="p-6">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {themeList.map((t) => {
+                const active = themeName === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => setTheme(t.id)}
+                    className={`relative rounded-xl border-2 p-4 transition-all duration-200 ${
+                      active
+                        ? 'border-brand-solid bg-brand-soft/50 shadow-lg shadow-brand/10 scale-[1.02]'
+                        : 'border-line hover:border-line-strong hover:bg-surface-2'
+                    }`}
+                    aria-pressed={active}
+                  >
+                    <div className="flex items-center gap-2 mb-3">
+                      <div
+                        className="flex h-8 w-8 items-center justify-center rounded-lg"
+                        style={{ backgroundColor: `var(--brand-soft)` }}
+                      >
+                        <span className="text-xs font-semibold" style={{ color: `var(--brand-ink)` }}>
+                          {t.label.charAt(0)}
+                        </span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-ink truncate">{t.label}</p>
+                        <p className="text-xs text-ink-faint truncate">{t.description}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span
+                        className="h-3 w-3 rounded-full"
+                        style={{ backgroundColor: `var(--brand)` }}
+                      />
+                      <span
+                        className="h-3 w-3 rounded-full"
+                        style={{ backgroundColor: `var(--success)` }}
+                      />
+                      <span
+                        className="h-3 w-3 rounded-full"
+                        style={{ backgroundColor: `var(--warning)` }}
+                      />
+                    </div>
+                    {active && (
+                      <div className="absolute top-2 right-2 flex h-5 w-5 items-center justify-center rounded-full bg-brand-solid text-on-brand">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                          <path d="M20 6L9 17l-5-5" />
+                        </svg>
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </Card>
 
       <p className="text-xs text-ink-faint">
         Last updated: {new Date(current.updatedAt).toLocaleString()}

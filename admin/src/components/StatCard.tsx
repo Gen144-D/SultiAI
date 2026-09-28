@@ -2,11 +2,11 @@ import type { ReactNode } from 'react';
 import { Card } from './ui';
 
 const toneMap = {
-  brand: { text: 'text-brand-dark', icon: 'bg-brand-light' },
-  green: { text: 'text-success', icon: 'bg-success/10' },
-  amber: { text: 'text-[#b45309]', icon: 'bg-accent-light' },
-  red: { text: 'text-danger', icon: 'bg-danger/10' },
-  violet: { text: 'text-[#7c3aed]', icon: 'bg-[#7c3aed]/10' },
+  brand: { value: 'text-ink', icon: 'bg-brand-soft text-brand' },
+  green: { value: 'text-ink', icon: 'bg-success-soft text-success' },
+  amber: { value: 'text-ink', icon: 'bg-warning-soft text-warning' },
+  red: { value: 'text-ink', icon: 'bg-danger-soft text-danger' },
+  violet: { value: 'text-ink', icon: 'bg-violet-soft text-violet' },
 } as const;
 
 export function StatCard({
@@ -24,19 +24,21 @@ export function StatCard({
 }) {
   const t = toneMap[tone];
   return (
-    <Card className="p-5">
-      <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold uppercase tracking-wide text-ink-faint">{label}</p>
+    <Card className="p-4">
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-xs font-medium text-ink-faint">{label}</p>
         {icon && (
           <span
-            className={`flex h-9 w-9 items-center justify-center rounded-xl text-base ${t.icon}`}
+            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sm ${t.icon}`}
           >
             {icon}
           </span>
         )}
       </div>
-      <p className={`mt-3 text-2xl font-extrabold tabular-nums ${t.text}`}>{value}</p>
-      {delta && <p className="mt-1.5 text-xs font-medium text-ink-soft">{delta}</p>}
+      <p className={`mt-2 text-2xl font-semibold tracking-tight tabular-nums ${t.value}`}>
+        {value}
+      </p>
+      {delta && <p className="mt-1 text-xs text-ink-faint">{delta}</p>}
     </Card>
   );
 }

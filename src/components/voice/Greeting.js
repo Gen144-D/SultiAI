@@ -1,11 +1,13 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown, FadeOutUp } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
-import { voice } from './palette';
+import { useVoicePalette } from './palette';
 
 export default function Greeting({ visible, hasSpoken }) {
+  const voice = useVoicePalette();
+  const styles = useMemo(() => createStyles(voice), [voice]);
   if (!visible) return null;
 
   return (
@@ -43,14 +45,14 @@ export default function Greeting({ visible, hasSpoken }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (voice) => StyleSheet.create({
   wrap: { alignItems: 'center', paddingHorizontal: 32 },
   emojiRow: { marginBottom: 6 },
   emojiCircle: {
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: 'rgba(45,212,191,0.15)',
+    backgroundColor: voice.primary + '26',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -67,7 +69,7 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     borderRadius: 999,
   },
-  badgeText: { color: '#04111f', fontSize: 12, fontWeight: '800', letterSpacing: 0.3 },
+  badgeText: { color: voice.onGradientText, fontSize: 12, fontWeight: '800', letterSpacing: 0.3 },
   hintRow: { marginBottom: 4 },
   hint: { color: voice.textMuted, fontSize: 13, textAlign: 'center' },
 });

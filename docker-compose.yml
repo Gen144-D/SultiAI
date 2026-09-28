@@ -1,34 +1,27 @@
 version: '3.8'
 
 services:
-  # Python AI Service (Whisper STT + BART Intent + Edge TTS)
+  # Python acoustic pronunciation scoring service (librosa MFCC + Parselmouth
+  # pitch/formant analysis). Internal-only — no published host port; reachable
+  # by the `server` container at http://ai-service:8000.
   ai-service:
     build:
       context: ./ai-service
       dockerfile: Dockerfile
-      target: production
     container_name: sultiai-ai-service
     restart: unless-stopped
-    ports:
-      - "8001:8001"
-    environment:
-      - PYTHONUNBUFFERED=1
-      - WHISPER_MODEL=small
-      - WHISPER_DEVICE=cpu
-      - WHISPER_COMPUTE=int8
-      - CLASSIFIER_MODEL=facebook/bart-large-mnli
-    volumes:
-      - ai-models:/root/.cache
+    expose:
+      - "8000"
     networks:
       - sultiai-network
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 30s
-      timeout: 10s
+      timeout: 3s
       retries: 3
-      start_period: 60s
+      start_period: 10s
 
-  # Node.js Express Gateway
+  # Node.js Backend API (Groq STT/LLM + msedge-tts/OpenRouter TTS + Deepgram)
   server:
     build:
       context: ./server
@@ -37,27 +30,26 @@ services:
     container_name: sultiai-server
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "3001:3001"
     environment:
       - NODE_ENV=production
-      - PORT=3000
-      - AI_SERVICE_URL=http://ai-service:8001
+      - PORT=3001
       - JWT_SECRET=${JWT_SECRET}
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+      - AI_SERVICE_URL=http://ai-service:8000
     volumes:
       - server-uploads:/app/uploads
     networks:
       - sultiai-network
+    depends_on:
+      - ai-service
     healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
       interval: 30s
       timeout: 3s
       retries: 3
       start_period: 10s
-    depends_on:
-      ai-service:
-        condition: service_healthy
 
   # Next.js Web App
   web:
@@ -67,9 +59,9 @@ services:
     container_name: sultiai-web
     restart: unless-stopped
     ports:
-      - "3001:3000"
+      - "3000:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=http://server:3000
+      - NEXT_PUBLIC_API_URL=http://server:3001
       - NEXT_PUBLIC_SUPABASE_URL=${SUPABASE_URL}
       - NEXT_PUBLIC_SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
     networks:
@@ -87,7 +79,7 @@ services:
     ports:
       - "3002:3002"
     environment:
-      - NEXT_PUBLIC_API_URL=http://server:3000
+      - NEXT_PUBLIC_API_URL=http://server:3001
       - NEXT_PUBLIC_SUPABASE_URL=${SUPABASE_URL}
       - NEXT_PUBLIC_SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
     networks:
@@ -96,8 +88,6 @@ services:
       - server
 
 volumes:
-  ai-models:
-    driver: local
   server-uploads:
     driver: local
 

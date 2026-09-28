@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { sql } from 'drizzle-orm';
 import { authMiddleware } from '../middleware/auth';
 
 const router = Router();
@@ -11,21 +12,17 @@ router.get('/learning', authMiddleware, async (req: AuthRequest, res: Response) 
   try {
     const { getDb } = await import('../db/connection');
     const db = getDb();
-    const stats = db
-      .prepare(
-        `
+    const userId = req.user!.id;
+    const rows = await (db as any).all(sql`
       SELECT
         COALESCE(SUM(lp.completion_percent), 0) as total_progress,
-        COUNT(DISTINCT lm.module_id) as modules_started,
+        COUNT(DISTINCT lp.module_id) as modules_started,
         COALESCE(AVG(lp.completion_percent), 0) as avg_completion,
-        COUNT(DISTINCT CASE WHEN lp.completion_percent = 100 THEN lm.module_id END) as modules_completed
-      FROM learning_modules lm
-      LEFT JOIN learning_progress lp ON lp.module_id = lm.module_id AND lp.user_id = ?
-      WHERE lp.user_id = ?
-    `
-      )
-      .get(req.user!.id, req.user!.id);
-    res.json(stats);
+        COUNT(DISTINCT CASE WHEN lp.completion_percent = 100 THEN lp.module_id END) as modules_completed
+      FROM learning_progress lp
+      WHERE lp.user_id = ${userId}
+    `);
+    res.json(rows[0] ?? { total_progress: 0, modules_started: 0, avg_completion: 0, modules_completed: 0 });
   } catch (err) {
     res.status(500).json({ error: 'Failed to load analytics' });
   }
@@ -35,18 +32,15 @@ router.get('/weekly', authMiddleware, async (req: AuthRequest, res: Response) =>
   try {
     const { getDb } = await import('../db/connection');
     const db = getDb();
+    const userId = req.user!.id;
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-    const sessions = db
-      .prepare(
-        `
-      SELECT DATE(created_at) as date, COUNT(*) as sessions, COALESCE(SUM(xp_earned), 0) as xp
+    const sessions = await (db as any).all(sql`
+      SELECT DATE(started_at) as date, COUNT(*) as sessions, COALESCE(SUM(xp_earned), 0) as xp
       FROM tutor_sessions
-      WHERE user_id = ? AND created_at >= ?
-      GROUP BY DATE(created_at)
+      WHERE user_id = ${userId} AND started_at >= ${sevenDaysAgo}
+      GROUP BY DATE(started_at)
       ORDER BY date
-    `
-      )
-      .all(req.user!.id, sevenDaysAgo);
+    `);
     res.json(sessions);
   } catch (err) {
     res.status(500).json({ error: 'Failed to load weekly progress' });
@@ -57,19 +51,16 @@ router.get('/streak', authMiddleware, async (req: AuthRequest, res: Response) =>
   try {
     const { getDb } = await import('../db/connection');
     const db = getDb();
-    const sessions = db
-      .prepare(
-        `
-      SELECT DISTINCT DATE(created_at) as date
+    const userId = req.user!.id;
+    const sessions = (await (db as any).all(sql`
+      SELECT DISTINCT DATE(started_at) as date
       FROM tutor_sessions
-      WHERE user_id = ?
+      WHERE user_id = ${userId}
       ORDER BY date DESC
       LIMIT 60
-    `
-      )
-      .all(req.user!.id) as any[];
+    `)) as any[];
 
-    const dates = sessions.map((s: any) => s.date);
+    const dates = sessions.map((s) => s.date);
     let streak = 0;
     const today = new Date().toISOString().split('T')[0];
 

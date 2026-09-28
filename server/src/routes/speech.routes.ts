@@ -4,14 +4,6 @@ import fs from 'fs';
 import path from 'path';
 import { authMiddleware } from '../middleware/auth';
 import { isConfigured, groqChat, groqTranscribeAudio, groqJson } from '../utils/groq';
-import { 
-  isPythonServiceAvailable, 
-  scoreWithPython,
-  isRobertaAvailable,
-  robertaFillMask,
-  generateVocabularyExercise,
-  completeSentence
-} from '../utils/pythonService';
 import ttsService, { CHARACTER_VOICES } from '../services/ttsService';
 
 const router = Router();
@@ -196,31 +188,6 @@ router.post('/pronunciation/check', authMiddleware, async (req: Request, res: Re
       return;
     }
 
-    // ── Path 1: Python acoustic analysis (if audio + service available) ──
-    if (audio) {
-      const pythonAvailable = await isPythonServiceAvailable();
-      if (pythonAvailable) {
-        try {
-          const result = await scoreWithPython(
-            audio,
-            expectedText,
-            language || 'ceb',
-            language === 'tl' ? 'recording.mp3' : 'recording.m4a'
-          );
-          if (result) {
-            res.json(result);
-            return;
-          }
-        } catch (pyErr) {
-          console.warn(
-            '[Pronunciation] Python service failed, falling back to LLM:',
-            (pyErr as Error).message
-          );
-        }
-      }
-    }
-
-    // ── Path 2: LLM-based fallback (text-only) ──
     if (!isConfigured()) {
       res.json({
         score: 85,
@@ -230,27 +197,47 @@ router.post('/pronunciation/check', authMiddleware, async (req: Request, res: Re
       return;
     }
 
+    // Transcribe what the learner actually said so the score is based on the
+    // recording rather than the target text alone.
+    let spokenText = '';
+    if (audio) {
+      const mimeType = audio.startsWith('Ukl') || audio.startsWith('SUk')
+        ? 'audio/wav'
+        : 'audio/mp4';
+      const filename = mimeType === 'audio/wav' ? 'recording.wav' : 'recording.m4a';
+      try {
+        spokenText = await groqTranscribeAudio(audio, filename, mimeType);
+      } catch (err) {
+        console.warn('[Pronunciation] STT failed, scoring text only:', (err as Error).message);
+      }
+    }
+
     const systemPrompt =
-      'You are a Bisaya (Cebuano) pronunciation coach. Analyze the given text.\nReturn ONLY a valid JSON object with exactly these fields:\n- "score": number 0-100\n- "feedback": string with specific sound corrections\n- "phoneme_breakdown": array of {"expected": string, "heard": string, "correct": boolean, "tip": string}\n\nBisaya pronunciation rules:\n- "a" is "ah" like in "father"\n- "e" is "eh" like in "bed"\n- "i" is "ee" like in "see"\n- "o" is "oh" like in "slow"\n- "u" is "oo" like in "food"\n- "ng" is a single sound like in "singing"';
+      'You are a Bisaya (Cebuano) pronunciation coach. Compare what the learner SAID against the phrase they were ASKED to say. Score how closely the pronunciation matches. If no speech was detected, score 0 and say so.\nReturn ONLY a valid JSON object (no other text) with exactly these fields:\n- "score": number 0-100\n- "feedback": string with specific sound corrections\n- "phoneme_breakdown": array of {"expected": string, "heard": string, "correct": boolean, "tip": string}\n\nBisaya pronunciation rules:\n- "a" is "ah" like in "father"\n- "e" is "eh" like in "bed"\n- "i" is "ee" like in "see"\n- "o" is "oh" like in "slow"\n- "u" is "oo" like in "food"\n- "ng" is a single sound like in "singing"';
+
+    const langLabel = language === 'tl' ? 'Tagalog' : language === 'en' ? 'English' : 'Bisaya (Cebuano)';
+    const userPrompt = spokenText
+      ? `Language: ${langLabel}\nTarget phrase: "${expectedText}"\nWhat the learner said: "${spokenText}"\n\nScore the pronunciation match.`
+      : `Language: ${langLabel}\nTarget phrase: "${expectedText}"\nNo speech was detected in the recording.\n\nScore accordingly.`;
 
     try {
-      const result = await groqJson(systemPrompt, `Pronunciation text: "${expectedText}"`, {
+      const result = await groqJson<Record<string, unknown>>(systemPrompt, userPrompt, {
         temperature: 0.5,
         maxTokens: 300,
       });
-      res.json(result);
+      res.json({ transcription: spokenText || null, ...result });
     } catch {
       const content = await groqChat(
         [
           { role: 'system', content: systemPrompt },
-          { role: 'user', content: `Pronunciation text: "${expectedText}"` },
+          { role: 'user', content: userPrompt },
         ],
         { temperature: 0.5, maxTokens: 300 }
       );
       try {
-        res.json(JSON.parse(content));
+        res.json({ transcription: spokenText || null, ...JSON.parse(content) });
       } catch {
-        res.json({ score: 88, feedback: content });
+        res.json({ transcription: spokenText || null, score: 88, feedback: content });
       }
     }
   } catch (err) {
@@ -295,142 +282,16 @@ router.post('/recommend', authMiddleware, async (req: Request, res: Response) =>
 router.get('/voices', authMiddleware, async (_req: Request, res: Response) => {
   const voices = Object.entries(CHARACTER_VOICES).map(([key, v]) => ({
     id: key,
+    label: v.label,
     name: v.name,
     description: v.description,
     locale: v.locale,
+    accent: v.accent,
     voiceName: v.voiceName,
     rate: v.rate,
     pitch: v.pitch,
   }));
   res.json({ voices });
-});
-
-// ==================== RoBERTa Tagalog Base Endpoints ====================
-
-router.get('/roberta/status', authMiddleware, async (_req: Request, res: Response) => {
-  try {
-    const robertaAvailable = await isRobertaAvailable();
-    res.json({
-      available: robertaAvailable,
-      model: 'jcblaise/roberta-tagalog-base',
-      description: 'RoBERTa Tagalog Base for fill-mask predictions and vocabulary exercises'
-    });
-  } catch (err) {
-    console.error('RoBERTa status check error:', err);
-    res.status(500).json({ error: 'Failed to check RoBERTa status' });
-  }
-});
-
-router.post('/roberta/fill-mask', authMiddleware, async (req: Request, res: Response) => {
-  try {
-    const { text, top_k = 5 } = req.body || {};
-    
-    if (!text) {
-      res.status(400).json({ error: 'Text is required' });
-      return;
-    }
-
-    if (!text.includes('<mask>')) {
-      res.status(400).json({ 
-        error: 'Text must contain <mask> token for prediction',
-        example: 'Mahal ko ang aking <mask>.'
-      });
-      return;
-    }
-
-    const robertaAvailable = await isRobertaAvailable();
-    if (!robertaAvailable) {
-      res.status(503).json({ 
-        error: 'RoBERTa Tagalog model not available',
-        suggestion: 'Ensure Python AI service is running with RoBERTa loaded'
-      });
-      return;
-    }
-
-    const result = await robertaFillMask(text, top_k);
-    if (!result) {
-      res.status(500).json({ error: 'Fill-mask prediction failed' });
-      return;
-    }
-
-    res.json(result);
-  } catch (err) {
-    console.error('RoBERTa fill-mask error:', err);
-    res.status(500).json({ error: 'Fill-mask prediction failed' });
-  }
-});
-
-router.post('/roberta/vocabulary-exercise', authMiddleware, async (req: Request, res: Response) => {
-  try {
-    const { difficulty = 'beginner', topic } = req.body || {};
-    
-    const validDifficulties = ['beginner', 'intermediate', 'advanced'];
-    if (!validDifficulties.includes(difficulty)) {
-      res.status(400).json({ 
-        error: 'Invalid difficulty. Must be: beginner, intermediate, or advanced' 
-      });
-      return;
-    }
-
-    const robertaAvailable = await isRobertaAvailable();
-    if (!robertaAvailable) {
-      res.status(503).json({ 
-        error: 'RoBERTa Tagalog model not available',
-        suggestion: 'Ensure Python AI service is running with RoBERTa loaded'
-      });
-      return;
-    }
-
-    const result = await generateVocabularyExercise(difficulty as any, topic);
-    if (!result) {
-      res.status(500).json({ error: 'Vocabulary exercise generation failed' });
-      return;
-    }
-
-    res.json(result);
-  } catch (err) {
-    console.error('Vocabulary exercise error:', err);
-    res.status(500).json({ error: 'Vocabulary exercise generation failed' });
-  }
-});
-
-router.post('/roberta/sentence-completion', authMiddleware, async (req: Request, res: Response) => {
-  try {
-    const { text, context } = req.body || {};
-    
-    if (!text) {
-      res.status(400).json({ error: 'Text is required' });
-      return;
-    }
-
-    if (!text.includes('<mask>')) {
-      res.status(400).json({ 
-        error: 'Text must contain <mask> token for prediction',
-        example: 'Ang pangalan ko ay <mask>.'
-      });
-      return;
-    }
-
-    const robertaAvailable = await isRobertaAvailable();
-    if (!robertaAvailable) {
-      res.status(503).json({ 
-        error: 'RoBERTa Tagalog model not available',
-        suggestion: 'Ensure Python AI service is running with RoBERTa loaded'
-      });
-      return;
-    }
-
-    const result = await completeSentence(text, context);
-    if (!result) {
-      res.status(500).json({ error: 'Sentence completion failed' });
-      return;
-    }
-
-    res.json(result);
-  } catch (err) {
-    console.error('Sentence completion error:', err);
-    res.status(500).json({ error: 'Sentence completion failed' });
-  }
 });
 
 export default router;

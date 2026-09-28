@@ -21,7 +21,8 @@ export default function ErrorState({
   onAction,
   compact = false,
 }) {
-  const { colors } = useTheme();
+  const { colors, getContrastColor } = useTheme();
+  const onPrimary = getContrastColor('#FFFFFF', '#042F2B');
 
   return (
     <View style={[styles.container, compact && styles.compact]}>
@@ -40,8 +41,8 @@ export default function ErrorState({
           accessibilityHint="Retries loading this content"
           hitSlop={8}
         >
-          <Ionicons name="refresh" size={16} color={colors.textOnGradient} />
-          <Text style={[styles.actionText, { color: colors.textOnGradient }]}>{actionLabel}</Text>
+          <Ionicons name="refresh" size={16} color={onPrimary} />
+          <Text style={[styles.actionText, { color: onPrimary }]}>{actionLabel}</Text>
         </TouchableOpacity>
       )}
     </View>

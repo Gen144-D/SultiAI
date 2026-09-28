@@ -1,6 +1,6 @@
-import { eq, desc } from 'drizzle-orm';
+import { eq, and, desc } from 'drizzle-orm';
 import { getDb } from '../connection';
-import * as schema from '../schema-sqlite';
+import * as schema from '../schema-pg';
 
 export async function getNotifications(userEmail: string): Promise<any[]> {
   const db = getDb();
@@ -38,8 +38,29 @@ export async function createNotification(
 
 export async function markAsRead(notifyId: number, userEmail: string): Promise<void> {
   const db = getDb();
+  const userId = await getUserIdByEmail(userEmail);
+  if (!userId) return;
   await (db as any)
     .update(schema.notifications)
     .set({ isRead: 1 })
-    .where(eq(schema.notifications.notifyId, notifyId));
+    .where(and(eq(schema.notifications.notifyId, notifyId), eq(schema.notifications.userId, userId)));
+}
+
+export async function markAllAsRead(userEmail: string): Promise<number> {
+  const db = getDb();
+  const userId = await getUserIdByEmail(userEmail);
+  if (!userId) return 0;
+
+  const result = await (db as any)
+    .update(schema.notifications)
+    .set({ isRead: 1 })
+    .where(eq(schema.notifications.userId, userId));
+
+  const affected =
+    typeof result?.changes === 'number'
+      ? result.changes
+      : typeof result?.rowCount === 'number'
+        ? result.rowCount
+        : 0;
+  return affected;
 }

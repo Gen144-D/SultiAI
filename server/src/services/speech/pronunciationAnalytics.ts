@@ -1,5 +1,6 @@
 import { getDb } from '../../db/connection';
-import * as schema from '../../db/schema-sqlite';
+import { and, eq, gte, lt, desc } from 'drizzle-orm';
+import * as schema from '../../db/schema-pg';
 import logger from '../../utils/logger';
 import type { PronunciationAttempt, PhonemeMistake } from '../../types';
 
@@ -12,6 +13,38 @@ interface PronunciationStats {
   difficultWords: string[];
   masteredWords: string[];
   phonemePatterns: Record<string, number>;
+}
+
+/**
+ * Callers send `mistakes` either as an array or as an already-serialised JSON
+ * string. Blindly stringifying a string double-encodes it, which later makes
+ * JSON.parse yield a string that iterates per character and corrupts the
+ * phoneme aggregation. Normalise both shapes to a JSON array string.
+ */
+function serializeMistakes(mistakes: unknown): string {
+  if (Array.isArray(mistakes)) return JSON.stringify(mistakes);
+  if (typeof mistakes === 'string' && mistakes.trim()) {
+    try {
+      const parsed = JSON.parse(mistakes);
+      return JSON.stringify(Array.isArray(parsed) ? parsed : []);
+    } catch {
+      return '[]';
+    }
+  }
+  return '[]';
+}
+
+/** Read-side guard: only aggregate well-formed mistake objects. */
+function parseMistakes(raw: unknown): PhonemeMistake[] {
+  if (Array.isArray(raw)) return raw.filter((m) => m && typeof m === 'object') as PhonemeMistake[];
+  if (typeof raw !== 'string' || !raw.trim()) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((m) => m && typeof m === 'object' && !Array.isArray(m)) as PhonemeMistake[];
+  } catch {
+    return [];
+  }
 }
 
 export class PronunciationAnalyticsService {
@@ -29,7 +62,7 @@ export class PronunciationAnalyticsService {
         phoneticHeard: attempt.phoneticHeard,
         accuracy: attempt.accuracy,
         confidence: attempt.confidence,
-        mistakes: JSON.stringify(attempt.mistakes),
+        mistakes: serializeMistakes(attempt.mistakes),
         lessonContext: attempt.lessonContext,
         timestamp,
       });
@@ -60,12 +93,12 @@ export class PronunciationAnalyticsService {
         .select()
         .from(schema.pronunciationAttempts)
         .where(
-          (db as any).and(
-            (db as any).eq(schema.pronunciationAttempts.userId, userId),
-            (db as any).gte(schema.pronunciationAttempts.timestamp, since)
+          and(
+            eq(schema.pronunciationAttempts.userId, userId),
+            gte(schema.pronunciationAttempts.timestamp, since)
           )
         )
-        .orderBy((db as any).desc(schema.pronunciationAttempts.timestamp));
+        .orderBy(desc(schema.pronunciationAttempts.timestamp));
 
       if (attempts.length === 0) {
         return this.getEmptyStats();
@@ -86,14 +119,12 @@ export class PronunciationAnalyticsService {
         wordStats[attempt.word].total += attempt.accuracy || 0;
         wordStats[attempt.word].count++;
 
-        if (attempt.mistakes) {
-          try {
-            const mistakes = JSON.parse(attempt.mistakes);
-            for (const m of mistakes) {
-              const key = `${m.expected}→${m.heard}`;
-              phonemePatterns[key] = (phonemePatterns[key] || 0) + 1;
-            }
-          } catch {}
+        for (const m of parseMistakes(attempt.mistakes)) {
+          const expected = typeof m.expected === 'string' ? m.expected : '';
+          const heard = typeof m.heard === 'string' ? m.heard : '';
+          if (!expected && !heard) continue;
+          const key = `${expected}->${heard}`;
+          phonemePatterns[key] = (phonemePatterns[key] || 0) + 1;
         }
       }
 
@@ -140,9 +171,9 @@ export class PronunciationAnalyticsService {
         .select()
         .from(schema.pronunciationAttempts)
         .where(
-          (db as any).and(
-            (db as any).eq(schema.pronunciationAttempts.userId, userId),
-            (db as any).gte(schema.pronunciationAttempts.timestamp, since)
+          and(
+            eq(schema.pronunciationAttempts.userId, userId),
+            gte(schema.pronunciationAttempts.timestamp, since)
           )
         );
 
@@ -161,7 +192,8 @@ export class PronunciationAnalyticsService {
           attempts: data.count,
         }))
         .sort((a, b) => a.date.localeCompare(b.date));
-    } catch {
+    } catch (err) {
+      logger.warn('Failed to get pronunciation trend', { error: (err as Error).message, userId });
       return [];
     }
   }
@@ -176,9 +208,9 @@ export class PronunciationAnalyticsService {
         .select()
         .from(schema.pronunciationAttempts)
         .where(
-          (db as any).and(
-            (db as any).eq(schema.pronunciationAttempts.userId, userId),
-            (db as any).gte(schema.pronunciationAttempts.timestamp, since)
+          and(
+            eq(schema.pronunciationAttempts.userId, userId),
+            gte(schema.pronunciationAttempts.timestamp, since)
           )
         );
 
@@ -186,9 +218,9 @@ export class PronunciationAnalyticsService {
         .select()
         .from(schema.pronunciationAttempts)
         .where(
-          (db as any).and(
-            (db as any).eq(schema.pronunciationAttempts.userId, userId),
-            (db as any).lt(schema.pronunciationAttempts.timestamp, since)
+          and(
+            eq(schema.pronunciationAttempts.userId, userId),
+            lt(schema.pronunciationAttempts.timestamp, since)
           )
         );
 
@@ -199,7 +231,8 @@ export class PronunciationAnalyticsService {
       const olderAvg = older.reduce((s: number, a: any) => s + (a.accuracy || 0), 0) / older.length;
 
       return Math.round((recentAvg - olderAvg) * 10) / 10;
-    } catch {
+    } catch (err) {
+      logger.warn('Failed to calculate improvement', { error: (err as Error).message, userId, days });
       return 0;
     }
   }

@@ -5,6 +5,8 @@ import {
   getUserIdByEmail,
   createConversation,
   addMessages,
+  replaceMessages,
+  conversationBelongsTo,
   deleteConversation,
 } from '../db/repositories/conversation.repo';
 
@@ -41,6 +43,36 @@ router.post('/', authMiddleware, async (req: Request, res: Response) => {
   } catch (err) {
     console.error('Create conversation error:', err);
     res.status(500).json({ error: 'Failed to create conversation' });
+  }
+});
+
+/**
+ * Upsert a whole transcript. The client owns the full message list, so this
+ * replaces the stored messages instead of appending — otherwise a screen that
+ * saves after every turn would duplicate the entire thread on each request.
+ */
+router.put('/:id', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const conversationId = Number(req.params.id);
+    if (!Number.isInteger(conversationId)) {
+      res.status(400).json({ error: 'Invalid conversation id' });
+      return;
+    }
+    const userId = await getUserIdByEmail(req.user!.email);
+    if (!userId) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+    if (!(await conversationBelongsTo(conversationId, userId))) {
+      res.status(404).json({ error: 'Conversation not found' });
+      return;
+    }
+    const { messages, title } = req.body || {};
+    await replaceMessages(conversationId, title || null, Array.isArray(messages) ? messages : []);
+    res.json({ id: String(conversationId), title: title || null, messages: messages || [] });
+  } catch (err) {
+    console.error('Update conversation error:', err);
+    res.status(500).json({ error: 'Failed to update conversation' });
   }
 });
 

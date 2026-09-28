@@ -65,8 +65,8 @@ const styles = StyleSheet.create({
   overlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999, elevation: 9999 },
   backdrop: { flex: 1, zIndex: 9998, elevation: 9998 },
   sheet: { position: 'absolute', left: 0, right: 0, borderTopLeftRadius: borderRadius.xl, borderTopRightRadius: borderRadius.xl, paddingHorizontal: spacing.xl, paddingTop: spacing.md, paddingBottom: spacing.xxxl, zIndex: 10000, elevation: 10000 },
-  handleRow: { alignItems: 'center', marginBottom: spacing.md },
-  handle: { width: 40, height: 4, borderRadius: 2 },
+  handleRow: { alignItems: 'center', marginBottom: spacing.lg },
+  handle: { width: 44, height: 5, borderRadius: 3 },
   title: { fontSize: 18, fontWeight: '700', marginBottom: spacing.lg, textAlign: 'center' },
   sheetContent: { paddingBottom: spacing.sm },
 });

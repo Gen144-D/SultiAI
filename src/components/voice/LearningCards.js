@@ -1,13 +1,13 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import Animated, { FadeInUp, useSharedValue, useAnimatedProps, withTiming, withDelay } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Circle } from 'react-native-svg';
-import { voice } from './palette';
+import { useVoicePalette } from './palette';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
-function ScoreRing({ score }) {
+function ScoreRing({ score, voice, styles }) {
   const size = 56;
   const stroke = 5;
   const radius = (size - stroke) / 2;
@@ -41,12 +41,14 @@ function ScoreRing({ score }) {
 }
 
 export function PronunciationCard({ score, feedback, phonemes = [] }) {
+  const voice = useVoicePalette();
+  const styles = useMemo(() => createStyles(voice), [voice]);
   const color = score >= 85 ? voice.success : score >= 60 ? voice.warning : voice.danger;
 
   return (
     <Animated.View entering={FadeInUp.duration(400)} style={styles.card} accessibilityRole="text">
       <View style={styles.pronHeader}>
-        <ScoreRing score={score} />
+        <ScoreRing score={score} voice={voice} styles={styles} />
         <View style={styles.pronBody}>
           <View style={styles.pronLabelRow}>
             <Ionicons name="ribbon-outline" size={14} color={color} />
@@ -71,6 +73,8 @@ export function PronunciationCard({ score, feedback, phonemes = [] }) {
 }
 
 export function RepeatCard({ text, onSpeak }) {
+  const voice = useVoicePalette();
+  const styles = useMemo(() => createStyles(voice), [voice]);
   return (
     <Animated.View entering={FadeInUp.duration(400).delay(150)} style={styles.card}>
       <View style={styles.repeatHeader}>
@@ -93,6 +97,8 @@ export function RepeatCard({ text, onSpeak }) {
 }
 
 export function VocabCards({ entries }) {
+  const voice = useVoicePalette();
+  const styles = useMemo(() => createStyles(voice), [voice]);
   if (!entries || entries.length === 0) return null;
   return (
     <Animated.View entering={FadeInUp.duration(400).delay(250)} style={styles.vocabWrap}>
@@ -114,9 +120,9 @@ export function VocabCards({ entries }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (voice) => StyleSheet.create({
   card: {
-    backgroundColor: 'rgba(13, 30, 48, 0.65)',
+    backgroundColor: voice.surface,
     borderWidth: 1,
     borderColor: voice.glassBorder,
     borderRadius: 18,
@@ -145,14 +151,14 @@ const styles = StyleSheet.create({
   repeatBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
     paddingHorizontal: 12, paddingVertical: 7, borderRadius: 999,
-    backgroundColor: 'rgba(32,214,199,0.1)', borderWidth: 1, borderColor: 'rgba(32,214,199,0.25)',
+    backgroundColor: voice.primary + '1A', borderWidth: 1, borderColor: voice.primary + '40',
   },
   repeatBtnText: { fontSize: 12, fontWeight: '700' },
   vocabWrap: { marginTop: 10 },
   vocabHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
   vocabTitle: { color: voice.secondary, fontSize: 13, fontWeight: '800' },
   vocabCard: {
-    backgroundColor: 'rgba(13, 30, 48, 0.65)',
+    backgroundColor: voice.surface,
     borderWidth: 1, borderColor: voice.glassBorder,
     borderRadius: 16, padding: 12,
   },

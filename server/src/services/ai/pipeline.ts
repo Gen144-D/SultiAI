@@ -1,4 +1,6 @@
 import { isConfigured, groqChat, groqTranscribeAudio, groqJson } from '../../utils/groq';
+import { detectAudioFormat } from '../../utils/audioFormat';
+import { scorePronunciationAudio } from './pronunciationService';
 import contextManager from './contextManager';
 import conversationMemory from './conversationMemory';
 import logger from '../../utils/logger';

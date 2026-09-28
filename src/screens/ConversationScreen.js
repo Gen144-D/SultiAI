@@ -7,8 +7,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../context/ThemeContext';
 import GlassCard from '../components/GlassCard';
 import Badge from '../components/Badge';
+import Header from '../components/Header';
 import { spacing, borderRadius, shadows } from '../theme';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const CATEGORIES = [
   { id: 'market', label: 'At the Market', native: 'Palengke', icon: 'cart', color: '#10B981', prompt: 'Buying food and bargaining at a public market' },
@@ -30,8 +30,8 @@ const DAILY_DRILL = {
 };
 
 export default function ConversationScreen({ navigation, route }) {
-  const { colors, isDark } = useTheme();
-  const insets = useSafeAreaInsets();
+  const { colors, isDark, getContrastColor } = useTheme();
+  const onActive = getContrastColor('#FFFFFF', '#042F2B');
   const [activeTab, setActiveTab] = useState('phrasebook');
 
   const selectedCategory = route?.params?.category;
@@ -60,10 +60,12 @@ export default function ConversationScreen({ navigation, route }) {
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
-      <LinearGradient colors={[colors.primary, colors.primaryDark]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.header, { paddingTop: insets.top + 16 }]}>
-        <Text style={styles.headerTitle}>Practice</Text>
-        <Text style={styles.headerSubtitle}>Master essential Bisaya phrases & pronunciation</Text>
-      </LinearGradient>
+      <Header
+        title="Practice"
+        subtitle="Master essential Bisaya phrases & pronunciation"
+        leftIcon="arrow-back"
+        onLeftPress={() => navigation.goBack()}
+      />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
         {selectedCategory ? (
@@ -90,8 +92,8 @@ export default function ConversationScreen({ navigation, route }) {
                 if (t.key === 'speech') handlePronunciation();
               }}
             >
-              <Ionicons name={t.icon} size={16} color={activeTab === t.key ? colors.textOnGradient : colors.textSecondary} />
-              <Text style={[styles.tabText, { color: activeTab === t.key ? colors.textOnGradient : colors.textSecondary }]}>{t.label}</Text>
+              <Ionicons name={t.icon} size={16} color={activeTab === t.key ? onActive : colors.textSecondary} />
+              <Text style={[styles.tabText, { color: activeTab === t.key ? onActive : colors.textSecondary }]}>{t.label}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -99,7 +101,7 @@ export default function ConversationScreen({ navigation, route }) {
         <View style={styles.content}>
           <GlassCard variant="elevated" style={styles.dailyCard}>
             <LinearGradient
-              colors={isDark ? ['#0A1626', '#0B1120'] : ['#00A896', '#008F7F']}
+              colors={isDark ? ['#0A1626', '#0B1120'] : ['#008B8B', '#006D6D']}
               style={styles.dailyInner}
             >
               <View style={styles.dailyLeft}>
@@ -111,8 +113,8 @@ export default function ConversationScreen({ navigation, route }) {
                 <Text style={styles.dailyTranslation}>{DAILY_DRILL.translation}</Text>
               </View>
               <TouchableOpacity style={[styles.dailyBtn, { backgroundColor: colors.primary }]} onPress={handleDailyDrill} activeOpacity={0.8} hitSlop={8}>
-                <Ionicons name="play" size={18} color={colors.textOnGradient} />
-                <Text style={[styles.dailyBtnText, { color: colors.textOnGradient }]}>Start</Text>
+                <Ionicons name="play" size={18} color={onActive} />
+                <Text style={[styles.dailyBtnText, { color: onActive }]}>Start</Text>
               </TouchableOpacity>
             </LinearGradient>
           </GlassCard>
@@ -147,9 +149,6 @@ export default function ConversationScreen({ navigation, route }) {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  header: { paddingBottom: spacing.xxl, paddingHorizontal: spacing.xl },
-  headerTitle: { fontSize: 28, fontWeight: '800', color: '#fff', letterSpacing: 0.36 },
-  headerSubtitle: { fontSize: 13, color: 'rgba(255,255,255,0.8)', marginTop: 4, letterSpacing: -0.08 },
   tabRow: { flexDirection: 'row', paddingHorizontal: spacing.xl, gap: spacing.sm, marginTop: -spacing.lg, marginBottom: spacing.lg },
   categoryBanner: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.sm,

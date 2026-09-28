@@ -6,19 +6,29 @@ import {
   StyleSheet,
   Animated,
   Dimensions,
-  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../context/ThemeContext';
 import GlassCard from './GlassCard';
-import { spacing, borderRadius, typography } from '../theme';
+import { spacing, borderRadius, typography, shadows } from '../theme';
 import { FEATURES } from '../theme/dashboardGradients';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const CARD_GAP = spacing.sm;
+const CARD_GAP = spacing.md;
 const HORIZONTAL_PADDING = spacing.xl * 2;
 const CARD_WIDTH = (SCREEN_WIDTH - HORIZONTAL_PADDING - CARD_GAP) / 2;
+
+// Map to outline icons for consistent line-art style
+const ICON_MAP = {
+  'sparkles': 'sparkles-outline',
+  'language': 'language-outline',
+  'chatbubbles': 'chatbubbles-outline',
+  'mic-circle': 'mic-outline',
+  'mic': 'mic-outline',
+  'camera': 'camera-outline',
+  'trophy': 'trophy-outline',
+  'flame': 'flame-outline',
+};
 
 /**
  * FeatureCard
@@ -26,7 +36,7 @@ const CARD_WIDTH = (SCREEN_WIDTH - HORIZONTAL_PADDING - CARD_GAP) / 2;
  * Individual grid card with:
  *   - Staggered mount animation (opacity + scale spring)
  *   - Press/tap scale effect
- *   - Gradient icon background
+ *   - Line-art icon style
  *
  * @param {{ feature: typeof FEATURES[0], index: number, onPress: Function }} props
  */
@@ -76,6 +86,10 @@ function FeatureCard({ feature, index, onPress }) {
     }).start();
   };
 
+  // Use outline icon for cleaner look
+  const iconName = ICON_MAP[feature.iconName] || feature.iconName;
+  const primaryColor = feature.gradient[0];
+
   return (
     <Animated.View
       style={{
@@ -94,16 +108,12 @@ function FeatureCard({ feature, index, onPress }) {
           <GlassCard
             variant="elevated"
             style={styles.featureCard}
-            padding="md"
+            padding="lg"
           >
-            <LinearGradient
-              colors={feature.gradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.featureIcon}
-            >
-              <Ionicons name={feature.iconName} size={26} color="#fff" />
-            </LinearGradient>
+            {/* Icon in circular container with subtle border */}
+            <View style={[styles.iconContainer, { backgroundColor: primaryColor + '10', borderColor: primaryColor + '20' }]}>
+              <Ionicons name={iconName} size={24} color={primaryColor} />
+            </View>
             <Text style={[styles.featureLabel, { color: colors.text }]}>
               {feature.title}
             </Text>
@@ -152,19 +162,19 @@ const styles = StyleSheet.create({
   featureCard: {
     alignItems: 'center',
     paddingVertical: spacing.xl,
+    borderRadius: borderRadius.xxl,
+    ...shadows.card,
   },
-  featureIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 20,
+  iconContainer: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: spacing.sm,
+    borderWidth: 1.5,
   },
-  featureLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    letterSpacing: -0.08,
-    ...typography.caption,
-  },
+    featureLabel: {
+      ...typography.caption,
+    },
 });

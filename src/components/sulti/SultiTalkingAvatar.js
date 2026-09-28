@@ -5,11 +5,16 @@ import Animated, {
   withSequence, cancelAnimation, Easing,
 } from 'react-native-reanimated';
 import { SULTI_IMAGES, SULTI_SPEAKING_FRAMES } from '../../constants/avatars';
+import { useTheme } from '../../context/ThemeContext';
 
 const SPEAKING_FRAME_DURATION = 180;
 const LISTENING_PULSE_DURATION = 1200;
 
 export default React.memo(function SultiTalkingAvatar({ size = 200, mood = 'idle' }) {
+  // The avatar carries a coloured drop shadow so it reads as a separate object
+  // above whichever surface it sits on. It was pinned to an indigo that exists
+  // in no theme, so it was the one element that never matched the app.
+  const { colors } = useTheme();
   const [speakingFrame, setSpeakingFrame] = useState(0);
   const floatAnim = useSharedValue(0);
   const opacityAnim = useSharedValue(1);
@@ -98,7 +103,11 @@ export default React.memo(function SultiTalkingAvatar({ size = 200, mood = 'idle
 
   return (
     <Animated.View
-      style={[styles.container, { width: size, height: size }, containerStyle]}
+      style={[
+        styles.container,
+        { width: size, height: size, shadowColor: colors.primary },
+        containerStyle,
+      ]}
       accessibilityLabel={`Sulti avatar, ${mood}`}
       accessibilityRole="image"
     >
@@ -115,7 +124,6 @@ const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#5B5FEF',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.2,
     shadowRadius: 16,

@@ -1,5 +1,5 @@
 import { getDb } from '../../db/connection';
-import * as schema from '../../db/schema-sqlite';
+import * as schema from '../../db/schema-pg';
 import { CONVERSATION_MEMORY } from '../../config';
 import logger from '../../utils/logger';
 import type { ConversationSummary, MemoryEntry } from '../../types';

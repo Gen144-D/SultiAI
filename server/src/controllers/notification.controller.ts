@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { eq } from 'drizzle-orm';
 import { getDb } from '../db/connection';
 import * as schema from '../db/schema-sqlite';
 import { success, errors } from '../utils/apiResponse';
@@ -16,7 +17,7 @@ export async function getPreferences(req: Request, res: Response): Promise<void>
     const rows = await (db as any)
       .select()
       .from(schema.notificationPreferences)
-      .where((db as any).eq(schema.notificationPreferences.userId, userId))
+      .where(eq(schema.notificationPreferences.userId, userId))
       .limit(1);
 
     if (rows.length === 0) {
@@ -75,7 +76,7 @@ export async function updatePreferences(req: Request, res: Response): Promise<vo
     const existing = await (db as any)
       .select()
       .from(schema.notificationPreferences)
-      .where((db as any).eq(schema.notificationPreferences.userId, userId))
+      .where(eq(schema.notificationPreferences.userId, userId))
       .limit(1);
 
     const values = {
@@ -94,7 +95,7 @@ export async function updatePreferences(req: Request, res: Response): Promise<vo
       await (db as any)
         .update(schema.notificationPreferences)
         .set(values)
-        .where((db as any).eq(schema.notificationPreferences.userId, userId));
+        .where(eq(schema.notificationPreferences.userId, userId));
     } else {
       await (db as any).insert(schema.notificationPreferences).values({ userId, ...values });
     }

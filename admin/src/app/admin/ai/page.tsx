@@ -1,8 +1,8 @@
 'use client';
 
-import { DonutChart, LineChart } from '@/components/ChartCard';
+import { DonutChart, LineChart, chartColor } from '@/components/ChartCard';
 import { StatCard } from '@/components/StatCard';
-import { Card, CardHeader, ErrorState, LoadingState } from '@/components/ui';
+import { Card, CardHeader, ErrorState, LoadingState, ghostBtn } from '@/components/ui';
 import { useAsync } from '@/hooks/useAsync';
 import { api } from '@/lib/api';
 import { downloadCsv } from '@/lib/export';
@@ -25,7 +25,7 @@ export default function AdminAiPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-extrabold text-ink">AI Usage</h1>
+          <h1 className="text-xl font-semibold tracking-tight text-ink">AI Usage</h1>
           <p className="mt-1 text-sm text-ink-soft">Model traffic, failures, and performance.</p>
         </div>
         <button
@@ -41,7 +41,7 @@ export default function AdminAiPage() {
               `sultiai-ai-usage-${new Date().toISOString().split('T')[0]}.csv`
             )
           }
-          className="rounded-xl border border-line bg-white px-4 py-2.5 text-sm font-semibold text-ink transition-colors hover:border-brand"
+          className={ghostBtn}
         >
           Export CSV
         </button>
@@ -103,7 +103,7 @@ export default function AdminAiPage() {
         <Card>
           <CardHeader title="Daily request volume" subtitle="Last 7 days" />
           <div className="p-6">
-            <LineChart data={data.trend} color="#1e6f9f" />
+            <LineChart data={data.trend} color={chartColor(0)} gradientId="ai-volume" />
           </div>
         </Card>
       </div>
@@ -113,7 +113,7 @@ export default function AdminAiPage() {
         <div className="overflow-x-auto">
           <table className="w-full min-w-[520px] text-left text-sm">
             <thead>
-              <tr className="border-b border-line bg-surface text-xs uppercase tracking-wide text-ink-faint">
+              <tr className="border-b border-line bg-surface-2 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
                 <th className="px-6 py-3.5 font-semibold">Provider</th>
                 <th className="px-6 py-3.5 font-semibold">Requests</th>
                 <th className="px-6 py-3.5 font-semibold">Failed</th>
@@ -130,9 +130,10 @@ export default function AdminAiPage() {
                   <td className="px-6 py-3.5 tabular-nums text-ink-soft">{p.failed}</td>
                   <td className="px-6 py-3.5">
                     <div className="flex items-center gap-2">
-                      <div className="h-1.5 w-24 overflow-hidden rounded-full bg-line">
+                      <div className="h-1.5 w-24 overflow-hidden rounded-full bg-line-strong">
                         <div
-                          className={`h-full rounded-full ${p.failed / p.requests > 0.02 ? 'bg-danger' : 'bg-success'}`}
+                          className={`h-full rounded-full ${p.failed / p.requests > 0.02 ? 'bg-danger-fill' : 'bg-success-fill'}`}
+
                           style={{ width: `${Math.min(100, (p.failed / p.requests) * 100)}%` }}
                         />
                       </div>

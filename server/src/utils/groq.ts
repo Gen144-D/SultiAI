@@ -1,5 +1,5 @@
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
-const GROQ_MODEL = process.env.GROQ_MODEL || 'groq/compound';
+const GROQ_MODEL = process.env.GROQ_MODEL || 'openai/gpt-oss-120b';
 
 const GROQ_URL = 'https://api.groq.com/openai/v1';
 
@@ -13,6 +13,16 @@ interface GroqMessage {
 interface GroqOptions {
   temperature?: number;
   maxTokens?: number;
+  reasoningEffort?: 'low' | 'medium' | 'high';
+}
+
+const REASONING_MODELS = new Set(['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'qwen/qwen3.6-27b']);
+
+function normalizeOutput(raw: string): string {
+  return raw
+    .replace(/<\/?thinking>/g, '')
+    .replace(/<reasoning>[\s\S]*?<\/reasoning>/g, '')
+    .trim();
 }
 
 export function isGroqConfigured(): boolean {
@@ -35,6 +45,8 @@ export async function groqChat(
     throw new Error('No LLM configured: set GROQ_API_KEY');
   }
 
+  const isReasoningModel = REASONING_MODELS.has(GROQ_MODEL);
+
   const res = await fetchWithRetry(`${GROQ_URL}/chat/completions`, {
     method: 'POST',
     headers: {
@@ -46,6 +58,7 @@ export async function groqChat(
       messages,
       temperature: options.temperature ?? 0.7,
       max_tokens: options.maxTokens ?? 1024,
+      ...(isReasoningModel ? { reasoning_effort: options.reasoningEffort ?? 'low' } : {}),
     }),
   });
 
@@ -55,9 +68,16 @@ export async function groqChat(
   }
 
   const data: any = await res.json();
-  return data.choices[0].message.content
-    .replace(/<think>[\s\S]*?<\/think>/g, '')
-    .trim();
+  const message = data.choices[0].message;
+
+  let content: string = message?.content || message?.reasoning_content || '';
+  content = normalizeOutput(content);
+
+  if (!content) {
+    throw new Error('Groq returned empty content for the given request');
+  }
+
+  return content;
 }
 
 export async function groqTranscribeAudio(

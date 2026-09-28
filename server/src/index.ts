@@ -97,7 +97,7 @@ app.get('/api/health', async (_req, res) => {
   try {
     const db = getDb();
     const start = Date.now();
-    await db.select().from(sql.raw('(SELECT 1 AS one)')).limit(1).execute();
+    await db.all(sql`SELECT 1`);
     health.database = { status: 'ok', dialect: getDialectName(), latencyMs: Date.now() - start };
   } catch (error) {
     health.database = {

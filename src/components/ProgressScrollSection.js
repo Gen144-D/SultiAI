@@ -88,12 +88,9 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
     paddingHorizontal: spacing.xs,
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    letterSpacing: 0.35,
-    ...typography.h3,
-  },
+    sectionTitle: {
+      ...typography.h3,
+    },
   scrollContent: {
     gap: spacing.sm,
     paddingRight: spacing.xl,
@@ -117,10 +114,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.36,
     marginBottom: 2,
   },
-  statLabel: {
-    fontSize: 11,
-    fontWeight: '500',
-    letterSpacing: 0.07,
-    ...typography.small,
-  },
+    statLabel: {
+      ...typography.small,
+    },
 });

@@ -12,17 +12,19 @@ import {
   ErrorState,
   LoadingState,
   StatusBadge,
+  dangerSoftBtn,
   ghostBtn,
   inputCls,
   primaryBtn,
   selectCls,
+  softBtn,
 } from '@/components/ui';
 import { downloadCsv } from '@/lib/export';
 
 const difficultyTone: Record<ModuleDifficulty, string> = {
-  beginner: 'text-success bg-success/10',
-  intermediate: 'text-brand-dark bg-brand-light',
-  advanced: 'text-[#b45309] bg-accent-light',
+  beginner: 'text-success bg-success-soft',
+  intermediate: 'text-brand bg-brand-soft',
+  advanced: 'text-warning bg-warning-soft',
 };
 
 export default function AdminLessonsPage() {
@@ -49,7 +51,7 @@ export default function AdminLessonsPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-extrabold text-ink">Lessons</h1>
+          <h1 className="text-xl font-semibold tracking-tight text-ink">Lessons</h1>
           <p className="mt-1 text-sm text-ink-soft">{data?.length ?? 0} learning modules</p>
         </div>
         <div className="flex items-center gap-3">
@@ -72,7 +74,7 @@ export default function AdminLessonsPage() {
                   `sultiai-lessons-${new Date().toISOString().split('T')[0]}.csv`
                 )
               }
-              className="rounded-xl border border-line bg-white px-4 py-2.5 text-sm font-semibold text-ink transition-colors hover:border-brand"
+              className={ghostBtn}
             >
               Export CSV
             </button>
@@ -99,7 +101,7 @@ export default function AdminLessonsPage() {
           <div className="overflow-x-auto">
             <table className="w-full min-w-[720px] text-left text-sm">
               <thead>
-                <tr className="border-b border-line bg-surface text-xs uppercase tracking-wide text-ink-faint">
+                <tr className="border-b border-line bg-surface-2 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
                   <th className="px-5 py-3.5 font-semibold">Module</th>
                   <th className="px-5 py-3.5 font-semibold">Difficulty</th>
                   <th className="px-5 py-3.5 font-semibold">Lessons</th>
@@ -113,7 +115,7 @@ export default function AdminLessonsPage() {
                 {data.map((lesson) => (
                   <tr
                     key={lesson.id}
-                    className="border-b border-line transition-colors last:border-0 hover:bg-surface/60"
+                    className="border-b border-line transition-colors last:border-0 hover:bg-surface-2/60"
                   >
                     <td className="px-5 py-3.5">
                       <p className="font-semibold text-ink">{lesson.title}</p>
@@ -132,9 +134,9 @@ export default function AdminLessonsPage() {
                     </td>
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-2">
-                        <div className="h-1.5 w-20 overflow-hidden rounded-full bg-line">
+                        <div className="h-1.5 w-20 overflow-hidden rounded-full bg-line-strong">
                           <div
-                            className="h-full rounded-full bg-success"
+                            className="h-full rounded-full bg-success-fill"
                             style={{ width: `${lesson.avgCompletionPercent}%` }}
                           />
                         </div>
@@ -151,21 +153,21 @@ export default function AdminLessonsPage() {
                         <button
                           type="button"
                           onClick={() => handleTogglePublish(lesson)}
-                          className="rounded-lg border border-line px-2.5 py-1.5 text-xs font-semibold text-ink hover:border-brand"
+                          className={softBtn}
                         >
                           {lesson.published ? 'Unpublish' : 'Publish'}
                         </button>
                         <button
                           type="button"
                           onClick={() => setEditing(lesson)}
-                          className="rounded-lg border border-line px-2.5 py-1.5 text-xs font-semibold text-ink hover:border-brand"
+                          className={softBtn}
                         >
                           Edit
                         </button>
                         <button
                           type="button"
                           onClick={() => setDeleteTarget(lesson)}
-                          className="rounded-lg bg-danger/10 px-2.5 py-1.5 text-xs font-semibold text-danger hover:bg-danger hover:text-white"
+                          className={dangerSoftBtn}
                         >
                           Delete
                         </button>
@@ -251,12 +253,12 @@ function LessonModal({
 
   return (
     <div
-      className="fixed inset-0 z-[80] flex items-center justify-center bg-ink/40 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-[80] flex items-center justify-center bg-overlay p-4"
       onClick={onClose}
     >
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-lg rounded-2xl border border-line bg-white p-7 shadow-2xl"
+        className="w-full max-w-lg rounded-xl border border-line bg-surface p-6"
         onClick={(e) => e.stopPropagation()}
       >
         <h3 className="text-lg font-bold text-ink">
@@ -311,7 +313,7 @@ function LessonModal({
               type="checkbox"
               checked={form.published}
               onChange={(e) => setForm({ ...form, published: e.target.checked })}
-              className="h-4 w-4 accent-[#1e6f9f]"
+              className="h-4 w-4"
             />
             Publish immediately
           </label>

@@ -8,7 +8,6 @@ import Animated, {
   FadeInRight, runOnJS, interpolate,
 } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
 import { useGame } from '../context/GameContext';
 import { useOfflineSync } from '../hooks/useOfflineSync';
@@ -16,6 +15,7 @@ import { api } from '../services/api';
 import { hapticTap } from '../utils/haptics';
 import { spacing, borderRadius } from '../theme';
 import LoadingState from '../components/LoadingState';
+import Header from '../components/Header';
 import EmptyState from '../components/EmptyState';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -140,8 +140,8 @@ function SessionStats({ known, remaining, total }) {
 }
 
 export default function VocabularyReviewScreen({ navigation }) {
-  const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
+  const { colors, getContrastColor } = useTheme();
+  const onActive = getContrastColor('#FFFFFF', '#042F2B');
   const { addXp } = useGame();
   const { enqueueAction } = useOfflineSync();
   const [phrases, setPhrases] = useState([]);
@@ -216,23 +216,32 @@ export default function VocabularyReviewScreen({ navigation }) {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { backgroundColor: colors.primary, paddingTop: insets.top + 16 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
-        </TouchableOpacity>
-        <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>Vocabulary</Text>
-          <Text style={styles.headerSubtitle}>{phrases.length} saved phrases</Text>
-        </View>
+      <Header
+        title="Vocabulary"
+        subtitle={`${phrases.length} saved phrases`}
+        leftIcon="arrow-back"
+        onLeftPress={() => navigation.goBack()}
+        gradient={false}
+      >
         <View style={styles.modeToggle}>
-          <TouchableOpacity style={[styles.modeBtn, mode === 'list' && styles.modeBtnActive]} onPress={() => setMode('list')}>
-            <Ionicons name="list" size={18} color={mode === 'list' ? '#FFFFFF' : 'rgba(255,255,255,0.5)'} />
+          <TouchableOpacity
+            style={[styles.modeBtn, { backgroundColor: mode === 'list' ? colors.primaryLight : 'transparent' }]}
+            onPress={() => setMode('list')}
+            accessibilityRole="button"
+            accessibilityLabel="List view"
+          >
+            <Ionicons name="list" size={18} color={mode === 'list' ? colors.primary : colors.textSecondary} />
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.modeBtn, mode === 'study' && styles.modeBtnActive]} onPress={() => { setMode('study'); setCurrentIndex(0); }}>
-            <Ionicons name="layers" size={18} color={mode === 'study' ? '#FFFFFF' : 'rgba(255,255,255,0.5)'} />
+          <TouchableOpacity
+            style={[styles.modeBtn, { backgroundColor: mode === 'study' ? colors.primaryLight : 'transparent' }]}
+            onPress={() => { setMode('study'); setCurrentIndex(0); }}
+            accessibilityRole="button"
+            accessibilityLabel="Study mode"
+          >
+            <Ionicons name="layers" size={18} color={mode === 'study' ? colors.primary : colors.textSecondary} />
           </TouchableOpacity>
         </View>
-      </View>
+      </Header>
 
       {mode === 'list' ? (
         <>
@@ -271,7 +280,7 @@ export default function VocabularyReviewScreen({ navigation }) {
                 onPress={() => setFilter('all')}
                 hitSlop={{ top: 4, bottom: 4 }}
               >
-                <Text style={[styles.filterText, { color: filter === 'all' ? colors.textOnGradient : colors.textSecondary }]}>All</Text>
+                <Text style={[styles.filterText, { color: filter === 'all' ? onActive : colors.textSecondary }]}>All</Text>
               </TouchableOpacity>
               {categories.map(cat => (
                 <TouchableOpacity
@@ -285,7 +294,7 @@ export default function VocabularyReviewScreen({ navigation }) {
                   onPress={() => setFilter(cat)}
                   hitSlop={{ top: 4, bottom: 4 }}
                 >
-                  <Text style={[styles.filterText, { color: filter === cat ? colors.textOnGradient : colors.textSecondary }]}>{cat}</Text>
+                  <Text style={[styles.filterText, { color: filter === cat ? onActive : colors.textSecondary }]}>{cat}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -367,14 +376,8 @@ export default function VocabularyReviewScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', paddingBottom: 16, paddingHorizontal: 16 },
-  backBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
-  headerCenter: { flex: 1, alignItems: 'center' },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: '#FFFFFF' },
-  headerSubtitle: { fontSize: 12, color: 'rgba(255,255,255,0.7)', marginTop: 2 },
   modeToggle: { flexDirection: 'row', gap: 4 },
   modeBtn: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
-  modeBtnActive: { backgroundColor: 'rgba(255,255,255,0.2)' },
 
   searchContainer: { paddingHorizontal: spacing.xl, paddingBottom: spacing.md },
   searchRow: { flexDirection: 'row', alignItems: 'center', borderWidth: 1.5, borderRadius: borderRadius.md, paddingHorizontal: spacing.md, paddingVertical: 2 },

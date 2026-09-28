@@ -1,0 +1,1137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SultiAI — Visual Design Preview</title>
+<style>
+  :root{
+    --ink:#E2E8F0; --ink2:#94A3B8; --ink3:#64748B; --page:#0A0C10; --card:#111419;
+    --line:#1E242E; --line2:#2A3140; --shadow:rgba(0,0,0,.55);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:var(--page); color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.5; -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1400px;margin:0 auto;padding:48px 28px 100px}
+  .masthead{margin-bottom:14px}
+  .eyebrow{
+    font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink3);
+    font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:10px
+  }
+  .eyebrow::after{content:"";flex:1;height:1px;background:var(--line)}
+  h1{font-size:38px;font-weight:700;letter-spacing:-.8px;line-height:1.12;margin-bottom:14px}
+  h2{font-size:23px;font-weight:600;letter-spacing:-.3px;margin-bottom:8px}
+  h3{font-size:16px;font-weight:600;letter-spacing:-.2px}
+  .lede{color:var(--ink2);font-size:15px;max-width:78ch;margin-bottom:20px}
+  .note{
+    background:var(--card);border:1px solid var(--line);border-left:3px solid var(--ink3);
+    border-radius:8px;padding:14px 18px;font-size:13.5px;color:var(--ink2);margin:22px 0;max-width:88ch
+  }
+  .note b{color:var(--ink);font-weight:600}
+  .note.warn{border-left-color:#F59E0B}
+  .note.ok{border-left-color:#22C55E}
+  .note code{background:var(--page);padding:1px 5px;border-radius:4px;font-size:12.5px;color:#7DD3FC;font-family:ui-monospace,Menlo,Consolas,monospace}
+  .fixlist{list-style:none;padding:0;margin:16px 0 0;max-width:88ch}
+  .fixlist li{position:relative;padding:9px 0 9px 26px;border-bottom:1px solid var(--line);
+    font-size:13.5px;line-height:1.6;color:var(--ink2)}
+  .fixlist li:last-child{border-bottom:0}
+  .fixlist li::before{content:'';position:absolute;left:4px;top:15px;width:7px;height:7px;
+    border-radius:50%;background:#22C55E}
+  .fixlist b{color:var(--ink);font-weight:600}
+  .fixlist code{background:var(--page);padding:1px 5px;border-radius:4px;font-size:12.5px;
+    color:#7DD3FC;font-family:ui-monospace,Menlo,Consolas,monospace}
+
+  section{margin-bottom:76px;scroll-margin-top:20px}
+  .nav{display:flex;gap:8px;flex-wrap:wrap;margin:24px 0 0;padding:14px;background:var(--card);
+    border:1px solid var(--line);border-radius:10px}
+  .nav a{color:var(--ink2);text-decoration:none;font-size:12.5px;font-weight:600;padding:5px 11px;
+    border-radius:6px;border:1px solid transparent;transition:.15s}
+  .nav a:hover{color:var(--ink);background:#1A1F27;border-color:var(--line2)}
+
+  /* ---- phone frame ---- */
+  .boards{display:flex;gap:26px;flex-wrap:wrap;margin-top:28px}
+  .board{display:flex;flex-direction:column;gap:12px;align-items:center}
+  .phone{
+    width:330px;height:700px;border-radius:38px;padding:9px;position:relative;
+    background:#05070A;box-shadow:0 0 0 1.5px #2A3140, 0 24px 60px -12px var(--shadow);
+    flex-shrink:0;
+  }
+  .phone .screen{
+    width:100%;height:100%;border-radius:30px;overflow:hidden;position:relative;
+    display:flex;flex-direction:column;
+  }
+  .cap{text-align:center;max-width:330px}
+  .cap b{display:block;font-size:14px;font-weight:600;margin-bottom:3px}
+  .cap span{font-size:12px;color:var(--ink3);line-height:1.45;display:block}
+
+  /* ---- status bar + tab bar ---- */
+  .status{
+    height:26px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;
+    padding:0 22px;font-size:11px;font-weight:600;letter-spacing:.02em
+  }
+  .status .sig{display:flex;gap:5px;align-items:center;opacity:.85}
+  .tabbar{
+    height:66px;flex-shrink:0;display:flex;align-items:flex-start;justify-content:space-around;
+    padding:9px 6px 0;border-top:1px solid;
+  }
+  .tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px}
+  .tab .lbl{font-size:9.5px;font-weight:600;letter-spacing:.01em}
+  .tab .dot{width:4px;height:4px;border-radius:50%}
+
+  /* ---- generic in-phone ---- */
+  .body{flex:1;overflow:hidden;position:relative;display:flex;flex-direction:column}
+  .pad{padding:0 18px}
+  .aurora{position:absolute;inset:0;pointer-events:none}
+  .blob{position:absolute;border-radius:50%;filter:blur(46px)}
+  .hdr{display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+  .greet{font-size:25px;font-weight:700;letter-spacing:-.6px;line-height:1.18}
+  .sub{font-size:12px;font-weight:400;letter-spacing:-.05px}
+  .hsec{font-size:13.5px;font-weight:600;letter-spacing:-.15px;display:flex;align-items:center;justify-content:space-between}
+  .hsec .act{font-size:11.5px;font-weight:600}
+  .chip{
+    font-size:10px;font-weight:700;letter-spacing:.05em;padding:3px 8px;border-radius:99px;
+    display:inline-flex;align-items:center;gap:4px
+  }
+  .card{border-radius:15px;border:1px solid;position:relative;overflow:hidden}
+  .cardpad{padding:14px}
+  .btn{
+    height:44px;border-radius:13px;display:flex;align-items:center;justify-content:center;
+    font-size:14px;font-weight:700;letter-spacing:-.15px;gap:6px
+  }
+  .iconbtn{width:34px;height:34px;border-radius:11px;display:flex;align-items:center;justify-content:center}
+  .ringwrap{position:relative;display:flex;align-items:center;justify-content:center}
+  .ringwrap .val{position:absolute;font-size:13px;font-weight:700;letter-spacing:-.3px}
+  .orb{position:relative;display:flex;align-items:center;justify-content:center}
+  .statline{font-size:11px;font-weight:500}
+  .tile{border-radius:13px;border:1px solid;padding:11px 8px;display:flex;flex-direction:column;align-items:center;gap:6px}
+  .tile .tl{font-size:10px;font-weight:600;letter-spacing:-.05px;text-align:center;line-height:1.25}
+
+  /* ---- learn path ---- */
+  .path{position:relative;padding-left:52px}
+  .spine{position:absolute;left:19px;top:16px;bottom:16px;width:2px;border-radius:1px}
+  .node{position:relative;display:flex;align-items:center;gap:13px;margin-bottom:5px}
+  .nd{
+    position:absolute;left:-52px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    font-size:13px;font-weight:700;flex-shrink:0
+  }
+  .nd.done{width:38px;height:38px}
+  .nd.cur{width:52px;height:52px;border-width:4px}
+  .nd.lock{width:38px;height:38px}
+  .nd.rec{width:38px;height:38px;border-width:2px;border-style:dashed}
+  .ntitle{font-size:13.5px;font-weight:600;letter-spacing:-.15px;line-height:1.3}
+  .nmeta{font-size:10.5px;margin-top:2px;display:flex;align-items:center;gap:5px}
+  .pbar{height:4px;border-radius:2px;margin-top:6px;overflow:hidden}
+  .ring3{display:flex;justify-content:space-between;gap:8px}
+  .rcell{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px}
+  .rcell .rl{font-size:9.5px;font-weight:600;text-align:center;line-height:1.2}
+  .cat{border-radius:13px;border:1px solid;padding:10px;display:flex;flex-direction:column;gap:7px}
+  .catn{font-size:10.5px;font-weight:600;line-height:1.2}
+
+  /* ---- sulti ---- */
+  .statusline{font-size:12.5px;font-weight:600;letter-spacing:.02em}
+  .meter{display:flex;align-items:center;justify-content:center;gap:2.5px;height:30px}
+  .meter i{width:2.5px;border-radius:2px;display:block}
+  .ctrl{display:flex;align-items:center;justify-content:center;gap:15px}
+  .fbig{width:60px;height:60px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px}
+  .fsm{width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:17px}
+  .inp{height:42px;border-radius:12px;border:1px solid;display:flex;align-items:center;padding:0 13px;font-size:12.5px}
+
+  /* ---- community ---- */
+  .post{border-radius:15px;border:1px solid;overflow:hidden}
+  .phead{display:flex;align-items:center;gap:9px;padding:11px 13px}
+  .av{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:700;flex-shrink:0}
+  .pbody{padding:0 13px 11px;font-size:12.5px;line-height:1.5}
+  .mini{display:flex;align-items:flex-end;gap:2px;height:19px;margin:0 13px 10px}
+  .mini i{width:2.5px;border-radius:2px;display:block}
+  .pact{display:flex;align-items:center;gap:15px;padding:9px 13px;border-top:1px solid;font-size:10.5px;font-weight:600}
+  .frow{display:flex;gap:6px;overflow:hidden;padding-bottom:2px}
+  .fchip{font-size:10px;font-weight:600;padding:5px 10px;border-radius:99px;white-space:nowrap;border:1px solid}
+  .fchip.on{font-weight:700}
+
+  /* ---- settings ---- */
+  .srow{display:flex;align-items:center;gap:11px;padding:10px 0}
+  .srow+.srow{border-top:1px solid}
+  .sico{width:28px;height:28px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+  .stitle{font-size:12.5px;font-weight:600;letter-spacing:-.1px;line-height:1.3}
+  .ssub{font-size:10.5px;margin-top:1px;line-height:1.35}
+  .sw{width:38px;height:22px;border-radius:11px;padding:2px;display:flex;flex-shrink:0}
+  .sw i{width:18px;height:18px;border-radius:50%;display:block}
+  .sgroup{font-size:10px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;margin:0 0 7px 3px}
+  .tgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+  .tcard{border-radius:12px;border:1.5px solid;overflow:hidden;position:relative}
+  .tswatch{height:52px;position:relative;display:flex;align-items:center;justify-content:center;gap:4px}
+  .tdot{width:9px;height:9px;border-radius:50%}
+  .tcardpad{padding:7px 8px}
+  .tname{font-size:10.5px;font-weight:700;letter-spacing:-.1px}
+  .tdesc{font-size:8.5px;line-height:1.3;margin-top:1px}
+  .badge{font-size:7.5px;font-weight:700;letter-spacing:.05em;padding:1.5px 5px;border-radius:4px;position:absolute;top:5px;right:5px}
+
+  /* ---- comparison table ---- */
+  .cmp{display:grid;grid-template-columns:150px repeat(4,1fr);gap:1px;background:var(--line);
+    border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-top:24px;font-size:12px}
+  .cmp>div{background:var(--card);padding:10px 12px}
+  .cmp .hd{background:#151A22;font-weight:700;font-size:11.5px;letter-spacing:.02em}
+  .cmp .lbl{color:var(--ink2);font-weight:600;font-size:11px}
+  .sw{display:inline-block;width:13px;height:13px;border-radius:4px;vertical-align:-2px;margin-right:7px;border:1px solid var(--line2)}
+  .ratio{font-size:10.5px;font-weight:700;padding:1px 6px;border-radius:4px;display:inline-block}
+  .ok{background:rgba(52,211,153,.15);color:#34D399}
+  .bad{background:rgba(251,113,133,.15);color:#FB7185}
+  .warnr{background:rgba(251,191,36,.15);color:#FBBF24}
+
+  /* ---- before/after ---- */
+  .ba{display:grid;grid-template-columns:1fr 1fr;gap:26px;margin-top:26px;max-width:760px}
+  .ba>div{display:flex;flex-direction:column;gap:12px;align-items:center}
+  table.dg{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:20px;max-width:900px}
+  table.dg th,table.dg td{text-align:left;padding:8px 11px;border-bottom:1px solid var(--line)}
+  table.dg th{color:var(--ink3);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;font-weight:700}
+  table.dg td{color:var(--ink2)}
+  table.dg td:first-child{color:var(--ink);font-weight:600}
+  @media(max-width:900px){.cmp{grid-template-columns:100px repeat(4,1fr);font-size:11px}.ba{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="masthead">
+  <div class="eyebrow">SultiAI · Design System</div>
+  <h1>Complete Visual Design System</h1>
+  <p class="lede">
+    Four selectable themes, five dashboard experiences, one design language. Every colour below is read
+    directly from <code style="color:#7DD3FC">src/theme/index.js</code> — this is a specification rendered at
+    real device proportions, not an impression. Phases 1–5 are implemented; the remaining
+    work is the shared-button adoption sweep and §15 audit follow-ups.
+  </p>
+  <div class="nav">
+    <a href="#themes">§A Four Themes</a>
+    <a href="#dashboards">§B Five Dashboards</a>
+    <a href="#compare">§C Comparison</a>
+    <a href="#consistency">§C2 Primitive Adoption</a>
+    <a href="#contrast">§D Contrast Audit</a>
+    <a href="#ba">§E Before / After</a>
+  </div>
+</div>
+
+<div class="note">
+  <b>Read this first.</b> The four themes in this document already exist in the codebase at
+  <code>src/theme/index.js:218</code>, along with theme state, persistence, a cross-fade switch, and a
+  working theme selector at <code>src/screens/ProfileScreen.js:527</code>. This design system does not rebuild
+  them. It fixes what stops them from reaching the screen — <b>426 hardcoded hex values across 55 files</b>
+  outside the theme directory, now down to <b>209 across 45 files</b> — and supplies the per-dashboard atmosphere layer in
+  <code>src/theme/atmosphere.js</code>.
+</div>
+
+<!-- ============================ §A ============================ -->
+<section id="themes">
+  <div class="eyebrow">§A — Four Theme Boards</div>
+  <h2>One layout, four atmospheres</h2>
+  <p class="lede">
+    The same Home composition rendered in all four themes. Identical structure, identical spacing, identical
+    type. Only colour changes — which is the point: themes are a colour system, never a layout system.
+  </p>
+  <div class="boards" id="boardsA"></div>
+</section>
+
+<!-- ============================ §B ============================ -->
+<section id="dashboards">
+  <div class="eyebrow">§B — Five Dashboards</div>
+  <h2>Five rooms in the same house</h2>
+  <p class="lede">
+    All in Midnight Teal. Composition changes per screen — density, ambient layer, radii, which components
+    appear — while the colour contract stays fixed. That difference is what makes each dashboard feel suited
+    to its purpose without becoming a different app.
+  </p>
+  <div class="boards" id="boardsB"></div>
+</section>
+
+<!-- ============================ §C ============================ -->
+<section id="compare">
+  <div class="eyebrow">§C — Theme Comparison</div>
+  <h2>Same components, four themes</h2>
+  <p class="lede">
+    The component kit — card, primary button, secondary button, input, chip, selected state, progress bar,
+    orb — held constant while the theme changes. This is how you check that a layout survives a theme swap
+    without special-casing.
+  </p>
+  <div class="boards" id="boardsC"></div>
+</section>
+
+<!-- ============================ §C2 ============================ -->
+<section id="consistency">
+  <div class="eyebrow">§C2 — Primitive Adoption</div>
+  <h2>Why the interface felt unbalanced</h2>
+  <p class="lede">
+    Not a palette problem. The shared primitives already existed — adoption was roughly
+    <b>20%</b>, so about 20 screens hand-rolled their own buttons, empty states and loading
+    skeletons. That is what produced the visual inconsistency: three parallel empty-state
+    implementations and ~100 bespoke CTA buttons.
+  </p>
+  <div id="adoptionTable"></div>
+  <div class="note ok">
+    <b>Real defects fixed, not just restyled.</b>
+  </div>
+  <ul class="fixlist">
+    <li><b>7 dead navigation targets.</b> Every learning-module CTA called
+      <code>navigate('Tutor')</code>, which is not a registered route — the taps did nothing.
+      They now target the real SULTI tab via <code>navigate('Main', { screen: 'SULTI' })</code>.</li>
+    <li><b>Invisible loading states in the light theme.</b> Three learning cards hand-rolled
+      skeletons with <code>rgba(255,255,255,0.1)</code> — white on white under Soft Academic Light.</li>
+    <li><b>White icon on a primary fill.</b> The leaderboard empty-state CTA was
+      <code>1.88:1</code>; the shared <code>EmptyState</code> derives its ink instead.</li>
+    <li><b>Dead style properties.</b> Seven style objects spread
+      <code>...typography.*</code> <i>after</i> literal font values, silently overriding them —
+      editing those literals did nothing.</li>
+    <li><b>All five atmospheres now render.</b> Home and Community defined an atmosphere but
+      never mounted <code>AuroraBackground</code>, so two of five tabs were flat.</li>
+  </ul>
+  <div class="note">
+    <b>New shared primitives:</b> <code>Skeleton</code> (theme-aware, reduced-motion aware, replaces
+    20 duplicated style blocks) &middot; <code>SectionHeader</code> &middot; <code>Divider</code> &middot;
+    <code>IconButton</code> (44pt hit target). Adoption of <code>Button</code> itself remains the
+    largest open gap.
+  </div>
+</section>
+
+<!-- ============================ §D ============================ -->
+<section id="contrast">
+  <div class="eyebrow">§D — Accessibility Audit</div>
+  <h2>Measured contrast, not estimated</h2>
+  <p class="lede">
+    Computed with WCAG 2.1 relative luminance. The failing rows are real defects in the current codebase,
+    not hypotheticals.
+  </p>
+  <div id="contrastTable"></div>
+  <div class="note warn">
+    <b>A1–A3 are the most serious finding in this document.</b> <code>textOnGradient</code> is
+    <code>#FFFFFF</code> in all four themes (<code>src/theme/index.js:31,82,117,187</code>). On the Midnight Teal
+    primary <code>#00D4BD</code> that is a contrast ratio of <b>1.88:1</b> — every primary button label in the
+    three dark themes is effectively unreadable. A single <code>onPrimary</code> semantic token fixes all three.
+  </div>
+  <div class="note">
+    <b>Other defects.</b> <code>getTextStyle</code> scales <code>fontSize</code> by 1.2 but not
+    <code>lineHeight</code>, clipping descenders in large-text mode.
+    <code>getContrastColor</code> branches on the <b>OS</b> colour scheme rather than the active theme, so a user
+    on Obsidian Emerald with the OS in light mode gets light-mode ink on a dark surface.
+    <code>color: '#FFFFFF'</code> on <code>primary</code> also appears at
+    <code>src/theme/index.js:31</code> while <code>voice/palette.js:23</code> correctly uses
+    <code>#04111F</code> — two sources of truth disagreeing.
+  </div>
+</section>
+
+<!-- ============================ §E ============================ -->
+<section id="ba">
+  <div class="eyebrow">§E — Before / After</div>
+  <h2>Voice Tutor, revised</h2>
+  <p class="lede">
+    The SULTI screen is the strongest thing in the codebase — a 46-bar radial orb with orbit particles, four
+    explicit states, and a coherent bottom sheet. This revision preserves the identity and fixes what
+    undermines it.
+  </p>
+  <div class="ba" id="boardsE"></div>
+  <table class="dg">
+    <thead><tr><th>Aspect</th><th>As coded today</th><th>Proposed</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr><td>Orb</td><td>46-bar radial + 10 orbit particles + gradient core</td><td>Preserved exactly</td><td>Strongest brand asset in the app</td></tr>
+      <tr><td>State text</td><td>Rendered by <code>StatusPill</code>, not always visible</td><td>Persistent text line under the orb in all four states</td><td>State must be perceivable without sound or motion — WCAG 1.4.2</td></tr>
+      <tr><td>On-primary ink</td><td><code>textOnGradient #FFFFFF</code> (1.88:1)</td><td><code>onPrimary #04111F</code> (10.09:1)</td><td>Every button label currently fails AA</td></tr>
+      <tr><td>Switch track</td><td>Hardcoded <code>rgba(32,214,199,.5)</code></td><td><code>primary</code> + <code>border</code></td><td>Stays teal under Warm Sunset today</td></tr>
+      <tr><td>Switch off-state</td><td><code>rgba(255,255,255,.15)</code></td><td>Theme-family dependent</td><td>Invisible on a white surface in Soft Academic Light</td></tr>
+      <tr><td>Reduce motion</td><td>Animation duration → 0</td><td>Static rendered wave, not a frozen one</td><td>A stopped half-scale bar reads as broken</td></tr>
+      <tr><td>Statistics</td><td>None</td><td>None — feedback in a post-conversation sheet</td><td>Keeps the orb as the interface</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<div class="note" style="margin-top:56px">
+  <b>Recommendation.</b> Ship §D's <code>onPrimary</code> token and the two hook fixes first — one 30-line file
+  resolves the worst accessibility defect in the app. Then build the Learn path visual system:
+  <code>buildLearningPath()</code> at <code>src/screens/LearnScreen.js:153</code> already produces ordered
+  progress data, so the spine, four node states, and current-node glow are presentation over data you already
+  have. Full specification in <code>docs/design-system.md</code>.
+</div>
+
+</div>
+
+<script>
+/* ================================================================
+   TOKENS — values read directly from src/theme/index.js
+   ================================================================ */
+const T = {
+  midnightTeal: {
+    label:'Midnight Teal', family:'dark', desc:'Deep navy & teal — the original SultiAI look',
+    background:'#0B1120', backgroundDeep:'#080E1A', surface:'#111827', surfaceSecondary:'#0F172A',
+    primary:'#00D4BD', primaryDark:'#00B8A3', primaryHover:'#33DDD0', secondary:'#34D399', accent:'#5EEAD4',
+    text:'#F8FAFC', textSecondary:'#94A3B8', textLight:'#CBD5E1', border:'#1E293B', borderHover:'#334155',
+    success:'#34D399', error:'#FB7185', warning:'#FCD34D',
+    onPrimary:'#04111F', primaryLight:'#0A2E2A', softTeal:'#0A2E2A', softOrange:'#2A1A0D', softPink:'#2A1520',
+    aurora:['rgba(0,212,189,.07)','rgba(52,211,153,.05)','rgba(94,234,212,.04)','rgba(0,184,163,.04)'],
+    orb1:'#00D4BD', orb2:'#34D399', cardShadow:'0 4px 16px -2px rgba(0,0,0,.4)',
+  },
+  warmCyberSunset: {
+    label:'Warm Cyber Sunset', family:'dark', desc:'Plum & coral — energetic and expressive',
+    background:'#241B2E', backgroundDeep:'#1B1424', surface:'#2E2138', surfaceSecondary:'#281E32',
+    primary:'#FF7A59', primaryDark:'#E8603F', primaryHover:'#FF9478', secondary:'#F5A524', accent:'#FDBA74',
+    text:'#FBF3EC', textSecondary:'#C9B8D6', textLight:'#B3A0C2', border:'#3D2E48', borderHover:'#4E3B5C',
+    success:'#4ADE80', error:'#FB7185', warning:'#FBBF24',
+    onPrimary:'#2A1206', primaryLight:'#3D2530', softTeal:'#1F2E2C', softOrange:'#3D2A18', softPink:'#3D2028',
+    aurora:['rgba(255,122,89,.08)','rgba(245,165,36,.06)','rgba(253,186,116,.05)','rgba(255,122,89,.05)'],
+    orb1:'#FF7A59', orb2:'#F5A524', cardShadow:'0 4px 16px -2px rgba(0,0,0,.35)',
+  },
+  obsidianEmerald: {
+    label:'Obsidian Emerald', family:'dark', desc:'Matte black & mint — minimalist and premium',
+    background:'#0A0A0A', backgroundDeep:'#050505', surface:'#161616', surfaceSecondary:'#121212',
+    primary:'#2DD4A7', primaryDark:'#1FB88E', primaryHover:'#54E0BC', secondary:'#6EE7B7', accent:'#5EEAD4',
+    text:'#F5F5F5', textSecondary:'#A3A3A3', textLight:'#8A8A8A', border:'#262626', borderHover:'#333333',
+    success:'#34D399', error:'#F87171', warning:'#FBBF24',
+    onPrimary:'#04111F', primaryLight:'#12241E', softTeal:'#0F1E1B', softOrange:'#241C12', softPink:'#211519',
+    previewCard:{surface:'#FFFFFF',text:'#1E293B',textSecondary:'#5A6B7F',border:'#E2E8F0'},
+    aurora:['rgba(45,212,167,.06)','rgba(110,231,183,.05)','rgba(94,234,212,.04)','rgba(31,184,142,.04)'],
+    orb1:'#2DD4A7', orb2:'#6EE7B7', cardShadow:'0 4px 16px -2px rgba(0,0,0,.5)',
+  },
+  softAcademicLight: {
+    label:'Soft Academic Light', family:'light', desc:'Clean & emerald — bright daytime learning',
+    background:'#F4F6F8', backgroundDeep:'#E8ECF0', surface:'#FFFFFF', surfaceSecondary:'#EEF1F5',
+    primary:'#047857', primaryDark:'#065F46', primaryHover:'#046C50', secondary:'#0F766E', accent:'#0F766E',
+    text:'#1E293B', textSecondary:'#64748B', textLight:'#5A6B7F', border:'#E2E8F0', borderHover:'#CBD5E1',
+    success:'#059669', error:'#DC2626', warning:'#D97706',
+    onPrimary:'#FFFFFF', primaryLight:'#D1FAE5', softTeal:'#E6F7F3', softOrange:'#FFF4E6', softPink:'#FFF0F5',
+    aurora:['rgba(4,120,87,.08)','rgba(15,118,110,.06)','rgba(4,120,87,.05)','rgba(15,118,110,.06)'],
+    orb1:'#047857', orb2:'#0F766E', cardShadow:'0 4px 16px -2px rgba(30,41,59,.09)',
+  },
+};
+
+/* atmosphere layer — src/theme/atmosphere.js (proposed) */
+const ATM = {
+  home:      { radius:1,    ambient:'aurora-soft',  density:14, glow:0,  elev:'low'    },
+  learn:     { radius:0.85, ambient:'aurora-path',  density:10, glow:0,  elev:'flat'   },
+  sulti:     { radius:1.25, ambient:'orb-active',   density:18, glow:16, elev:'glow'   },
+  community: { radius:0.9,  ambient:'flat',         density:12, glow:0,  elev:'card'   },
+  settings:  { radius:0.75, ambient:'none',         density:13, glow:0,  elev:'flat'   },
+};
+
+const MODULE = {
+  midnightTeal:     { pron:['#00D4BD','#0D9488'], vocab:['#3B82F6','#2563EB'], gram:['#8B5CF6','#7C3AED'], listen:['#F59E0B','#F97316'], conv:['#EC4899','#DB2777'] },
+  warmCyberSunset:  { pron:['#FF7A59','#E8603F'], vocab:['#F5A524','#D97706'], gram:['#C084FC','#8B5CF6'], listen:['#FDBA74','#F97316'], conv:['#FB7185','#E11D48'] },
+  obsidianEmerald:  { pron:['#2DD4A7','#0D9488'], vocab:['#60A5FA','#3B82F6'], gram:['#A78BFA','#7C3AED'], listen:['#FBBF24','#D97706'], conv:['#F472B6','#DB2777'] },
+  softAcademicLight:{ pron:['#65A30D','#4D7C0F'], vocab:['#0F766E','#115E59'], gram:['#7C3AED','#6D28D9'], listen:['#D97706','#EA580C'], conv:['#DB2777','#BE185D'] },
+};
+
+const R = (base, atm) => base * ATM[atm].radius;
+
+/* ---------- helpers ---------- */
+const el = (t, s, h) => { const e=document.createElement(t); if(s)e.className=s; if(h!=null)e.innerHTML=h; return e; };
+const svgArc = (cx,cy,r,deg,color,w,op=1)=>{
+  const a=(deg-90)*Math.PI/180, x=cx+r*Math.cos(a), y=cy+r*Math.sin(a);
+  return `<path d="M ${cx} ${cy-r} A ${r} ${r} 0 ${deg>180?1:0} 1 ${x} ${y}" fill="none" stroke="${color}" stroke-width="${w}" stroke-linecap="round" opacity="${op}"/>`;
+};
+function orbHTML(T, size, glow){
+  const bars=[], n=46;
+  for(let i=0;i<n;i++){
+    const ang=(i/n)*360, h=14+Math.abs(Math.sin(i*1.7))*15+Math.abs(Math.sin(i*0.7))*9;
+    bars.push(`<div style="position:absolute;left:50%;top:50%;width:2.4px;height:${h}px;margin-left:-1.2px;
+      transform-origin:50% ${size*0.5}px;transform:rotate(${ang}deg) translateY(${-size*0.5}px);
+      background:${T.primary};opacity:${(0.16+0.34*Math.abs(Math.cos(i*0.9))).toFixed(2)};border-radius:2px"></div>`);
+  }
+  const p=[];
+  for(let i=0;i<10;i++){
+    const a=(i/10)*360, rad=size*0.40, rad2=rad*Math.PI/180;
+    p.push(`<div style="position:absolute;left:50%;top:50%;width:4px;height:4px;margin:-2px 0 0 -2px;border-radius:50%;
+      background:${T.accent};opacity:.55;transform:rotate(${a}deg) translateY(${-rad}px)"></div>`);
+  }
+  return `<div style="position:absolute;inset:0">${p.join('')}${bars.join('')}
+    <div style="position:absolute;left:50%;top:50%;width:${size*0.30}px;height:${size*0.30}px;margin:${-size*0.15}px 0 0 ${-size*0.15}px;
+      border-radius:50%;background:linear-gradient(135deg,${T.orb1},${T.orb2});
+      box-shadow:0 0 ${glow||18}px ${glow?T.primary:'transparent'}"></div></div>`;
+}
+function auroraHTML(T, kind){
+  if(kind==='none'||kind==='flat') return '';
+  const map = {
+    'aurora-soft':  [[ '18%','2%',220,T.aurora[0]], ['72%','-6%',200,T.aurora[1]]],
+    'aurora-path':  [[ '24%','6%',150,T.aurora[0]], ['8%','48%',190,T.aurora[1]], ['20%','88%',170,T.aurora[2]]],
+    'orb-active':   [[ '50%','26%',270,T.aurora[0]], ['20%','60%',220,T.aurora[1]], ['82%','66%',200,T.aurora[2]]],
+  };
+  const b=(map[kind]||[]).map(([l,t,s,c])=>`<div class="blob" style="left:${l};top:${t};width:${s}px;height:${s}px;background:${c}"></div>`).join('');
+  return `<div class="aurora">${b}</div>`;
+}
+function statusbar(T){
+  return `<div class="status" style="color:${T.text}"><span>9:41</span><span class="sig">
+    <svg width="15" height="10" viewBox="0 0 15 10" fill="${T.text}"><rect x="0" y="7" width="2.5" height="3" rx="1"/><rect x="4" y="5" width="2.5" height="5" rx="1"/><rect x="8" y="2.5" width="2.5" height="7.5" rx="1"/><rect x="12" y="0" width="2.5" height="10" rx="1" opacity=".4"/></svg>
+    <svg width="15" height="10" viewBox="0 0 15 10" fill="none" stroke="${T.text}" stroke-width="1.3" stroke-linecap="round"><path d="M1 3.5a9 9 0 0 1 13 0"/><path d="M3.5 6a5.5 5.5 0 0 1 8 0" opacity=".7"/><circle cx="7.5" cy="8.5" r="1" fill="${T.text}" stroke="none"/></svg>
+    <svg width="22" height="10" viewBox="0 0 22 10"><rect x=".5" y=".5" width="17" height="9" rx="2.5" fill="none" stroke="${T.text}" opacity=".45"/><rect x="2" y="2" width="12" height="6" rx="1.5" fill="${T.text}"/><path d="M19 3.5v3a1.8 1.8 0 0 0 0-3z" fill="${T.text}" opacity=".45"/></svg>
+  </span></div>`;
+}
+const TABS=[['Home','⌂'],['Learn','◈'],['SULTI','◎'],['Community','◍'],['Settings','⚙']];
+function tabbar(T, active){
+  const bgc = T.family==='light' ? '#FFFFFF' : T.surface;
+  return `<div class="tabbar" style="background:${bgc};border-color:${T.border}">
+    ${TABS.map(([n,ic])=>{
+      const on = n===active;
+      return `<div class="tab"><div style="font-size:16px;line-height:1;color:${on?T.primary:T.textSecondary};opacity:${on?1:.65}">${ic}</div>
+      <div class="lbl" style="color:${on?T.primary:T.textSecondary}">${n}</div>
+      <div class="dot" style="background:${on?T.primary:'transparent'}"></div></div>`;
+    }).join('')}</div>`;
+}
+const ICON = {chev:'›', back:'‹', gear:'⚙', bell:'🔔', plus:'+', lock:'🔒', check:'✓', play:'▶',
+  mic:'🎤', refresh:'↻', info:'ⓘ', flame:'🔥', star:'★', x:'✕', arrow:'→', dots:'⋯',
+  moon:'☾', sun:'☀', gem:'◆', spark:'✦', book:'▤', gram:'¶', ear:'◖', chat:'◑', bolt:'⚡'};
+
+/* ================================================================
+   SCREENS
+   ================================================================ */
+function Home(T, tk){
+  const A=ATM.home, r=(b)=>R(b,'home');
+  return `${statusbar(T)}
+  <div class="body" style="background:${T.background};color:${T.text}">
+    ${auroraHTML(T,A.ambient)}
+    <div class="pad" style="position:relative;display:flex;flex-direction:column;gap:${A.density}px;height:100%;padding-top:8px">
+
+      <div class="hdr">
+        <div>
+          <div class="greet">Kumusta, Maria</div>
+          <div class="sub" style="color:${T.textSecondary}">Martes · 12 min ka nga na</div>
+        </div>
+        <div class="iconbtn" style="background:${T.surface};border:1px solid ${T.border}">
+          <span style="font-size:14px;color:${T.textSecondary}">${ICON.bell}</span></div>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:${r(13)}px;background:${T.surface};border:1px solid ${T.border}">
+        <div style="position:relative;width:26px;height:26px;flex-shrink:0">${orbHTML({...T,primary:T.accent,orb1:T.orb1,orb2:T.orb2},26,7)}</div>
+        <div style="font-size:11.5px;line-height:1.4;color:${T.textSecondary}">
+          <b style="color:${T.text};font-weight:600">SULTI:</b> your pronunciation na 92% na. Try today's airport scenario?
+        </div>
+      </div>
+
+      <div class="card" style="background:linear-gradient(135deg,${T.primary},${T.primaryDark});border:none;box-shadow:0 8px 26px -6px ${T.primary}55">
+        <div class="cardpad">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:7px">
+            <span class="chip" style="background:${T.onPrimary}22;color:${T.onPrimary}">CONTINUE</span>
+          </div>
+          <div style="font-size:17px;font-weight:700;letter-spacing:-.35px;color:${T.onPrimary};line-height:1.25">
+            Unit 3 · Ordering at a restaurant</div>
+          <div style="font-size:11.5px;color:${T.onPrimary}bb;margin-top:4px">Lesson 4 of 6 · about 8 min</div>
+          <div style="height:4px;border-radius:2px;background:${T.onPrimary}33;margin:11px 0 12px;overflow:hidden">
+            <div style="width:63%;height:100%;background:${T.onPrimary};border-radius:2px"></div></div>
+          <div class="btn" style="background:${T.onPrimary};color:${T.primary}">
+            Continue <span style="font-size:12px">${ICON.play}</span></div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:10px">
+        <div class="card cardpad" style="flex:1;background:${T.surface};border-color:${T.border};padding:11px;display:flex;align-items:center;gap:10px">
+          <div class="ringwrap" style="width:42px;height:42px;flex-shrink:0">
+            <svg width="42" height="42" viewBox="0 0 42 42">
+              <circle cx="21" cy="21" r="17" fill="none" stroke="${T.border}" stroke-width="4"/>
+              <circle cx="21" cy="21" r="17" fill="none" stroke="${T.warning}" stroke-width="4"
+                stroke-linecap="round" stroke-dasharray="53 107" transform="rotate(-90 21 21)"/>
+            </svg>
+            <div class="val" style="color:${T.text};font-size:11px">7</div>
+          </div>
+          <div><div style="font-size:12px;font-weight:700;letter-spacing:-.1px">${ICON.flame} 7-day streak</div>
+          <div class="statline" style="color:${T.textSecondary};margin-top:1px">Best: 14 days</div></div>
+        </div>
+        <div class="card cardpad" style="flex:1;background:${T.surface};border-color:${T.border};padding:11px;display:flex;align-items:center;gap:10px">
+          <div class="ringwrap" style="width:42px;height:42px;flex-shrink:0">
+            <svg width="42" height="42" viewBox="0 0 42 42">
+              <circle cx="21" cy="21" r="17" fill="none" stroke="${T.border}" stroke-width="4"/>
+              <circle cx="21" cy="21" r="17" fill="none" stroke="${T.primary}" stroke-width="4"
+                stroke-linecap="round" stroke-dasharray="77 107" transform="rotate(-90 21 21)"/>
+            </svg>
+            <div class="val" style="color:${T.text};font-size:11px">72%</div>
+          </div>
+          <div><div style="font-size:12px;font-weight:700;letter-spacing:-.1px">Daily goal</div>
+          <div class="statline" style="color:${T.textSecondary};margin-top:1px">9 of 12 min</div></div>
+        </div>
+      </div>
+
+      <div class="hsec" style="color:${T.text}"><span>Recommended for you</span>
+        <span class="act" style="color:${T.accent}">See all</span></div>
+
+      <div class="card cardpad" style="background:${T.surface};border-color:${T.border};display:flex;gap:11px;align-items:flex-start">
+        <div style="width:34px;height:34px;border-radius:11px;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+          background:linear-gradient(135deg,${MODULE[tk].pron[0]},${MODULE[tk].pron[1]});font-size:15px">🎧</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600;letter-spacing:-.15px">Airport announcements</div>
+          <div class="statline" style="color:${T.textSecondary};margin-top:2px">
+            Listening · 6 min · because you asked about travel</div>
+          <div style="display:flex;align-items:center;gap:5px;margin-top:7px">
+            <span class="chip" style="background:${T.primary}22;color:${T.primary}">Start</span>
+            <span class="chip" style="background:transparent;color:${T.textSecondary};border:1px solid ${T.border}">Save</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="hsec" style="color:${T.text}"><span>Quick practice</span></div>
+      <div style="display:flex;gap:9px">
+        ${[[ICON.mic,'Pronounce',MODULE[tk].pron],[ICON.book,'Flashcards',MODULE[tk].vocab],[ICON.chat,'Chat',MODULE[tk].conv]]
+          .map(([ic,lb,g])=>`
+        <div class="tile" style="flex:1;background:${T.surface};border-color:${T.border}">
+          <div style="width:30px;height:30px;border-radius:10px;display:flex;align-items:center;justify-content:center;
+            background:linear-gradient(135deg,${g[0]},${g[1]});font-size:14px">${ic}</div>
+          <div class="tl" style="color:${T.text}">${lb}</div></div>`).join('')}
+      </div>
+    </div>
+  </div>
+  ${tabbar(T,'Home')}`;
+}
+
+function Learn(T, tk){
+  const A=ATM.learn, r=(b)=>R(b,'learn'), M=MODULE[tk];
+  const spine = `linear-gradient(180deg, ${T.primary}59 0%, ${T.primary}59 38%, ${T.border} 38%, ${T.border} 100%)`;
+  const nodes = [
+    {s:'done', t:'Unit 1 · Greetings', m:'6 of 6 lessons', p:100},
+    {s:'done', t:'Unit 2 · Introducing yourself', m:'5 of 5 lessons', p:100},
+    {s:'cur',  t:'Unit 3 · Ordering food', m:'Lesson 4 of 6', p:63},
+    {s:'rec',  t:'Unit 4 · Getting around', m:'Recommended next', p:0},
+    {s:'lock', t:'Unit 5 · Emergencies', m:'Finish Unit 4 to unlock', p:0},
+    {s:'lock', t:'Unit 6 · Work & business', m:'Finish Unit 5 to unlock', p:0},
+  ];
+  return `${statusbar(T)}
+  <div class="body" style="background:${T.background};color:${T.text}">
+    ${auroraHTML(T,A.ambient)}
+    <div style="position:relative;display:flex;flex-direction:column;height:100%;padding-top:6px">
+      <div class="pad" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:${A.density}px">
+        <div style="font-size:19px;font-weight:700;letter-spacing:-.4px">Learn Bisaya</div>
+        <div class="iconbtn" style="background:${T.surface};border:1px solid ${T.border}">
+          <span style="font-size:13px;color:${T.textSecondary}">${ICON.bolt}</span></div>
+      </div>
+
+      <div class="pad" style="display:flex;gap:8px;margin-bottom:${A.density}px">
+        <div class="card" style="flex:1;background:${T.surface};border-color:${T.border};padding:11px;text-align:center;border-radius:${r(14)}px">
+          <div class="ringwrap" style="width:46px;height:46px;margin:0 auto">
+            <svg width="46" height="46" viewBox="0 0 46 46">
+              <circle cx="23" cy="23" r="19" fill="none" stroke="${T.border}" stroke-width="4"/>
+              <circle cx="23" cy="23" r="19" fill="none" stroke="${T.primary}" stroke-width="4"
+                stroke-linecap="round" stroke-dasharray="86 120" transform="rotate(-90 23 23)"/></svg>
+            <div class="val" style="color:${T.text}">72%</div></div>
+          <div class="rl" style="color:${T.textSecondary};margin-top:5px;font-size:9.5px;font-weight:600">Overall</div>
+        </div>
+        <div class="card" style="flex:1;background:${T.surface};border-color:${T.border};padding:11px;text-align:center;border-radius:${r(14)}px">
+          <div class="ringwrap" style="width:46px;height:46px;margin:0 auto">
+            <svg width="46" height="46" viewBox="0 0 46 46">
+              <circle cx="23" cy="23" r="19" fill="none" stroke="${T.border}" stroke-width="4"/>
+              <circle cx="23" cy="23" r="19" fill="none" stroke="${T.warning}" stroke-width="4"
+                stroke-linecap="round" stroke-dasharray="43 120" transform="rotate(-90 23 23)"/></svg>
+            <div class="val" style="color:${T.text}">5/7</div></div>
+          <div class="rl" style="color:${T.textSecondary};margin-top:5px;font-size:9.5px;font-weight:600">This week</div>
+        </div>
+        <div class="card" style="flex:1;background:${T.surface};border-color:${T.border};padding:11px;text-align:center;border-radius:${r(14)}px">
+          <div class="ringwrap" style="width:46px;height:46px;margin:0 auto">
+            <svg width="46" height="46" viewBox="0 0 46 46">
+              <circle cx="23" cy="23" r="19" fill="none" stroke="${T.border}" stroke-width="4"/>
+              <circle cx="23" cy="23" r="19" fill="none" stroke="${T.secondary}" stroke-width="4"
+                stroke-linecap="round" stroke-dasharray="52 120" transform="rotate(-90 23 23)"/></svg>
+            <div class="val" style="color:${T.text}">92%</div></div>
+          <div class="rl" style="color:${T.textSecondary};margin-top:5px;font-size:9.5px;font-weight:600">Speaking</div>
+        </div>
+      </div>
+
+      <div class="pad" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:9px">
+        <div class="hsec" style="color:${T.text}"><span>Your learning path</span></div>
+        <span class="act" style="font-size:10.5px;font-weight:600;color:${T.textSecondary}">3 of 6 units</span>
+      </div>
+
+      <div class="path" style="flex:1;overflow:hidden">
+        <div class="spine" style="background:${spine}"></div>
+        ${nodes.map(n=>{
+          let nd, col, ic;
+          if(n.s==='done'){ nd=`background:${T.primary};color:${T.onPrimary}`; col=T.textSecondary; ic=ICON.check; }
+          if(n.s==='cur'){ nd=`background:${T.primary}14;border-color:${T.primary};box-shadow:0 0 ${A.glow+10}px ${T.primary}66`; col=T.text; ic=ICON.play; }
+          if(n.s==='rec'){ nd=`background:transparent;border-color:${T.primary}`; col=T.text; ic=ICON.spark; }
+          if(n.s==='lock'){ nd=`background:${T.surfaceSecondary};border:1px solid ${T.border};color:${T.textSecondary}`; col=T.textSecondary; ic=ICON.lock; }
+          return `<div class="node">
+            <div class="nd ${n.s}" style="${nd}">${ic}</div>
+            <div style="flex:1;min-width:0">
+              <div class="ntitle" style="color:${col}">${n.t}</div>
+              <div class="nmeta" style="color:${n.s==='lock'?T.textSecondary:T.textSecondary}">
+                ${n.s==='rec'?`<span class="chip" style="background:${T.primary}1f;color:${T.primary};padding:1.5px 6px">NEXT UP</span>`:''}
+                <span>${n.m}</span></div>
+              ${n.p>0?`<div class="pbar" style="background:${T.border}"><div style="width:${n.p}%;height:100%;background:${n.s==='cur'?T.primary:T.primary}88;border-radius:2px"></div></div>`:''}
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+
+      <div class="pad" style="display:flex;align-items:center;justify-content:space-between;margin:6px 0 8px">
+        <div class="hsec" style="color:${T.text}"><span>Skills</span></div>
+        <span class="act" style="font-size:10.5px;font-weight:600;color:${T.accent}">All</span>
+      </div>
+      <div class="pad" style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        ${[[ICON.mic,'Pronunciation',M.pron],[ICON.book,'Vocabulary',M.vocab],
+           [ICON.gram,'Grammar',M.gram],[ICON.ear,'Listening',M.listen]].map(([ic,n,g])=>`
+        <div class="cat" style="background:${T.surface};border-color:${T.border};border-radius:${r(13)}px">
+          <div style="width:26px;height:26px;border-radius:8px;display:flex;align-items:center;justify-content:center;
+            background:linear-gradient(135deg,${g[0]},${g[1]});font-size:12px">${ic}</div>
+          <div class="catn" style="color:${T.text}">${n}</div>
+          <div style="height:3px;border-radius:2px;background:${T.border};margin-top:1px">
+            <div style="width:${[72,48,35,55][["Pronunciation","Vocabulary","Grammar","Listening"].indexOf(n)]}%;height:100%;background:${g[0]};border-radius:2px"></div></div>
+        </div>`).join('')}
+      </div>
+    </div>
+  </div>
+  ${tabbar(T,'Learn')}`;
+}
+
+function Sulti(T, tk){
+  const A=ATM.sulti, r=(b)=>R(b,'sulti');
+  const bars=[]; for(let i=0;i<34;i++){ const h=4+Math.abs(Math.sin(i*1.3))*20;
+    bars.push(`<i style="height:${h}px;background:${i%3===0?T.accent:T.primary};opacity:${(.35+Math.abs(Math.cos(i*0.8))*.65).toFixed(2)}"></i>`); }
+  return `${statusbar(T)}
+  <div class="body" style="background:${T.backgroundDeep};color:${T.text}">
+    ${auroraHTML(T,'orb-active')}
+    <div style="position:relative;display:flex;flex-direction:column;height:100%;padding-top:4px">
+
+      <div class="pad" style="display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+        <div style="display:flex;align-items:center;gap:9px">
+          <div style="font-size:19px;color:${T.textSecondary}">${ICON.back}</div>
+          <div style="font-size:15px;font-weight:700;letter-spacing:-.2px">SULTI</div>
+          <div style="display:flex;align-items:center;gap:4px;padding:2.5px 8px;border-radius:99px;
+            background:${T.success}1f">
+            <span style="width:5px;height:5px;border-radius:50%;background:${T.success}"></span>
+            <span style="font-size:9.5px;font-weight:700;color:${T.success}">READY</span>
+          </div>
+        </div>
+        <div style="display:flex;gap:7px">
+          <div class="iconbtn" style="background:${T.surface}aa;border:1px solid ${T.border};backdrop-filter:blur(8px)">
+            <span style="font-size:12px;color:${T.textSecondary}">${ICON.info}</span></div>
+          <div class="iconbtn" style="background:${T.surface}aa;border:1px solid ${T.border}">
+            <span style="font-size:12px;color:${T.textSecondary}">${ICON.gear}</span></div>
+        </div>
+      </div>
+
+      <div class="pad" style="display:flex;gap:6px;margin-top:${A.density}px;flex-shrink:0">
+        ${['Practice English','Roleplay','Free talk'].map((s,i)=>`
+        <span class="chip" style="background:${i===0?T.primary:T.surface}bb;border:1px solid ${i===0?T.primary:T.border};
+          color:${i===0?T.onPrimary:T.textSecondary};font-size:10px;padding:4.5px 9px">${s}</span>`).join('')}
+      </div>
+
+      <div class="pad" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative">
+        <div class="orb" style="position:relative;width:196px;height:196px">
+          ${orbHTML(T,196,A.glow+14)}
+        </div>
+        <div style="margin-top:16px;text-align:center">
+          <div class="statusline" style="color:${T.primary}">
+            <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${T.primary};
+              margin-right:6px;vertical-align:1px;box-shadow:0 0 8px ${T.primary}"></span>
+            Listening…</div>
+          <div style="font-size:11.5px;color:${T.textSecondary};margin-top:4px;max-width:230px;line-height:1.4">
+            “Unsa man ang imong pangalan?”</div>
+        </div>
+      </div>
+
+      <div class="pad" style="flex-shrink:0">
+        <div class="meter" style="margin-bottom:10px">${bars.join('')}</div>
+
+        <div class="inp" style="background:${T.surface}cc;border-color:${T.border};color:${T.textSecondary};margin-bottom:12px">
+          Type a message…</div>
+
+        <div class="ctrl" style="margin-bottom:12px">
+          <div class="fsm" style="background:${T.surface};border:1px solid ${T.border};color:${T.textSecondary}">${ICON.refresh}</div>
+          <div class="fbig" style="background:linear-gradient(135deg,${T.orb1},${T.orb2});color:${T.onPrimary};
+            box-shadow:0 6px 22px -4px ${T.primary}88">${ICON.mic}</div>
+          <div class="fsm" style="background:${T.surface};border:1px solid ${T.border};color:${T.textSecondary}">${ICON.dots}</div>
+        </div>
+
+        <div style="display:flex;align-items:center;justify-content:center;gap:7px;padding-bottom:8px">
+          ${[['Blessica',T.primary],['Angel',T.textSecondary],['Sultan',T.textSecondary],['Lola',T.textSecondary]].map(([n,c],i)=>
+            `<span style="font-size:9.5px;font-weight:${i===0?700:600};color:${c}">${n}</span>`).join('<span style="color:'+T.border+'">·</span>')}
+        </div>
+      </div>
+    </div>
+  </div>
+  ${tabbar(T,'SULTI')}`;
+}
+
+function Community(T, tk){
+  const A=ATM.community, r=(b)=>R(b,'community');
+  const post = (name,init,ts,type,typeBg,typeFg,body,extra,likes,cmts,answered)=>`
+  <div class="post" style="background:${T.surface};border-color:${T.border};border-radius:${r(15)}px">
+    <div class="phead">
+      <div class="av" style="background:linear-gradient(135deg,${T.primary},${T.secondary})">${init}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:700;letter-spacing:-.1px">${name}</div>
+        <div class="statline" style="color:${T.textSecondary};margin-top:1px">${ts}</div>
+      </div>
+      <span class="chip" style="background:${typeBg};color:${typeFg}">${type}</span>
+    </div>
+    <div class="pbody" style="color:${T.text}">${body}</div>
+    ${extra||''}
+    <div class="pact" style="border-color:${T.border};color:${T.textSecondary}">
+      <span style="display:flex;align-items:center;gap:4px">♡ ${likes}</span>
+      <span style="display:flex;align-items:center;gap:4px;font-weight:${answered?700:600};
+        color:${answered?T.primary:T.textSecondary}">◍ ${cmts}${answered?' · needs an answer':''}</span>
+      <span style="margin-left:auto">${ICON.dots}</span>
+    </div>
+  </div>`;
+  const wave = (h)=>`<div class="mini">${Array.from({length:30},(_,i)=>
+    `<i style="height:${3+Math.abs(Math.sin(i*0.9+h))*15}px;background:${T.secondary};opacity:.8"></i>`).join('')}</div>`;
+
+  return `${statusbar(T)}
+  <div class="body" style="background:${T.background};color:${T.text}">
+    <div style="display:flex;flex-direction:column;height:100%;padding-top:6px">
+      <div class="pad" style="flex-shrink:0">
+        <div style="font-size:19px;font-weight:700;letter-spacing:-.4px">Community</div>
+        <div class="statline" style="color:${T.textSecondary};margin-top:2px">
+          <b style="color:${T.primary}">24 learners</b> practising Bisaya today</div>
+      </div>
+
+      <div class="pad frow" style="margin-top:12px;flex-shrink:0">
+        ${['All','Questions','Translation','Pronunciation','Tips','Vocabulary'].map((f,i)=>`
+        <span class="fchip ${i===1?'on':''}" style="background:${i===1?T.primary:'transparent'};
+          color:${i===1?T.onPrimary:T.textSecondary};border-color:${i===1?T.primary:T.border}">${f}</span>`).join('')}
+      </div>
+
+      <div class="pad" style="display:flex;align-items:center;justify-content:space-between;margin:12px 0 9px;flex-shrink:0">
+        <div class="hsec" style="color:${T.text}"><span>Needs an answer</span></div>
+        <span style="font-size:10.5px;font-weight:600;color:${T.accent}">Newest</span>
+      </div>
+
+      <div class="pad" style="flex:1;overflow:hidden;display:flex;flex-direction:column;gap:9px">
+        ${post('Rosa M.','RM','12 min ago','QUESTION',T.warning+'1f',T.warning,
+          'Unsa man ang difference sa <i>nag-</i> and <i>mag-</i>? incomprehensible ka sa akong grammar 😅',
+          wave(0),4,0,true)}
+
+        ${post('J Paolo','JP','38 min ago','PRONUNCIATION',T.primary+'1f',T.primary,
+          'Practice ni sa airport. Naa man koy attempt — unsa man ni sayup?',
+          wave(1.2),11,3,true)}
+
+        ${post('Ana','AN','1 hr ago','TIP',T.success+'1f',T.success,
+          'Quick tip: if you struggle with <b>ng</b>, record yourself saying “kumusta” 5× a day. It clicks in a week.',
+          '',24,6,false)}
+      </div>
+    </div>
+  </div>
+  <div style="position:absolute;right:20px;bottom:86px;width:50px;height:50px;border-radius:17px;
+    background:linear-gradient(135deg,${T.primary},${T.primaryDark});display:flex;align-items:center;justify-content:center;
+    color:${T.onPrimary};font-size:23px;box-shadow:0 8px 22px -4px ${T.primary}88;z-index:5">+</div>
+  ${tabbar(T,'Community')}`;
+}
+
+function Settings(T, tk){
+  const A=ATM.settings, r=(b)=>R(b,'settings');
+  const row=(ic,bg,fg,t,s,right)=>`
+  <div class="srow">
+    <div class="sico" style="background:${bg};color:${fg}">${ic}</div>
+    <div style="flex:1;min-width:0">
+      <div class="stitle" style="color:${T.text}">${t}</div>
+      ${s?`<div class="ssub" style="color:${T.textSecondary}">${s}</div>`:''}
+    </div>
+    ${right||`<span style="color:${T.textSecondary};font-size:15px">${ICON.chev}</span>`}
+  </div>`;
+  const sw = (on)=>`<div class="sw" style="background:${on?T.primary:T.border};justify-content:${on?'flex-end':'flex-start'}">
+    <i style="background:${on?T.onPrimary:T.family==='light'?'#FFFFFF':'#8A93A2'}"></i></div>`;
+
+  return `${statusbar(T)}
+  <div class="body" style="background:${T.background};color:${T.text}">
+    <div style="display:flex;flex-direction:column;height:100%;padding-top:6px">
+      <div class="pad" style="display:flex;align-items:center;gap:11px;flex-shrink:0;margin-bottom:14px">
+        <div class="av" style="width:46px;height:46px;font-size:16px;
+          background:linear-gradient(135deg,${T.primary},${T.secondary})">MA</div>
+        <div style="flex:1">
+          <div style="font-size:15px;font-weight:700;letter-spacing:-.25px">Maria Santos</div>
+          <div class="statline" style="color:${T.textSecondary};margin-top:2px">Level 4 · Intermediate · 1,240 XP</div>
+        </div>
+        <div class="iconbtn" style="background:${T.surface};border:1px solid ${T.border}">
+          <span style="font-size:12px;color:${T.textSecondary}">${ICON.chev}</span></div>
+      </div>
+
+      <div class="pad" style="flex:1;overflow:hidden;display:flex;flex-direction:column;gap:14px">
+        <div>
+          <div class="sgroup" style="color:${T.textSecondary}">Appearance</div>
+          <div class="tgrid" style="margin-bottom:11px">
+            ${Object.entries(T).map(([k,t])=>{
+              const pv = t.previewCard || {surface:t.surface, text:t.text, textSecondary:t.textSecondary, border:t.border};
+              return `
+            <div class="tcard" style="border-color:${k===tk?T.primary:pv.border};background:${pv.surface};
+              box-shadow:${k===tk?`0 0 0 2px ${T.primary}33`:'none'}">
+              <div class="tswatch" style="background:${t.background}">
+                <span class="badge" style="background:${t.surface};color:${t.textSecondary}">${t.family==='light'?'LIGHT':'DARK'}</span>
+                <span class="tdot" style="background:${t.primary}"></span>
+                <span class="tdot" style="background:${t.secondary}"></span>
+                <span class="tdot" style="background:${t.accent}"></span>
+                ${k===tk?`<div style="position:absolute;right:5px;bottom:5px;width:15px;height:15px;border-radius:50%;
+                  background:${t.primary};color:${t.onPrimary};font-size:9px;display:flex;align-items:center;justify-content:center;
+                  font-weight:700">${ICON.check}</div>`:''}
+              </div>
+              <div class="tcardpad" style="background:${pv.surface}">
+                <div class="tname" style="color:${pv.text}">${t.label}</div>
+                <div class="tdesc" style="color:${pv.textSecondary}">${t.desc}</div>
+              </div>
+            </div>`;}).join('')}
+          </div>
+          <div class="card" style="background:${T.surface};border-color:${T.border};border-radius:${r(14)}px;padding:0 13px">
+            ${row(ICON.moon,T.primary+'1f',T.primary,'Reduce motion','Limit animation and transitions',sw(true))}
+            ${row(ICON.book,T.primary+'1f',T.primary,'Larger text','Increase all text sizes by 20%',sw(false))}
+          </div>
+        </div>
+
+        <div>
+          <div class="sgroup" style="color:${T.textSecondary}">Learning</div>
+          <div class="card" style="background:${T.surface};border-color:${T.border};border-radius:${r(14)}px;padding:0 13px">
+            ${row(ICON.bolt,T.warning+'1f',T.warning,'Daily goal','12 minutes',
+              `<span style="font-size:12px;font-weight:600;color:${T.primary}">12 min ${ICON.chev}</span>`)}
+            ${row(ICON.chat,T.secondary+'1f',T.secondary,'Target language','Cebuano (Bisaya)')}
+            ${row(ICON.bell,T.primary+'1f',T.primary,'Practice reminders','Every day at 7:00 PM',sw(true))}
+          </div>
+        </div>
+
+        <div>
+          <div class="sgroup" style="color:${T.textSecondary}">Privacy & data</div>
+          <div class="card" style="background:${T.surface};border-color:${T.border};border-radius:${r(14)}px;padding:0 13px">
+            ${row(ICON.gear,T.border+'99',T.textSecondary,'Export my data','Download everything we store')}
+            ${row(ICON.x,T.error+'1f',T.error,'Delete account','This cannot be undone')}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  ${tabbar(T,'Settings')}`;
+}
+
+function Kit(T, tk){
+  const r=(b)=>R(b, 'home');
+  return `${statusbar(T)}
+  <div class="body" style="background:${T.background};color:${T.text}">
+    <div class="pad" style="display:flex;flex-direction:column;gap:12px;height:100%;padding-top:14px">
+      <div style="font-size:19px;font-weight:700;letter-spacing:-.4px">Component kit</div>
+
+      <div style="display:flex;gap:7px">
+        <span class="chip" style="background:${T.primary}1f;color:${T.primary};border:1px solid ${T.primary}33">SELECTED</span>
+        <span class="chip" style="background:${T.surface};color:${T.textSecondary};border:1px solid ${T.border}">DEFAULT</span>
+        <span class="chip" style="background:${T.error}1f;color:${T.error}">DESTRUCTIVE</span>
+      </div>
+
+      <div class="card" style="background:${T.surface};border-color:${T.border};border-radius:${r(16)}px">
+        <div class="cardpad" style="display:flex;align-items:center;gap:11px">
+          <div class="av" style="width:36px;height:36px;background:linear-gradient(135deg,${T.primary},${T.secondary})">MA</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13.5px;font-weight:600;letter-spacing:-.15px">Card title</div>
+            <div class="statline" style="color:${T.textSecondary};margin-top:2px">Supporting description text</div>
+          </div>
+          <span style="color:${T.textSecondary};font-size:16px">${ICON.chev}</span>
+        </div>
+        <div style="padding:0 14px 14px">
+          <div class="btn" style="background:${T.primary};color:${T.onPrimary};width:100%">Primary action</div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:9px">
+        <div class="btn" style="flex:1;background:${T.primary};color:${T.onPrimary}">Primary</div>
+        <div class="btn" style="flex:1;background:${T.surface};color:${T.text};border:1px solid ${T.border}">Secondary</div>
+      </div>
+
+      <div class="inp" style="background:${T.surface};border-color:${T.borderHover};color:${T.textSecondary};
+        box-shadow:0 0 0 2px ${T.primaryHover}33">Focused input</div>
+      <div class="inp" style="background:${T.surface};border-color:${T.border};color:${T.textSecondary}">Placeholder text</div>
+
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div style="display:flex;justify-content:space-between;font-size:10.5px;font-weight:600">
+          <span style="color:${T.textSecondary}">Progress</span><span style="color:${T.primary}">72%</span></div>
+        <div style="height:6px;border-radius:3px;background:${T.border};overflow:hidden">
+          <div style="width:72%;height:100%;background:linear-gradient(90deg,${T.primary},${T.secondary});border-radius:3px"></div></div>
+      </div>
+
+      <div style="display:flex;align-items:center;justify-content:space-around;padding:14px 0;
+        border-radius:${r(15)}px;background:${T.surface};border:1px solid ${T.border}">
+        ${[[ICON.check,T.success,'Correct',T.success+'1f'],[ICON.x,T.error,'Wrong',T.error+'1f'],
+           [ICON.spark,T.warning,'Hint',T.warning+'1f']].map(([ic,c,l,bg])=>`
+        <div style="display:flex;flex-direction:column;align-items:center;gap:5px">
+          <div style="width:32px;height:32px;border-radius:11px;background:${bg};color:${c};
+            display:flex;align-items:center;justify-content:center;font-size:14px">${ic}</div>
+          <div style="font-size:9.5px;font-weight:600;color:${T.textSecondary}">${l}</div></div>`).join('')}
+      </div>
+
+      <div style="flex:1"></div>
+      <div style="text-align:center;font-size:9.5px;color:${T.textSecondary};opacity:.65;padding-bottom:4px">
+        ${T.label} · ${T.family}</div>
+    </div>
+  </div>`;
+}
+
+function VoiceBefore(T){
+  return `${statusbar(T)}
+  <div class="body" style="background:${T.background};color:${T.text}">
+    <div class="pad" style="display:flex;align-items:center;justify-content:space-between">
+      <div style="font-size:15px;font-weight:700">Voice Tutor</div>
+      <div style="font-size:12px;color:${T.textSecondary}">${ICON.gear}</div>
+    </div>
+    <div style="flex:1;display:flex;align-items:center;justify-content:center">
+      <div style="position:relative;width:200px;height:200px">
+        <div style="position:absolute;inset:0;border-radius:50%;border:1px solid ${T.border}"></div>
+        <div style="position:absolute;inset:26px;border-radius:50%;border:1px solid ${T.border}"></div>
+        <div style="position:absolute;left:50%;top:50%;width:56px;height:56px;margin:-28px 0 0 -28px;
+          border-radius:50%;background:${T.primary};box-shadow:0 0 24px ${T.primary}88"></div>
+      </div>
+    </div>
+    <div style="text-align:center;padding-bottom:20px">
+      <div style="font-size:12px;color:${T.textSecondary}">Tap to start speaking</div>
+    </div>
+  </div>`;
+}
+function VoiceAfter(T){
+  return `${statusbar(T)}
+  <div class="body" style="background:${T.backgroundDeep};color:${T.text}">
+    ${auroraHTML(T,'orb-active')}
+    <div style="position:relative;display:flex;flex-direction:column;height:100%;padding-top:4px">
+      <div class="pad" style="display:flex;align-items:center;justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:9px">
+          <div style="font-size:19px;color:${T.textSecondary}">${ICON.back}</div>
+          <div style="font-size:15px;font-weight:700">SULTI</div>
+          <div style="display:flex;align-items:center;gap:4px;padding:2.5px 8px;border-radius:99px;background:${T.success}1f">
+            <span style="width:5px;height:5px;border-radius:50%;background:${T.success}"></span>
+            <span style="font-size:9.5px;font-weight:700;color:${T.success}">READY</span></div>
+        </div>
+        <div style="display:flex;gap:7px">
+          <div class="iconbtn" style="background:${T.surface}aa;border:1px solid ${T.border}">
+            <span style="font-size:12px;color:${T.textSecondary}">${ICON.info}</span></div>
+          <div class="iconbtn" style="background:${T.surface}aa;border:1px solid ${T.border}">
+            <span style="font-size:12px;color:${T.textSecondary}">${ICON.gear}</span></div>
+        </div>
+      </div>
+      <div class="pad" style="display:flex;gap:6px;margin-top:14px">
+        ${['Practice English','Roleplay','Free talk'].map((s,i)=>`
+        <span class="chip" style="background:${i===0?T.primary:T.surface}bb;border:1px solid ${i===0?T.primary:T.border};
+          color:${i===0?T.onPrimary:T.textSecondary};font-size:10px;padding:4.5px 9px">${s}</span>`).join('')}
+      </div>
+      <div class="pad" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center">
+        <div class="orb" style="position:relative;width:196px;height:196px">${orbHTML(T,196,30)}</div>
+        <div style="margin-top:16px;text-align:center">
+          <div class="statusline" style="color:${T.primary}">
+            <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${T.primary};
+              margin-right:6px;vertical-align:1px;box-shadow:0 0 8px ${T.primary}"></span>Listening…</div>
+          <div style="font-size:11.5px;color:${T.textSecondary};margin-top:4px;max-width:230px">“Unsa man ang imong pangalan?”</div>
+        </div>
+      </div>
+      <div class="pad">
+        <div class="meter" style="margin-bottom:10px">
+          ${Array.from({length:34},(_,i)=>{const h=4+Math.abs(Math.sin(i*1.3))*20;
+            return `<i style="height:${h}px;background:${i%3===0?T.accent:T.primary};opacity:${(.35+Math.abs(Math.cos(i*0.8))*.65).toFixed(2)}"></i>`}).join('')}</div>
+        <div class="inp" style="background:${T.surface}cc;border-color:${T.border};color:${T.textSecondary};margin-bottom:12px">
+          Type a message…</div>
+        <div class="ctrl" style="margin-bottom:10px">
+          <div class="fsm" style="background:${T.surface};border:1px solid ${T.border};color:${T.textSecondary}">${ICON.refresh}</div>
+          <div class="fbig" style="background:linear-gradient(135deg,${T.orb1},${T.orb2});color:${T.onPrimary};
+            box-shadow:0 6px 22px -4px ${T.primary}88">${ICON.mic}</div>
+          <div class="fsm" style="background:${T.surface};border:1px solid ${T.border};color:${T.textSecondary}">${ICON.dots}</div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ================================================================
+   MOUNT
+   ================================================================ */
+function phone(inner, bg){
+  return `<div class="phone"><div class="screen" style="background:${bg}">${inner}</div></div>`;
+}
+function mountBoard(host, tk, render, capTitle, capDesc){
+  const T = T[tk];
+  const b = el('div','board');
+  b.innerHTML = phone(render(T,tk), T.background)
+    + `<div class="cap"><b style="color:${T.label==='Soft Academic Light'?'#1E293B':'#F8FAFC'}">${capTitle}</b><span>${capDesc}</span></div>`;
+  host.appendChild(b);
+}
+
+const D = {
+  home:{f:Home, t:'Home — personal learning companion',
+    d:'Calm and welcoming. One gradient card, one primary action, SULTI reduced to a 26px glyph. No analytics.'},
+  learn:{f:Learn, t:'Learn — guided learning journey',
+    d:'A path, not a grid. Four node states, glow only on the current one, 0.85× radii for textbook density.'},
+  sulti:{f:Sulti, t:'SULTI — AI communication companion',
+    d:'Immersive. 1.25× radii, coloured glow replaces shadow, no statistics. The orb is the interface.'},
+  community:{f:Community, t:'Community — social language practice',
+    d:'Content-first and flat. Type chips make practice recognisable. Defaults to “Needs an answer”, not “For you”.'},
+  settings:{f:Settings, t:'Settings — personalisation and control',
+    d:'The quietest screen. 0.75× radii, grouped lists, live theme previews rendered as real miniature screens.'},
+};
+
+const A = document.getElementById('boardsA');
+for (const k of Object.keys(T)) mountBoard(A, k, Home, T[k].label, T[k].desc);
+
+const B = document.getElementById('boardsB');
+for (const k of ['home','learn','sulti','community','settings'])
+  mountBoard(B,'midnightTeal', D[k].f, D[k].t, D[k].d);
+
+const C = document.getElementById('boardsC');
+for (const k of Object.keys(T))
+  mountBoard(C, k, Kit, T[k].label, 'Identical component kit, same layout, only colour substituted.');
+
+const E = document.getElementById('boardsE');
+const Tb = T.midnightTeal;
+[['VoiceBefore','As coded today','Flat, centred, no state text, no controls, no identity.'],
+ ['VoiceAfter','Proposed revision','Aurora, 46-bar orb, persistent state, real controls, theme-aware ink.']
+].forEach(([f,t,d])=>{
+  const b=el('div'); b.innerHTML = phone(VoiceBefore(Tb)) ;
+  const wrap = el('div'); wrap.style.cssText='display:flex;flex-direction:column;gap:12px;align-items:center';
+  wrap.innerHTML = phone(window[f](Tb), Tb.background)
+    + `<div class="cap" style="max-width:330px"><b>${t}</b><span>${d}</span></div>`;
+  E.appendChild(wrap);
+});
+
+/* ---------- §D contrast table ---------- */
+const CT = [
+  ['Text primary on background','#F8FAFC','#0B1120',18.00,'ok','AAA'],
+  ['Text secondary on background','#94A3B8','#0B1120',7.34,'ok','AAA'],
+  ['Primary on background','#00D4BD','#0B1120',10.00,'ok','AAA'],
+  ['<b>#FFFFFF</b> on primary (as coded)','#FFFFFF','#00D4BD',1.88,'bad','FAIL — WCAG 1.4.3'],
+  ['<b>onPrimary #04111F</b> on primary (proposed)','#04111F','#00D4BD',10.09,'ok','AAA'],
+  ['Text primary on background','#FBF3EC','#241B2E',15.05,'ok','AAA'],
+  ['Text secondary on background','#C9B8D6','#241B2E',8.90,'ok','AAA'],
+  ['Primary on background','#FF7A59','#241B2E',6.43,'ok','AA'],
+  ['<b>#FFFFFF</b> on primary (as coded)','#FFFFFF','#FF7A59',2.57,'bad','FAIL — WCAG 1.4.3'],
+  ['Text primary on background','#F5F5F5','#0A0A0A',18.16,'ok','AAA'],
+  ['Text secondary on background','#A3A3A3','#0A0A0A',7.85,'ok','AAA'],
+  ['Primary on background','#2DD4A7','#0A0A0A',10.45,'ok','AAA'],
+  ['<b>#FFFFFF</b> on primary (as coded)','#FFFFFF','#2DD4A7',1.89,'bad','FAIL — WCAG 1.4.3'],
+  ['Text primary on background','#1E293B','#F4F6F8',13.50,'ok','AAA'],
+  ['<b>Text secondary on page background</b>','#64748B','#F4F6F8',4.39,'warnr','Below 4.5 — only on the page, not on cards'],
+  ['<b>Text light on page background (as coded)</b>','#5A6B7F','#F4F6F8',5.04,'ok','AA — was #94A3B8 at 2.37, now fixed'],
+  ['On-primary ink on primary (emerald core)','#FFFFFF','#047857',5.48,'ok','AA'],
+  ['Primary on background','#047857','#F4F6F8',5.06,'ok','AA'],
+  ['Secondary on surface','#0F766E','#FFFFFF',5.47,'ok','AA'],
+  ['Border on surface (midnight teal)','#22404F','#11222D',1.48,'warnr','Hairline — was #1E293B at 1.11 on the new surface'],
+  ['Border on surface (light theme)','#E2E8F0','#FFFFFF',1.23,'warnr','Hairline only — add borderStrong'],
+];
+const ct = document.getElementById('contrastTable');
+ct.innerHTML = `<div class="cmp">
+  <div class="hd">Pair</div><div class="hd">Foreground</div><div class="hd">Background</div><div class="hd">Ratio</div><div class="hd">Result</div>
+  ${CT.map(([l,f,b,r,s,v])=>`<div class="lbl">${l}</div>
+    <div><span class="sw" style="background:${f}"></span><span style="font-family:ui-monospace,monospace;font-size:11px">${f}</span></div>
+    <div><span class="sw" style="background:${b}"></span><span style="font-family:ui-monospace,monospace;font-size:11px">${b}</span></div>
+    <div><span class="ratio ${s}">${r.toFixed(2)}:1</span></div>
+    <div style="color:${s==='bad'?'#FB7185':s==='warnr'?'#FBBF24':'#34D399'};font-size:11px;font-weight:600">${v}</div>`).join('')}
+</div>`;
+
+// §C2 — primitive adoption, counted from source
+const AD = [
+  ['<code>Button</code> — primary CTA', 4, 21, '4 screens, plus 1 internal use in <code>EmptyState</code>'],
+  ['<code>EmptyState</code>', 5, 21, 'was 3; Leaderboard + Notifications adopted in phase 5'],
+  ['<code>Skeleton</code>', 3, 21, 'replaces 20 duplicated skeleton style blocks'],
+  ['<code>SectionHeader</code>', 1, 21, 'LearnScreen only'],
+  ['<code>Divider</code>', 2, 21, 'Auth + Login'],
+  ['<code>IconButton</code>', 0, 21, '<b>no consumers yet</b>'],
+];
+const at = document.getElementById('adoptionTable');
+at.innerHTML = `<div class="cmp">
+  <div class="hd">Shared primitive</div><div class="hd">Consumers</div><div class="hd">Screens</div><div class="hd">Note</div>
+  ${AD.map(([l,c,t,n])=>{
+    const pct = Math.round(c/t*100);
+    const col = c===0?'#FB7185':pct<25?'#FBBF24':'#34D399';
+    return `<div class="lbl">${l}</div>
+      <div><b style="color:${col};font-size:14px">${c}</b> <span style="color:var(--ink3);font-size:11px">/ ${t}</span>
+        <div style="height:4px;background:var(--line);border-radius:2px;margin-top:5px;overflow:hidden;max-width:110px">
+          <div style="height:100%;width:${Math.max(pct,2)}%;background:${col}"></div></div></div>
+      <div style="color:var(--ink3);font-size:12px">${pct}%</div>
+      <div style="color:var(--ink2);font-size:11.5px">${n}</div>`;
+  }).join('')}
+</div>
+<div class="note warn" style="margin-top:18px">
+  <b>50 of 117 source files still contain <code>&lt;TouchableOpacity&gt;</code></b> and 25 of them build an
+  icon-led CTA by hand. That is the single largest remaining source of visual inconsistency — and the
+  reason the app felt unbalanced even with four correct palettes.
+</div>`;
+</script>
+</body>
+</html>

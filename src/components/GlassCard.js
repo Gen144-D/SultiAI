@@ -28,8 +28,8 @@ export default function GlassCard({
     return (
       <View style={[
         styles.webGlass,
-        baseStyle,
         { backgroundColor: colors.glassBg, borderColor: colors.glassBorder, padding: pad },
+        baseStyle,
         variant === 'elevated' && styles.elevated,
         variant === 'tinted' && { backgroundColor: colors.primary + '10', borderColor: colors.borderHover },
         floating && styles.floatShadow,

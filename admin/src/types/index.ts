@@ -169,7 +169,7 @@ export interface TopUser {
 
 export interface FeedbackItem {
   id: number;
-  user: { id: number; name: string };
+  user: { id: number; name: string; email: string };
   functionality: number;
   usability: number;
   reliability: number;

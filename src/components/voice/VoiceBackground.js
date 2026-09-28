@@ -5,7 +5,7 @@ import Animated, {
   withDelay, cancelAnimation, Easing,
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
-import { voice } from './palette';
+import { useVoicePalette } from './palette';
 
 function seededRandom(seed) {
   let s = seed;
@@ -24,7 +24,7 @@ const BLOBS = [
 
 const PARTICLE_COUNT = 26;
 
-function FloatBlob({ cfg, width, height }) {
+function FloatBlob({ cfg, width, height, voice }) {
   const progress = useSharedValue(0);
 
   useEffect(() => {
@@ -59,11 +59,11 @@ function FloatBlob({ cfg, width, height }) {
 
   const colors = [
     cfg.tone === 'teal'
-      ? 'rgba(32,214,199,0.16)'
+      ? `${voice.primary}29`
       : cfg.tone === 'blue'
-        ? 'rgba(64,156,255,0.1)'
-        : 'rgba(94,234,212,0.12)',
-    'rgba(32,214,199,0.03)',
+        ? `${voice.secondary}1A`
+        : `${voice.accent}1F`,
+    `${voice.primary}08`,
     'transparent',
   ];
 
@@ -112,7 +112,7 @@ function Particle({ data, width, height }) {
   return <Animated.View pointerEvents="none" style={style} />;
 }
 
-function BreathingGlow({ width, height }) {
+function BreathingGlow({ width, height, voice }) {
   const breath = useSharedValue(1);
 
   useEffect(() => {
@@ -133,7 +133,7 @@ function BreathingGlow({ width, height }) {
   return (
     <Animated.View pointerEvents="none" style={[styles.breathGlow, style, { width: width * 0.9, height: height * 0.9, borderRadius: height * 0.45 }]}>
       <LinearGradient
-        colors={['rgba(32,214,199,0.14)', 'rgba(94,234,212,0.04)', 'transparent']}
+        colors={[`${voice.primary}24`, `${voice.accent}0A`, 'transparent']}
         locations={[0, 0.55, 1]}
         style={StyleSheet.absoluteFill}
       />
@@ -143,6 +143,7 @@ function BreathingGlow({ width, height }) {
 
 export default function VoiceBackground({ children, style, parallax = 0 }) {
   const { width: W, height: H } = useWindowDimensions();
+  const voice = useVoicePalette();
 
   const particles = useMemo(() => {
     const r = seededRandom(2026);
@@ -157,26 +158,26 @@ export default function VoiceBackground({ children, style, parallax = 0 }) {
       color: tones[i % tones.length],
       phase: r() * Math.PI * 2,
     }));
-  }, [W, H]);
+  }, [W, H, voice]);
 
   const blobs = useMemo(() => BLOBS.map((b, i) => ({ ...b, tone: ['teal', 'blue', 'teal', 'mint'][i] })), []);
 
   return (
     <View style={[styles.root, { backgroundColor: voice.background }, style]}>
-      <BreathingGlow width={W} height={H} />
+      <BreathingGlow width={W} height={H} voice={voice} />
       {blobs.map((cfg, i) => (
-        <FloatBlob key={i} cfg={cfg} width={W} height={H} />
+        <FloatBlob key={i} cfg={cfg} width={W} height={H} voice={voice} />
       ))}
       {particles.map((p, i) => (
         <Particle key={i} data={p} width={W} height={H} />
       ))}
       <LinearGradient
-        colors={['transparent', 'rgba(4,11,22,0.92)']}
+        colors={['transparent', `${voice.backgroundDeep}EB`]}
         style={[styles.bottomFade, { height: H * 0.32 }]}
         pointerEvents="none"
       />
       <LinearGradient
-        colors={['rgba(4,11,22,0.88)', 'transparent']}
+        colors={[`${voice.backgroundDeep}E0`, 'transparent']}
         style={[styles.topFade, { height: H * 0.18 }]}
         pointerEvents="none"
       />

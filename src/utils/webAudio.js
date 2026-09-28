@@ -72,6 +72,7 @@ export function createWebAudioStream({ sampleRate = 24000, onBuffer }) {
   let source = null;
   let processor = null;
   let micStream = null;
+  let pcmChunks = [];
 
   return {
     async start() {
@@ -82,18 +83,39 @@ export function createWebAudioStream({ sampleRate = 24000, onBuffer }) {
       processor.onaudioprocess = (e) => {
         const float32 = e.inputBuffer.getChannelData(0);
         const int16 = float32ToInt16(float32);
+        // Pass a Uint8Array view (has .buffer/.byteOffset/.byteLength) so
+        // consumers can build Int16Array views safely. A bare ArrayBuffer is
+        // ambiguous and breaks code that reads ArrayBuffer.buffer.
+        const bytes = new Uint8Array(int16.buffer);
+        pcmChunks.push(new Int16Array(bytes.buffer, bytes.byteOffset, bytes.byteLength / 2));
         if (onBuffer) {
-          onBuffer({ data: int16.buffer, sampleRate: audioContext.sampleRate, channels: 1, timestamp: e.timeStamp });
+          onBuffer({ data: bytes, sampleRate: audioContext.sampleRate, channels: 1, timestamp: e.timeStamp });
         }
+        // Silence the output so the mic input is never routed to the speakers.
+        const out = e.outputBuffer.getChannelData(0);
+        out.fill(0);
       };
       source.connect(processor);
+      // A ScriptProcessorNode only invokes onaudioprocess while the graph is
+      // actively rendering, which requires a connection to the destination.
       processor.connect(audioContext.destination);
+      if (audioContext.state === 'suspended') {
+        try { await audioContext.resume(); } catch {}
+      }
     },
     stop() {
       if (processor) { processor.disconnect(); processor = null; }
       if (source) { source.disconnect(); source = null; }
       if (audioContext) { audioContext.close(); audioContext = null; }
       if (micStream) { micStream.getTracks().forEach((t) => t.stop()); micStream = null; }
+      const chunks = pcmChunks;
+      pcmChunks = [];
+      if (!chunks.length) return null;
+      const total = chunks.reduce((n, c) => n + c.length, 0);
+      const merged = new Int16Array(total);
+      let offset = 0;
+      for (const c of chunks) { merged.set(c, offset); offset += c.length; }
+      return merged;
     },
   };
 }

@@ -31,8 +31,16 @@ export const env = {
   JWT_EXPIRY: getEnv('JWT_EXPIRY', '15m'),
   JWT_REFRESH_EXPIRY: getEnv('JWT_REFRESH_EXPIRY', '7d'),
   GROQ_API_KEY: getEnv('GROQ_API_KEY'),
-  GROQ_MODEL: getEnv('GROQ_MODEL', 'qwen/qwen3.6-27b'),
+  GROQ_MODEL: getEnv('GROQ_MODEL', 'openai/gpt-oss-120b'),
+  // Base URL of the Python acoustic pronunciation-scoring microservice
+  // (ai-service/, librosa MFCC + Parselmouth pitch/formant analysis).
+  // Defaults to the docker-compose internal hostname. If the service is
+  // unreachable or this is left empty, pronunciation scoring falls back to
+  // a degraded Groq-LLM text-guess heuristic.
+  AI_SERVICE_URL: getEnv('AI_SERVICE_URL', 'http://ai-service:8000'),
   XAI_API_KEY: getEnv('XAI_API_KEY'),
+  DEEPGRAM_API_KEY: getEnv('DEEPGRAM_API_KEY'),
+  DEEPGRAM_AGENT_URL: getEnv('DEEPGRAM_AGENT_URL', 'wss://agent.deepgram.com/v1/agent/converse'),
   OPENROUTER_API_KEY: getEnv('OPENROUTER_API_KEY'),
   SUPABASE_PUBLISHABLE_KEY: getEnv('SUPABASE_PUBLISHABLE_KEY'),
   DB_PATH: getEnv('DB_PATH', './sultiai.db'),
@@ -63,7 +71,14 @@ export function isTest(): boolean {
 export function validateEnv(): void {
   if (isProduction()) {
     if (env.JWT_SECRET === 'dev-secret-key-12345') {
-      console.warn('WARNING: Using default JWT_SECRET in production!');
+      throw new Error(
+        'Refusing to start: JWT_SECRET is still set to the default dev value in production. Set a real JWT_SECRET.'
+      );
+    }
+    if (env.JWT_REFRESH_SECRET === 'dev-refresh-secret-12345') {
+      throw new Error(
+        'Refusing to start: JWT_REFRESH_SECRET is still set to the default dev value in production. Set a real JWT_REFRESH_SECRET.'
+      );
     }
     if (!env.GROQ_API_KEY) {
       console.warn('WARNING: GROQ_API_KEY not set in production.');

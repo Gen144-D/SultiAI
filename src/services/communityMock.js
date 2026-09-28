@@ -6,6 +6,7 @@ const LS_KEYS = {
   likes: '@sulti/community/likes',
   saves: '@sulti/community/saves',
   notifications: '@sulti/community/notifications',
+  notificationReads: '@sulti/community/notification-reads',
 };
 
 export const POST_TYPES = {
@@ -112,6 +113,57 @@ export const MOCK_NOTIFICATIONS = [
   { id: 'n3', type: 'helpful', title: 'Your answer was marked helpful', body: '+15 XP for helping MariM.', time: '3h', read: false, icon: 'thumbs-up' },
   { id: 'n4', type: 'follow', title: 'LearnerX followed you', body: 'Start a conversation to keep your streak!', time: '1d', read: true, icon: 'person-add' },
 ];
+
+const NOTIFICATION_ICON_RULES = [
+  [/answer|question|repl/i, 'chatbubble-ellipses'],
+  [/challenge|trophy|streak|goal/i, 'trophy'],
+  [/helpful|like|\bxp\b|badge/i, 'thumbs-up'],
+  [/follow/i, 'person-add'],
+  [/welcome|resource|update|available/i, 'sparkles'],
+];
+
+function notificationIcon(title) {
+  for (const [pattern, icon] of NOTIFICATION_ICON_RULES) {
+    if (pattern.test(title || '')) return icon;
+  }
+  return 'notifications';
+}
+
+export function relativeTime(value) {
+  if (!value) return '';
+  const raw = String(value);
+  // SQLite's datetime('now') yields "YYYY-MM-DD HH:MM:SS" in UTC with no zone marker.
+  const iso = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(raw) ? `${raw.replace(' ', 'T')}Z` : raw;
+  const ts = Date.parse(iso);
+  if (Number.isNaN(ts)) return raw;
+
+  const diff = Date.now() - ts;
+  if (diff < 60e3) return 'just now';
+  const mins = Math.floor(diff / 60e3);
+  if (mins < 60) return `${mins}m`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d`;
+  return new Date(ts).toLocaleDateString();
+}
+
+/**
+ * The API returns snake_case (is_read / message / created_at) while the mock
+ * fixtures already carry UI fields (read / body / time). Normalize once here so
+ * every consumer of getNotifications() sees a single shape.
+ */
+export function normalizeNotification(raw) {
+  if (!raw || raw.id === undefined || raw.id === null) return null;
+  return {
+    id: raw.id,
+    title: raw.title || '',
+    body: raw.body || raw.message || '',
+    time: raw.time || relativeTime(raw.created_at),
+    read: typeof raw.read === 'boolean' ? raw.read : !!raw.is_read,
+    icon: raw.icon || notificationIcon(raw.title),
+  };
+}
 
 export const MOCK_PHRASES = [
   { id: 'ph1', native: 'Balik ra ta', english: "We'll be back / See you later", user: 'CebuGirl99', color: '#14B8A6', category: 'Farewell', bisaya_note: '"Balik" = return, "ra" = just, "ta" = we (inclusive).' },
@@ -230,9 +282,30 @@ export const communityMock = {
   async getNotifications() {
     try {
       const data = await api.getNotifications();
-      if (Array.isArray(data) && data.length) return data;
+      if (Array.isArray(data) && data.length) {
+        return data.map(normalizeNotification).filter(Boolean);
+      }
     } catch {}
-    return MOCK_NOTIFICATIONS;
+    const readMap = await read('notificationReads', {});
+    return MOCK_NOTIFICATIONS.map((n) => ({ ...n, read: !!readMap[n.id] }));
+  },
+
+  async markNotificationRead(id) {
+    try {
+      await api.markNotificationRead(id);
+    } catch {}
+    const readMap = await read('notificationReads', {});
+    await write('notificationReads', { ...readMap, [id]: true });
+  },
+
+  async markAllNotificationsRead() {
+    try {
+      await api.markAllNotificationsRead();
+    } catch {}
+    const readMap = await read('notificationReads', {});
+    const next = { ...readMap };
+    for (const n of MOCK_NOTIFICATIONS) next[n.id] = true;
+    await write('notificationReads', next);
   },
 
   async getLeaderboard(period = 'weekly') {

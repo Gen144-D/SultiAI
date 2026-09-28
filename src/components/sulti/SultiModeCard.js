@@ -7,12 +7,22 @@ import Animated, {
   withSequence, Easing,
 } from 'react-native-reanimated';
 import { spacing, borderRadius, shadows, typography } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
+import { readableOnGradient } from '../../theme/moduleColors';
+import { unlockWebAudio } from '../../utils/tts';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const isNarrow = SCREEN_WIDTH < 380;
 const isTablet = SCREEN_WIDTH > 768;
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
+// The card glow animates its opacity, so it needs a real alpha channel rather
+// than a pre-baked rgba string.
+const withAlpha = (hex, alpha) => {
+  const n = parseInt(String(hex).replace('#', ''), 16);
+  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
+};
 
 const wfStyles = StyleSheet.create({
   container: { flexDirection: 'row', gap: 3, alignItems: 'center' },
@@ -30,7 +40,8 @@ function WaveformBar({ index, color }) {
       ),
       -1, true
     );
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [index]);
 
   const style = useAnimatedStyle(() => ({
     width: 3,
@@ -43,7 +54,7 @@ function WaveformBar({ index, color }) {
   return <Animated.View style={[wfStyles.bar, style]} />;
 }
 
-function WaveformBars({ color = '#fff', count = 5 }) {
+function WaveformBars({ color, count = 5 }) {
   return (
     <View style={wfStyles.container}>
       {Array.from({ length: count }, (_, i) => (
@@ -66,6 +77,18 @@ export default function SultiModeCard({
 }) {
   const scale = useSharedValue(1);
   const glow = useSharedValue(0);
+  const { colors, onPrimary } = useTheme();
+
+  const isVoice = variant === 'voice';
+
+  // Chat = the theme's primary, voice = the theme's highlight pair, so the two
+  // modes stay distinguishable by hue rather than by a fixed teal that belongs
+  // to no theme. The glyphs sit on a saturated fill, so their ink is measured.
+  const [c0] =
+    gradient && gradient.length >= 2 ? gradient : isVoice ? [colors.primaryHover, colors.primaryDark] : [colors.primary, colors.primaryDark];
+  const cardColors = isVoice ? [c0, colors.accent] : [c0, c0];
+  const cardInk = readableOnGradient(cardColors);
+  const cardGlow = withAlpha(cardColors[0], 0.45);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -76,17 +99,15 @@ export default function SultiModeCard({
     elevation: 6 + Math.round(glow.value * 8),
   }));
 
-  const glowColor = variant === 'voice'
-    ? '0 0 18px rgba(0,168,150,0.45)'
-    : '0 0 18px rgba(0,168,150,0.45)';
+  const glowColor = `0 0 18px ${withAlpha(cardColors[0], 0.35 + glow.value * 0.1)}`;
 
   useEffect(() => {
     glow.value = withRepeat(withTiming(1, { duration: 2000, easing: Easing.inOut(Easing.sin) }), -1, true);
-  }, []);
+  }, [glow]);
 
   const onPressIn = () => {
     // eslint-disable-next-line react-hooks/immutability
-    scale.value = withSpring(0.96, { stiffness: 300, damping: 12 });
+    scale.value = withSpring(0.97, { stiffness: 300, damping: 12 });
   };
 
   const onPressOut = () => {
@@ -94,55 +115,78 @@ export default function SultiModeCard({
     scale.value = withSpring(1, { stiffness: 300, damping: 12 });
   };
 
-  const isVoice = variant === 'voice';
+  const handlePress = () => {
+    // Unlock the shared web AudioContext from within this gesture so voice
+    // mode audio is not blocked by autoplay policies.
+    if (Platform.OS === 'web') {
+      unlockWebAudio();
+    }
+    if (onPress) onPress();
+  };
 
   return (
     <AnimatedPressable
-      onPress={onPress}
+      onPress={handlePress}
       onPressIn={onPressIn}
       onPressOut={onPressOut}
       style={[styles.wrapper, glowStyle, style, { boxShadow: glowColor }]}
       accessibilityLabel={`${title} - ${subtitle}`}
       accessibilityRole="button"
+      accessibilityHint="Opens this practice mode"
     >
       <Animated.View style={[styles.card, animatedStyle]}>
         <LinearGradient
-          colors={gradient}
+          colors={cardColors}
           start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
           style={styles.gradient}
         >
-          <View style={styles.cardContent}>
-            <View style={[styles.badge, { backgroundColor: badgeColor || 'rgba(255,255,255,0.2)' }]}>
-              <Text style={styles.badgeText}>{badge}</Text>
-            </View>
-
+          {/* Top row: icon (left) + badge & chevron (right). Chevron signals
+              the whole card is one tap target, not just the old white pill. */}
+          <View style={styles.topRow}>
             <View style={[styles.iconContainer, isVoice && styles.iconContainerVoice]}>
-              <Ionicons name={icon} size={isNarrow ? 26 : 30} color="#fff" />
+              <Ionicons
+                name={icon}
+                size={isNarrow ? 20 : isTablet ? 24 : 22}
+                color={cardInk}
+              />
             </View>
 
-            <View style={styles.textContainer}>
-              <Text style={styles.title}>{title}</Text>
-              <Text style={styles.subtitle} numberOfLines={2}>{subtitle}</Text>
-            </View>
-
-            <View style={styles.ctaButton}>
-              <Text style={styles.ctaText}>{isVoice ? 'Start Voice' : 'Start Chat'}</Text>
-              <Ionicons name="arrow-forward" size={isNarrow ? 14 : 16} color="#fff" />
+            <View style={styles.topRight}>
+              {badge ? (
+                <View style={[styles.badge, { backgroundColor: badgeColor || withAlpha(cardInk, 0.22) }]}>
+                  <Text style={[styles.badgeText, { color: cardInk }]}>{badge}</Text>
+                </View>
+              ) : null}
+              <View
+            style={[
+              styles.chevronCircle,
+              isVoice && styles.chevronCircleVoice,
+              { backgroundColor: withAlpha(cardInk, 0.22) },
+            ]}
+          >
+                <Ionicons name="chevron-forward" size={16} color={cardInk} />
+              </View>
             </View>
           </View>
 
-          {isVoice && (
-            <View style={styles.waveformDecoration}>
-              <WaveformBars color="rgba(255,255,255,0.45)" />
-            </View>
-          )}
-
-          {!isVoice && (
-            <View style={styles.chatDeco}>
-              <Ionicons name="chatbubble-ellipses" size={64} color="rgba(255,255,255,0.07)" />
-            </View>
-          )}
+          <Text style={[styles.title, { color: cardInk }]} numberOfLines={1}>
+            {title}
+          </Text>
+          <Text style={[styles.subtitle, { color: withAlpha(cardInk, 0.85) }]} numberOfLines={2}>
+            {subtitle}
+          </Text>
         </LinearGradient>
+
+        {/* Decorative background motifs */}
+        {isVoice ? (
+          <View style={styles.waveformDecoration} pointerEvents="none">
+            <WaveformBars color={cardInk} count={7} />
+          </View>
+        ) : (
+          <View style={styles.chatDeco} pointerEvents="none">
+            <Ionicons name="chatbubble-ellipses" size={72} color={withAlpha(cardInk, 0.08)} />
+          </View>
+        )}
       </Animated.View>
     </AnimatedPressable>
   );
@@ -158,91 +202,83 @@ const styles = StyleSheet.create({
     ...shadows.lg,
   },
   gradient: {
-    padding: isTablet ? spacing.xxl : spacing.xl,
-    minHeight: isNarrow ? 200 : isTablet ? 240 : 220,
+    padding: spacing.md,
+    minHeight: isNarrow ? 130 : isTablet ? 160 : 150,
+    paddingTop: spacing.md + 4,
+  },
+  topRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  cardContent: {
-    zIndex: 2,
-  },
-  badge: {
-    alignSelf: 'flex-start',
-    borderRadius: borderRadius.full,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    marginBottom: spacing.md,
-  },
-  badgeText: {
-    color: '#fff',
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
+    marginBottom: spacing.sm + 2,
   },
   iconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.18)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: spacing.md,
     ...Platform.select({
-      ios: { ...shadows.md },
-      web: { boxShadow: '0 2px 8px rgba(0,0,0,0.06)' },
+      ios: { ...shadows.sm },
+      web: { boxShadow: '0 2px 8px rgba(0,0,0,0.05)' },
     }),
   },
   iconContainerVoice: {
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: 'rgba(255,255,255,0.14)',
   },
-  textContainer: {
-    marginBottom: spacing.lg,
+  topRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs + 2,
+  },
+  badge: {
+    borderRadius: borderRadius.full,
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+  },
+  badgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+  },
+  chevronCircle: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  chevronCircleVoice: {
+    backgroundColor: 'rgba(255,255,255,0.16)',
   },
   title: {
-    ...typography.h4,
-    color: '#fff',
-    fontSize: isNarrow ? 17 : isTablet ? 22 : 20,
+    fontSize: isNarrow ? 15 : isTablet ? 19 : 17,
     fontWeight: '800',
-    letterSpacing: -0.2,
-    lineHeight: isNarrow ? 22 : 25,
+    letterSpacing: -0.25,
+    lineHeight: isNarrow ? 20 : isTablet ? 24 : 22,
   },
   subtitle: {
     ...typography.caption,
     color: 'rgba(255,255,255,0.8)',
-    marginTop: spacing.xs,
-    lineHeight: 18,
-    fontSize: isNarrow ? 11 : isTablet ? 14 : 13,
+    marginTop: 3,
+    lineHeight: 17,
+    fontSize: isNarrow ? 11 : isTablet ? 13 : 12,
   },
-  ctaButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: borderRadius.full,
-    paddingHorizontal: isNarrow ? spacing.md : spacing.xl,
-    paddingVertical: spacing.sm + 4,
-    alignSelf: 'flex-start',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
-    ...shadows.sm,
-  },
-  ctaText: {
-    color: '#fff',
-    fontSize: isNarrow ? 11 : isTablet ? 14 : 13,
-    fontWeight: '700',
-    letterSpacing: 0.3,
-  },
+  // The whole card is the button; chevron (top-right) hints at that. A small
+  // caption sits in the corner opposite the icon as an explicit affordance.
   waveformDecoration: {
     position: 'absolute',
-    bottom: isNarrow ? spacing.md : spacing.xl,
-    right: isNarrow ? spacing.md : spacing.xl,
-    opacity: 0.5,
+    right: spacing.md + 2,
+    bottom: spacing.md - 2,
+    opacity: 0.55,
   },
   chatDeco: {
     position: 'absolute',
-    bottom: -10,
-    right: -10,
+    right: -6,
+    bottom: -14,
+    opacity: 0.8,
   },
 });

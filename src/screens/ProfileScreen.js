@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, TextInput, Animated, Modal, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useUser } from '../context/UserContext';
 import { useTheme } from '../context/ThemeContext';
@@ -17,8 +16,10 @@ import Button from '../components/Button';
 import ConfirmModal from '../components/ConfirmModal';
 import AuroraBackground from '../components/AuroraBackground';
 import { spacing, borderRadius, shadows } from '../theme';
+import { readableOnGradient } from '../theme/moduleColors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { USER_AVATARS } from '../constants/avatars';
+import { getUserAvatarUrl } from '../utils/avatar';
 
 const MOCK_CERTIFICATES = [
   { id: 'cert1', title: 'Beginner Bisaya', date: 'Mar 2026', icon: 'ribbon', color: '#10B981' },
@@ -33,15 +34,9 @@ const MOCK_DOWNLOADS = [
 const HISTORY_ICONS = ['chatbubbles', 'mic', 'school', 'book', 'record', 'headset'];
 const HISTORY_COLORS = ['#14B8A6', '#8B5CF6', '#3B82F6', '#F59E0B', '#EF4444', '#10B981'];
 
-const THEME_MODES = [
-  { value: 'system', label: 'Natural', icon: 'contrast' },
-  { value: 'light', label: 'Light', icon: 'sunny' },
-  { value: 'dark', label: 'Dark', icon: 'moon' },
-];
-
 export default function ProfileScreen({ navigation }) {
   const { user, signOut, refreshProfile } = useUser();
-  const { colors, isDark, themeMode, setThemeMode, reduceMotion, highContrast, largeText, toggleReduceMotion, toggleHighContrast, toggleLargeText, getAnimationDuration } = useTheme();
+  const { colors, isDark, onPrimary, themeName, setThemeName, themeList, reduceMotion, highContrast, largeText, toggleReduceMotion, toggleHighContrast, toggleLargeText, getAnimationDuration } = useTheme();
   const toast = useToast();
   const { xp, coins, hearts, streak, badges, getLevelInfo } = useGame();
   const { enqueueAction } = useOfflineSync();
@@ -49,6 +44,15 @@ export default function ProfileScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const num = (v) => Math.max(0, Number(v) || 0);
+
+  // Dark-mode-safe ink for the brand-gradient hero (white in light mode,
+  // near-black on the light-mint gradient in dark mode).
+// Header is a flat theme surface, so its ink is plain high-contrast text rather
+// than a gradient-derived colour.
+const heroInk = colors.text;
+const heroInkSoft = isDark ? 'rgba(248,250,252,0.72)' : 'rgba(15,23,42,0.78)';
+const heroInkFaint = isDark ? 'rgba(248,250,252,0.54)' : 'rgba(15,23,42,0.7)';
+const heroPillBg = isDark ? 'rgba(248,250,252,0.08)' : 'rgba(15,23,42,0.06)';
 
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -202,32 +206,32 @@ export default function ProfileScreen({ navigation }) {
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
-      <AuroraBackground>
+      <AuroraBackground atmosphere="profile">
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
-          <LinearGradient colors={[colors.primary, colors.secondary]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.header, { paddingTop: insets.top + 20 }]}>
+          <View style={[styles.header, { backgroundColor: colors.background, paddingTop: insets.top + 20 }]}>
             <TouchableOpacity onPress={() => setShowAvatarPicker(true)} activeOpacity={0.8}>
-              <UserAvatar avatarId={selectedAvatarId} name={user?.name} uri={user?.avatar?.image} size={80} />
+              <UserAvatar avatarId={selectedAvatarId} name={user?.name} uri={getUserAvatarUrl(user)} size={80} />
               <View style={styles.avatarEditBadge}>
-                <Ionicons name="camera" size={14} color="#fff" />
+                <Ionicons name="camera" size={14} color={heroInk} />
               </View>
             </TouchableOpacity>
-            <Text style={styles.name}>{user?.name || 'Learner'}</Text>
-            <Text style={styles.email}>{user?.email || ''}</Text>
-            {user?.username && <Text style={styles.username}>@{user.username.length > 12 ? user.username.slice(0, 12) + '...' : user.username}</Text>}
+            <Text style={[styles.name, { color: heroInk }]}>{user?.name || 'Learner'}</Text>
+            <Text style={[styles.email, { color: heroInkSoft }]}>{user?.email || ''}</Text>
+            {user?.username && <Text style={[styles.username, { color: heroInkFaint }]}>@{user.username.length > 12 ? user.username.slice(0, 12) + '...' : user.username}</Text>}
             <View style={styles.headerStats}>
-              <View style={[styles.headerStatPill, { backgroundColor: 'rgba(255,255,255,0.15)' }]}>
-                <Ionicons name="star" size={16} color="#FFD700" />
-                <Text style={styles.headerStatValue}>{num(xp)} XP</Text>
+              <View style={[styles.headerStatPill, { backgroundColor: heroPillBg }]}>
+                <Ionicons name="star" size={16} color={colors.warning} />
+                <Text style={[styles.headerStatValue, { color: heroInk }]}>{num(xp)} XP</Text>
                 <View style={[styles.levelBadge, { backgroundColor: levelInfo.color }]}>
-                  <Ionicons name={levelInfo.icon} size={10} color="#fff" />
-                  <Text style={styles.levelText}>Lv. {levelInfo.level}</Text>
+                  <Ionicons name={levelInfo.icon} size={10} color={readableOnGradient([levelInfo.color])} />
+                  <Text style={[styles.levelText, { color: readableOnGradient([levelInfo.color]) }]}>Lv. {levelInfo.level}</Text>
                 </View>
               </View>
-              <View style={[styles.headerStatPill, { backgroundColor: 'rgba(255,255,255,0.15)' }]}>
-                <Ionicons name="heart" size={16} color="#FF6B6B" />
-                <Text style={styles.headerStatValue}>{num(hearts)} Hearts</Text>
+              <View style={[styles.headerStatPill, { backgroundColor: heroPillBg }]}>
+                <Ionicons name="heart" size={16} color={colors.coral} />
+                <Text style={[styles.headerStatValue, { color: heroInk }]}>{num(hearts)} Hearts</Text>
               </View>
-              <View style={[styles.headerStatPill, { backgroundColor: 'rgba(255,255,255,0.15)' }]}>
+              <View style={[styles.headerStatPill, { backgroundColor: heroPillBg }]}>
                 <StreakFlame streak={streak} />
               </View>
             </View>
@@ -236,10 +240,10 @@ export default function ProfileScreen({ navigation }) {
                 {badges.slice(0, 5).map((b) => (
                   <Badge key={b.id} icon={b.icon} title="" variant="success" size="sm" />
                 ))}
-                {badges.length > 5 && <Text style={styles.moreBadges}>+{badges.length - 5}</Text>}
+                {badges.length > 5 && <Text style={[styles.moreBadges, { color: heroInkSoft }]}>+{badges.length - 5}</Text>}
               </View>
             )}
-          </LinearGradient>
+          </View>
 
           <View style={[styles.tabRow, { backgroundColor: colors.background }]}>
             {tabs.map((t) => (
@@ -248,13 +252,13 @@ export default function ProfileScreen({ navigation }) {
                 style={[
                   styles.tab,
                   activeTab === t.key
-                    ? [styles.tabActive, { backgroundColor: colors.primary }]
-                    : { backgroundColor: isDark ? colors.surface : '#F1F5F9' },
+                    ? [styles.tabActive, { backgroundColor: colors.primary, shadowColor: colors.primaryDark }]
+                    : { backgroundColor: colors.surface },
                 ]}
                 onPress={() => setActiveTab(t.key)}
               >
-                <Ionicons name={t.icon} size={18} color={activeTab === t.key ? '#fff' : colors.textSecondary} />
-                <Text style={[styles.tabText, { color: activeTab === t.key ? '#fff' : colors.textSecondary }]}>{t.label}</Text>
+                <Ionicons name={t.icon} size={18} color={activeTab === t.key ? onPrimary : colors.textSecondary} />
+                <Text style={[styles.tabText, { color: activeTab === t.key ? onPrimary : colors.textSecondary }]}>{t.label}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -279,11 +283,11 @@ export default function ProfileScreen({ navigation }) {
                   </View>
                   <View style={styles.statRow}>
                     <View style={styles.statItem}>
-                      <Text style={[styles.statNum, { color: '#8B5CF6' }]}>{num(coins)}</Text>
+                      <Text style={[styles.statNum, { color: colors.violet }]}>{num(coins)}</Text>
                       <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Coins</Text>
                     </View>
                     <View style={styles.statItem}>
-                      <Text style={[styles.statNum, { color: '#FF6B6B' }]}>{num(hearts)}</Text>
+                      <Text style={[styles.statNum, { color: colors.coral }]}>{num(hearts)}</Text>
                       <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Hearts</Text>
                     </View>
                     <View style={styles.statItem}>
@@ -515,32 +519,55 @@ export default function ProfileScreen({ navigation }) {
 
             {activeTab === 'settings' && (
               <>
-                <GlassCard>
+                <GlassCard style={{ backgroundColor: colors.neutralSurface }}>
                 <View style={styles.settingRow}>
                   <View style={styles.settingLeft}>
                     <View style={[styles.settingIcon, { backgroundColor: colors.accent + '20' }]}>
-                      <Ionicons name="contrast" size={18} color={colors.accent} />
+                      <Ionicons name="color-palette" size={18} color={colors.accent} />
                     </View>
                     <View>
                       <Text style={[styles.settingLabel, { color: colors.text }]}>Appearance</Text>
-                      <Text style={[styles.settingSubLabel, { color: colors.textLight }]}>Natural follows your device theme</Text>
+                      <Text style={[styles.settingSubLabel, { color: colors.textLight }]}>Choose a theme for the whole app</Text>
                     </View>
                   </View>
                 </View>
-                <View style={styles.themePicker}>
-                  {THEME_MODES.map((m) => {
-                    const active = themeMode === m.value;
+                <View style={styles.themeGrid}>
+                  {themeList.map((t) => {
+                    const active = themeName === t.id;
                     return (
                       <TouchableOpacity
-                        key={m.value}
-                        style={[styles.themeOption, active && { backgroundColor: colors.primary, borderColor: colors.primary }]}
-                        onPress={() => setThemeMode(m.value)}
-                        activeOpacity={0.8}
+                        key={t.id}
+                        style={[
+                          styles.themeCard,
+                          {
+                            backgroundColor: t.colors.surface,
+                            borderColor: active ? t.colors.primary : t.colors.border,
+                            borderWidth: active ? 2.5 : 1.5,
+                          },
+                          active && styles.themeCardActive,
+                        ]}
+                        onPress={() => setThemeName(t.id)}
+                        activeOpacity={0.85}
                         accessibilityRole="button"
+                        accessibilityLabel={`${t.label} theme${active ? ', selected' : ''}`}
                         accessibilityState={{ selected: active }}
                       >
-                        <Ionicons name={m.icon} size={16} color={active ? '#fff' : colors.textSecondary} />
-                        <Text style={[styles.themeOptionText, { color: active ? '#fff' : colors.textSecondary }]}>{m.label}</Text>
+                        <View style={[styles.themeSwatch, { backgroundColor: t.colors.background }]}>
+                          <View style={[styles.themeSwatchDot, { backgroundColor: t.colors.primary }]} />
+                          <View style={[styles.themeSwatchDot, { backgroundColor: t.colors.secondary }]} />
+                          <View style={[styles.themeSwatchCard, { backgroundColor: t.colors.surface, borderColor: t.colors.border }]} />
+                        </View>
+                        <Text style={[styles.themeCardLabel, { color: t.colors.text }]}>{t.label}</Text>
+                        <Text style={[styles.themeCardDesc, { color: t.colors.textSecondary }]} numberOfLines={2}>{t.description}</Text>
+                        {active && (
+                          <View style={[styles.themeCheck, { backgroundColor: t.colors.primary }]}>
+                            <Ionicons
+                              name="checkmark"
+                              size={13}
+                              color={readableOnGradient([t.colors.primary, t.colors.primaryDark])}
+                            />
+                          </View>
+                        )}
                       </TouchableOpacity>
                     );
                   })}
@@ -605,7 +632,7 @@ export default function ProfileScreen({ navigation }) {
 
                 <TouchableOpacity style={[styles.signOutBtn, { backgroundColor: colors.glassBg, borderColor: colors.error + '30' }]} onPress={() => setShowSignOut(true)}>
                   <Ionicons name="log-out-outline" size={20} color={colors.error} />
-                  <Text style={styles.signOutText}>Sign Out</Text>
+                  <Text style={[styles.signOutText, { color: colors.error }]}>Sign Out</Text>
                 </TouchableOpacity>
               </>
             )}
@@ -711,7 +738,7 @@ export default function ProfileScreen({ navigation }) {
                     <Image source={avatar.source} style={styles.avatarOptionImage} />
                     {isSelected && (
                       <View style={[styles.avatarCheck, { backgroundColor: colors.primary }]}>
-                        <Ionicons name="checkmark" size={16} color="#fff" />
+                        <Ionicons name="checkmark" size={16} color={onPrimary} />
                       </View>
                     )}
                   </TouchableOpacity>
@@ -728,20 +755,20 @@ export default function ProfileScreen({ navigation }) {
 const styles = StyleSheet.create({
   root: { flex: 1 },
   iconBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  header: { alignItems: 'center', paddingBottom: spacing.xxxl, paddingHorizontal: spacing.xl, borderBottomLeftRadius: 24, borderBottomRightRadius: 24 },
-  name: { fontSize: 24, fontWeight: '700', color: '#fff', marginTop: spacing.md, letterSpacing: 0.36 },
-  email: { fontSize: 14, color: 'rgba(255,255,255,0.7)', marginTop: 4, letterSpacing: -0.24 },
-  username: { fontSize: 13, color: 'rgba(255,255,255,0.6)', marginTop: 2, letterSpacing: -0.08 },
+  header: { alignItems: 'center', paddingBottom: spacing.xxxl, paddingHorizontal: spacing.xl },
+  name: { fontSize: 24, fontWeight: '700', marginTop: spacing.md, letterSpacing: 0.36 },
+  email: { fontSize: 14, marginTop: 4, letterSpacing: -0.24 },
+  username: { fontSize: 13, marginTop: 2, letterSpacing: -0.08 },
   headerStats: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.lg, justifyContent: 'center' },
   headerStatPill: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 8, borderRadius: borderRadius.full, gap: 6, backdropFilter: 'blur(8px)' },
   levelBadge: { position: 'absolute', top: -6, right: -6, flexDirection: 'row', alignItems: 'center', gap: 2, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8 },
-  levelText: { fontSize: 10, fontWeight: '800', color: '#fff' },
-  headerStatValue: { fontSize: 14, fontWeight: '700', color: '#fff' },
+  levelText: { fontSize: 10, fontWeight: '800' },
+  headerStatValue: { fontSize: 14, fontWeight: '700' },
   badgeRow: { flexDirection: 'row', gap: spacing.xs, marginTop: spacing.md, alignItems: 'center' },
-  moreBadges: { fontSize: 12, color: 'rgba(255,255,255,0.7)', fontWeight: '600' },
+  moreBadges: { fontSize: 12, fontWeight: '600' },
   tabRow: { flexDirection: 'row', paddingHorizontal: spacing.xl, gap: spacing.sm, marginTop: spacing.xxxl, marginBottom: spacing.lg },
   tab: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: spacing.sm, borderRadius: borderRadius.md, gap: spacing.xs, ...shadows.sm },
-  tabActive: { boxShadow: '0 2px 8px rgba(13,148,136,0.3)', elevation: 4 },
+  tabActive: { elevation: 4, shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: { width: 0, height: 2 } },
   tabText: { fontSize: 11, fontWeight: '600', letterSpacing: 0.07 },
   content: { padding: spacing.xl, paddingTop: spacing.sm },
   statsGrid: { marginBottom: spacing.md },
@@ -777,23 +804,44 @@ const styles = StyleSheet.create({
   settingLabel: { fontSize: 15, fontWeight: '500', letterSpacing: -0.24 },
   settingSubLabel: { fontSize: 12, marginTop: 2 },
   settingValue: { fontSize: 14, letterSpacing: -0.24 },
-  themePicker: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm },
-  themeOption: {
-    flex: 1,
+  themeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.sm },
+  themeCard: {
+    width: '47%',
+    borderRadius: borderRadius.lg,
+    borderWidth: 1.5,
+    padding: spacing.md,
+    position: 'relative',
+  },
+  themeCardActive: {
+    ...shadows.md,
+  },
+  themeSwatch: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    height: 36,
+    borderRadius: borderRadius.sm,
+    paddingHorizontal: spacing.sm,
     gap: spacing.xs,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.md,
-    borderWidth: 1.5,
-    borderColor: '#E2E8F0',
+    marginBottom: spacing.sm,
   },
-  themeOptionText: { fontSize: 13, fontWeight: '700' },
+  themeSwatchDot: { width: 12, height: 12, borderRadius: 6 },
+  themeSwatchCard: { flex: 1, height: 18, borderRadius: 4, borderWidth: 1, marginLeft: spacing.xs },
+  themeCardLabel: { fontSize: 13, fontWeight: '700', marginBottom: 2 },
+  themeCardDesc: { fontSize: 11, lineHeight: 15 },
+  themeCheck: {
+    position: 'absolute',
+    top: spacing.sm,
+    right: spacing.sm,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   toggle: { width: 44, height: 24, borderRadius: 12, backgroundColor: '#D1D5DB', padding: 2, justifyContent: 'center' },
   toggleCircle: { width: 20, height: 20, borderRadius: 10, backgroundColor: '#fff' },
   signOutBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: spacing.xxl, marginBottom: 40, paddingVertical: spacing.md, borderRadius: borderRadius.lg, borderWidth: 1.5, gap: spacing.sm },
-  signOutText: { color: '#EF4444', fontSize: 16, fontWeight: '600' },
+  signOutText: { fontSize: 16, fontWeight: '600' },
   sectionHeader: { fontSize: 18, fontWeight: '700', letterSpacing: -0.2, marginTop: spacing.lg, marginBottom: spacing.md },
   analyticsCard: { marginBottom: spacing.md },
   analyticsTitleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.lg },

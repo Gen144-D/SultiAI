@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { eq, desc, sql, and, like, count, or, inArray } from 'drizzle-orm';
 import { getDb } from '../db/connection';
-import * as schema from '../db/schema-sqlite';
+import * as schema from '../db/schema-pg';
 import { success, errors } from '../utils/apiResponse';
 import { invalidateSettingsCache } from '../utils/platformSettings';
 import logger from '../utils/logger';
@@ -123,7 +123,7 @@ export async function getOverview(_req: Request, res: Response): Promise<void> {
       const [row] = await (db as any)
         .select({ c: count() })
         .from(schema.learningProgress)
-        .where(eq(schema.learningProgress.createdAt, dayStr));
+        .where(sql`${schema.learningProgress.createdAt}::date = ${dayStr}::date`);
       lessonsTrend.push({ label: dayLabel, value: num(row?.c) });
     }
 

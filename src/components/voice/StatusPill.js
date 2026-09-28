@@ -2,18 +2,21 @@ import React, { useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, Platform } from 'react-native';
 import Animated, { FadeIn, FadeOut, ZoomIn } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
-import { voice } from './palette';
+import { useVoicePalette } from './palette';
 
-const STATUS_META = {
+const createStatusMeta = (voice) => ({
   idle: { label: 'Ready to help', dot: voice.textMuted },
-  listening: { label: 'Listening...', dot: '#FF6B6B' },
+  listening: { label: 'Listening...', dot: voice.danger },
   thinking: { label: 'Thinking...', dot: voice.accent },
   speaking: { label: 'Speaking...', dot: voice.primary },
   error: { label: 'Something went wrong', dot: voice.danger },
-};
+});
 
 export default function StatusPill({ state = 'idle' }) {
-  const meta = STATUS_META[state] || STATUS_META.idle;
+  const voice = useVoicePalette();
+  const statusMeta = useMemo(() => createStatusMeta(voice), [voice]);
+  const styles = useMemo(() => createStyles(voice), [voice]);
+  const meta = statusMeta[state] || statusMeta.idle;
 
   const key = `${state}`;
 
@@ -24,7 +27,7 @@ export default function StatusPill({ state = 'idle' }) {
       accessibilityLabel={`AI status: ${meta.label}`}
     >
       <LinearGradient
-        colors={['rgba(13,30,48,0.7)', 'rgba(13,30,48,0.45)']}
+        colors={[voice.glass, voice.glassHighlight]}
         start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
         style={styles.pill}
       >
@@ -46,7 +49,7 @@ export default function StatusPill({ state = 'idle' }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (voice) => StyleSheet.create({
   wrap: { alignItems: 'center' },
   pill: {
     flexDirection: 'row',

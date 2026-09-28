@@ -127,8 +127,23 @@ export const phraseRecommendations = mysqlTable('phrase_recommendations', {
 export const learningModules = mysqlTable('learning_modules', {
   moduleId: int('module_id').primaryKey().autoincrement(),
   moduleTitle: varchar('module_title', { length: 255 }).notNull(),
+  moduleKey: varchar('module_key', { length: 64 }),
+  sortOrder: int('sort_order').default(0),
   difficulty: varchar('difficulty', { length: 50 }).default('beginner'),
   language: varchar('language', { length: 50 }),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+export const lessonItems = mysqlTable('lesson_items', {
+  itemId: int('item_id').primaryKey().autoincrement(),
+  moduleId: int('module_id')
+    .notNull()
+    .references(() => learningModules.moduleId, { onDelete: 'cascade' }),
+  sectionTitle: varchar('section_title', { length: 120 }),
+  nativeText: text('native_text').notNull(),
+  englishText: text('english_text'),
+  note: text('note'),
+  sortOrder: int('sort_order').default(0),
   createdAt: timestamp('created_at').defaultNow(),
 });
 
@@ -142,6 +157,7 @@ export const learningProgress = mysqlTable('learning_progress', {
     .references(() => learningModules.moduleId, { onDelete: 'cascade' }),
   completionPercent: float('completion_percent').default(0),
   createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
 });
 
 export const communityPosts = mysqlTable('community_posts', {

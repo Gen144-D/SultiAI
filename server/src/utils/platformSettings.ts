@@ -1,6 +1,6 @@
 import { desc, eq } from 'drizzle-orm';
 import { getDb } from '../db/connection';
-import * as schema from '../db/schema-sqlite';
+import * as schema from '../db/schema-pg';
 
 export interface PlatformSettings {
   maintenanceMode: boolean;

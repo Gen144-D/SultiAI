@@ -38,7 +38,10 @@ const slides = [
 ];
 
 export default function OnboardingScreen({ navigation }) {
-  const { colors } = useTheme();
+  const { colors, isDark, getContrastColor } = useTheme();
+  const onGradient = getContrastColor('#FFFFFF', '#042F2B');
+  const onGradientSoft = isDark ? 'rgba(4,47,43,0.68)' : 'rgba(255,255,255,0.8)';
+  const onGradientFaint = isDark ? 'rgba(4,47,43,0.45)' : 'rgba(255,255,255,0.3)';
   const insets = useSafeAreaInsets();
   const [currentIndex, setCurrentIndex] = useState(0);
   const flatRef = useRef(null);
@@ -69,8 +72,8 @@ export default function OnboardingScreen({ navigation }) {
       <View style={[styles.iconWrapper, { backgroundColor: slideColor(item.color) + '20' }]}>
         <Ionicons name={item.icon} size={80} color={slideColor(item.color)} />
       </View>
-      <Text style={[styles.title, { color: colors.textOnGradient }]}>{item.title}</Text>
-      <Text style={styles.description}>{item.description}</Text>
+      <Text style={[styles.title, { color: onGradient }]}>{item.title}</Text>
+      <Text style={[styles.description, { color: onGradientSoft }]}>{item.description}</Text>
     </View>
   );
 
@@ -78,7 +81,7 @@ export default function OnboardingScreen({ navigation }) {
     <LinearGradient colors={[colors.primary, colors.primaryDark]} style={styles.container}>
       <View style={[styles.skipRow, { paddingTop: insets.top + 16 }]}>
         {currentIndex < slides.length - 1 && (
-          <Button title="Skip" variant="ghost" textStyle={{ color: 'rgba(255,255,255,0.8)' }} onPress={handleSkip} />
+          <Button title="Skip" variant="ghost" textStyle={{ color: onGradientSoft }} onPress={handleSkip} />
         )}
       </View>
 
@@ -102,7 +105,7 @@ export default function OnboardingScreen({ navigation }) {
                 key={i}
                 accessible={false}
                 accessibilityState={{ selected: isActive }}
-                style={[styles.dot, { backgroundColor: isActive ? colors.textOnGradient : 'rgba(255,255,255,0.3)' }]}
+                style={[styles.dot, { backgroundColor: isActive ? onGradient : onGradientFaint }]}
               />
             );
           })}
@@ -120,8 +123,8 @@ const styles = StyleSheet.create({
   skipRow: { alignItems: 'flex-end', paddingHorizontal: spacing.xl },
   slide: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: spacing.xxxl },
   iconWrapper: { width: 160, height: 160, borderRadius: 80, justifyContent: 'center', alignItems: 'center', marginBottom: spacing.xxxl },
-  title: { fontSize: 28, fontWeight: '800', color: '#fff', textAlign: 'center', marginBottom: spacing.md },
-  description: { fontSize: 16, lineHeight: 24, color: 'rgba(255,255,255,0.8)', textAlign: 'center', paddingHorizontal: spacing.xl },
+  title: { fontSize: 28, fontWeight: '800', textAlign: 'center', marginBottom: spacing.md },
+  description: { fontSize: 16, lineHeight: 24, textAlign: 'center', paddingHorizontal: spacing.xl },
   footer: { paddingHorizontal: spacing.xxl, alignItems: 'center' },
   dots: { flexDirection: 'row', marginBottom: spacing.xl, gap: spacing.sm },
   dot: { width: 8, height: 8, borderRadius: 4 },

@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Animated, { FadeInUp, FadeOutUp } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
-import { voice } from './palette';
+import { useVoicePalette } from './palette';
 
 export default function XpToast({ visible, amount = 15, streak = 0, offset = 60 }) {
+  const voice = useVoicePalette();
+  const styles = useMemo(() => createStyles(voice), [voice]);
   if (!visible) return null;
 
   return (
@@ -27,16 +29,16 @@ export default function XpToast({ visible, amount = 15, streak = 0, offset = 60 
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (voice) => StyleSheet.create({
   wrap: { position: 'absolute', top: 0, left: 0, right: 0, alignItems: 'center', zIndex: 40 },
   pill: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     paddingHorizontal: 16, paddingVertical: 8, borderRadius: 999,
-    boxShadow: '0 4px 12px rgba(0,212,189,0.5)',
+    boxShadow: `0 4px 12px ${voice.primary}80`,
     elevation: 8,
   },
-  xp: { color: '#04111f', fontSize: 14, fontWeight: '800' },
+  xp: { color: voice.onGradientText, fontSize: 14, fontWeight: '800' },
   streak: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.35)', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2, marginLeft: 4 },
   flame: { fontSize: 12, marginRight: 3 },
-  streakText: { color: '#04111f', fontSize: 12, fontWeight: '800' },
+  streakText: { color: voice.onGradientText, fontSize: 12, fontWeight: '800' },
 });

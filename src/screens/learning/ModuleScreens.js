@@ -1,28 +1,42 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../context/ThemeContext';
+import { getModuleGradient, readableOnGradient } from '../../theme/moduleColors';
 import { useGame } from '../../context/GameContext';
 import Header from '../../components/Header';
 import GlassCard from '../../components/GlassCard';
+import useModuleProgress, { useModuleLessons } from '../../hooks/useModuleProgress';
 import { spacing, borderRadius, shadows } from '../../theme';
 import { XP_VALUES } from '../../constants';
 
-function PhraseRow({ native, english, note, colors }) {
-  const [revealed, setRevealed] = useState(false);
+function PhraseRow({ native, english, note, colors, revealed, flipped, onToggle }) {
+  const primaryText = flipped ? english : native;
+  const primaryStyle = flipped ? styles.phraseEnglish : styles.phraseNative;
+  const primaryColor = flipped ? colors.primary : colors.text;
+
   return (
     <TouchableOpacity
       style={[styles.phraseRow, { backgroundColor: colors.surface, borderColor: colors.border }]}
-      onPress={() => setRevealed((r) => !r)}
+      onPress={onToggle}
       activeOpacity={0.85}
+      accessibilityRole="button"
+      accessibilityLabel={revealed ? `${native}, ${english}` : `${native}, meaning hidden`}
     >
       <View style={styles.phraseMain}>
-        <Text style={[styles.phraseNative, { color: colors.text }]}>{native}</Text>
+        <Text style={[primaryStyle, { color: primaryColor }]}>{primaryText}</Text>
         {revealed ? (
-          <Text style={[styles.phraseEnglish, { color: colors.primary }]}>{english}</Text>
+          <Text
+            style={[
+              flipped ? styles.phraseNative : styles.phraseEnglish,
+              { color: flipped ? colors.text : colors.primary },
+            ]}
+          >
+            {flipped ? native : english}
+          </Text>
         ) : (
           <Text style={[styles.phraseHint, { color: colors.textLight }]}>Tap to reveal meaning</Text>
         )}
@@ -41,18 +55,116 @@ function SectionTitle({ title, colors }) {
   );
 }
 
+function ProgressBanner({ percent, total, completed, colors, error }) {
+  if (!total) return null;
+  const done = completed >= total;
+  return (
+    <View style={styles.progressBanner}>
+      <View style={styles.progressBannerHeader}>
+        <Ionicons
+          name={done ? 'checkmark-circle' : 'reader'}
+          size={16}
+          color={done ? colors.success : colors.primary}
+        />
+        <Text style={[styles.progressBannerText, { color: colors.textSecondary }]}>
+          {completed} of {total} items reviewed
+        </Text>
+        <Text style={[styles.progressBannerPct, { color: done ? colors.success : colors.primary }]}>
+          {percent}%
+        </Text>
+      </View>
+      <View style={[styles.progressTrack, { backgroundColor: colors.surfaceSecondary }]}>
+        <View
+          style={[
+            styles.progressFill,
+            { width: `${percent}%`, backgroundColor: done ? colors.success : colors.primary },
+          ]}
+        />
+      </View>
+      {error ? (
+        <Text style={[styles.progressError, { color: colors.error }]}>
+          Progress will sync when you reconnect.
+        </Text>
+      ) : null}
+    </View>
+  );
+}
+
 function makeModuleScreen(config) {
-  const { route, title, subtitle, icon, gradient, description, heroAction } = config;
+  const { route, title, subtitle, icon, gradientKey, description, heroAction, moduleKey } = config;
 
   return function ModuleScreen({ navigation }) {
-    const { colors } = useTheme();
+    const { colors, themeName } = useTheme();
+    const gradient = getModuleGradient(themeName, gradientKey);
+    const heroInk = readableOnGradient(gradient);
     const { addXp } = useGame();
+    const { sections, total, savedPercent, loading, error: contentError } = useModuleLessons(moduleKey);
+    const [revealed, setRevealed] = useState({});
+    const [flipped, setFlipped] = useState(false);
+    const [practiceLogged, setPracticeLogged] = useState(false);
+    const hydratedRef = useRef(false);
+
+    const completed = useMemo(
+      () => Object.values(revealed).filter(Boolean).length,
+      [revealed]
+    );
+
+    const { percent: localPercent, error: progressError } = useModuleProgress(moduleKey, {
+      total,
+      completed,
+      initialPercent: savedPercent,
+    });
+
+    // Restore the previously reached completion so reopening a module shows
+    // the stored progress instead of an empty list.
+    useEffect(() => {
+      if (hydratedRef.current || loading || !total || !savedPercent) return;
+      hydratedRef.current = true;
+      const target = Math.round((savedPercent / 100) * total);
+      if (!target) return;
+      setRevealed((prev) => {
+        const next = { ...prev };
+        let filled = 0;
+        for (const section of sections) {
+          for (const item of section.items) {
+            if (filled >= target) break;
+            next[item.itemId] = true;
+            filled += 1;
+          }
+        }
+        return next;
+      });
+    }, [loading, total, savedPercent, sections]);
+
+    const percent = Math.max(localPercent, savedPercent || 0);
+
+    const toggleItem = useCallback((itemId) => {
+      setRevealed((prev) => ({ ...prev, [itemId]: !prev[itemId] }));
+    }, []);
+
+    const revealAll = useCallback(() => {
+      setRevealed((prev) => {
+        const next = { ...prev };
+        for (const section of sections) {
+          for (const item of section.items) next[item.itemId] = true;
+        }
+        return next;
+      });
+    }, [sections]);
 
     const handlePractice = () => {
       if (heroAction) {
+        if (!practiceLogged) setPracticeLogged(true);
         addXp(XP_VALUES.ROLEPLAY_START, route);
         if (heroAction.route) {
-          navigation.navigate(heroAction.route, heroAction.params);
+          // Tab destinations live inside the nested "Main" navigator, so they
+          // need { screen } rather than a bare route name. These previously
+          // targeted an unregistered "Tutor" route and silently did nothing.
+          if (heroAction.tab) {
+            navigation.navigate('Main', { screen: heroAction.route, params: heroAction.params });
+          } else {
+            navigation.navigate(heroAction.route, heroAction.params);
+          }
         }
       }
     };
@@ -68,29 +180,97 @@ function makeModuleScreen(config) {
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
           <LinearGradient colors={gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.heroCard}>
-            <View style={[styles.heroIcon, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
-              <Ionicons name={icon} size={26} color="#fff" />
+            <View style={[styles.heroIcon, { backgroundColor: `${heroInk}33` }]}>
+              <Ionicons name={icon} size={26} color={heroInk} />
             </View>
-            <Text style={styles.heroTitle}>{title}</Text>
-            <Text style={styles.heroDesc}>{description}</Text>
+            <Text style={[styles.heroTitle, { color: heroInk }]}>{title}</Text>
+            <Text style={[styles.heroDesc, { color: heroInk, opacity: 0.85 }]}>{description}</Text>
             {heroAction && (
-              <TouchableOpacity style={styles.heroBtn} onPress={handlePractice} activeOpacity={0.85}>
+              <TouchableOpacity style={[styles.heroBtn, { backgroundColor: heroInk }]} onPress={handlePractice} activeOpacity={0.85}>
                 <Ionicons name="sparkles" size={16} color={gradient[0]} />
-                <Text style={styles.heroBtnText}>{heroAction.label}</Text>
+                <Text style={[styles.heroBtnText, { color: readableOnGradient([gradient[0]]) }]}>{heroAction.label}</Text>
               </TouchableOpacity>
             )}
           </LinearGradient>
 
-          {config.sections.map((section, idx) => (
-            <View key={idx} style={styles.section}>
-              <SectionTitle title={section.title} colors={colors} />
-              {section.items.map((item, i) => (
-                <PhraseRow key={i} native={item.native} english={item.english} note={item.note} colors={colors} />
-              ))}
+          {loading ? (
+            <View style={styles.section}>
+              <SectionTitle title="Loading content…" colors={colors} />
             </View>
-          ))}
+          ) : contentError ? (
+            <View style={styles.section}>
+              <GlassCard variant="elevated" padding="lg" style={styles.errorCard}>
+                <Ionicons name="cloud-offline-outline" size={24} color={colors.error} />
+                <Text style={[styles.errorTitle, { color: colors.text }]}>Content unavailable</Text>
+                <Text style={[styles.errorBody, { color: colors.textSecondary }]}>
+                  {contentError}
+                </Text>
+                <TouchableOpacity
+                  style={[styles.revealBtn, { borderColor: colors.primary }]}
+                  onPress={() => navigation.goBack()}
+                  activeOpacity={0.85}
+                >
+                  <Text style={[styles.revealBtnText, { color: colors.primary }]}>Go back</Text>
+                </TouchableOpacity>
+              </GlassCard>
+            </View>
+          ) : (
+            <>
+              <ProgressBanner
+                percent={percent}
+                total={total}
+                completed={completed}
+                colors={colors}
+                error={progressError}
+              />
 
-          {config.renderExtra ? config.renderExtra({ colors, addXp, navigation }) : null}
+              {total > 0 && completed < total ? (
+                <TouchableOpacity
+                  style={[styles.revealAllBtn, { borderColor: colors.border, backgroundColor: colors.surface }]}
+                  onPress={revealAll}
+                  activeOpacity={0.8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Reveal all items"
+                >
+                  <Ionicons name="eye-outline" size={15} color={colors.textSecondary} />
+                  <Text style={[styles.revealAllText, { color: colors.textSecondary }]}>
+                    Reveal all
+                  </Text>
+                </TouchableOpacity>
+              ) : null}
+
+              {sections.map((section) => (
+                <View key={section.title} style={styles.section}>
+                  <SectionTitle title={section.title} colors={colors} />
+                  {section.items.map((item) => (
+                    <PhraseRow
+                      key={item.itemId}
+                      native={item.native}
+                      english={item.english}
+                      note={item.note}
+                      colors={colors}
+                      revealed={Boolean(revealed[item.itemId])}
+                      flipped={flipped}
+                      onToggle={() => toggleItem(item.itemId)}
+                    />
+                  ))}
+                </View>
+              ))}
+            </>
+          )}
+
+          {config.renderExtra
+            ? config.renderExtra({
+                colors,
+                themeName,
+                addXp,
+                navigation,
+                sections,
+                total,
+                flipped,
+                onToggleFlip: () => setFlipped((f) => !f),
+              })
+            : null}
           <View style={styles.bottomSpacer} />
         </ScrollView>
       </View>
@@ -98,9 +278,21 @@ function makeModuleScreen(config) {
   };
 }
 
-const WRITING_EXTRA = ({ colors, addXp }) => {
+const WRITING_EXTRA = ({ colors, addXp, sections = [] }) => {
   const [text, setText] = useState('');
   const [submitted, setSubmitted] = useState(false);
+
+  // Vocabulary comes from the module's own seeded lesson items.
+  const words = useMemo(
+    () =>
+      sections
+        .flatMap((section) => section.items)
+        .map((item) => item.native)
+        .filter(Boolean),
+    [sections]
+  );
+
+  if (!words.length) return null;
 
   const handleSubmit = () => {
     if (submitted || text.trim().length < 2) return;
@@ -112,9 +304,11 @@ const WRITING_EXTRA = ({ colors, addXp }) => {
     <View style={styles.section}>
       <SectionTitle title="Today's Writing Prompt" colors={colors} />
       <GlassCard variant="elevated" style={styles.promptCard} padding="lg">
-        <Text style={[styles.promptText, { color: colors.text }]}>Describe your morning in Bisaya.</Text>
+        <Text style={[styles.promptText, { color: colors.text }]}>
+          Describe your morning in Bisaya.
+        </Text>
         <Text style={[styles.promptHint, { color: colors.textSecondary }]}>
-          Use the words: matulog (sleep), mumata (wake up), pamahaw (breakfast).
+          {`Use the words: ${words.join(', ')}.`}
         </Text>
         <TextInput
           style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
@@ -137,41 +331,64 @@ const WRITING_EXTRA = ({ colors, addXp }) => {
   );
 };
 
-const SWITCH_EXTRA = ({ colors }) => {
-  const [flipped, setFlipped] = useState(false);
+const SWITCH_EXTRA = ({ colors, themeName, flipped, onToggleFlip }) => {
+  if (typeof onToggleFlip !== 'function') return null;
+  const activeGradient = getModuleGradient(themeName, 'sulti_switch');
+  const activeBg = activeGradient[0];
+  const activeInk = readableOnGradient(activeGradient);
   return (
     <View style={styles.section}>
       <SectionTitle title="Bisaya ⇄ English Switch" colors={colors} />
       <View style={[styles.switchBar, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <Text style={[styles.switchLabel, { color: colors.textSecondary }]}>Show as</Text>
         <TouchableOpacity
-          style={[styles.switchChip, flipped ? styles.switchChipOff : styles.switchChipOn]}
-          onPress={() => setFlipped(false)}
+          style={[styles.switchChip, flipped ? { backgroundColor: colors.surfaceSecondary } : { backgroundColor: activeBg }]}
+          onPress={() => flipped && onToggleFlip()}
+          accessibilityRole="button"
+          accessibilityLabel="Show Bisaya first"
         >
-          <Text style={[styles.switchChipText, { color: flipped ? colors.textSecondary : '#fff' }]}>Bisaya</Text>
+          <Text style={[styles.switchChipText, { color: flipped ? colors.textSecondary : activeInk }]}>Bisaya</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.switchChip, flipped ? styles.switchChipOn : styles.switchChipOff]}
-          onPress={() => setFlipped(true)}
+          style={[styles.switchChip, flipped ? { backgroundColor: activeBg } : { backgroundColor: colors.surfaceSecondary }]}
+          onPress={() => !flipped && onToggleFlip()}
+          accessibilityRole="button"
+          accessibilityLabel="Show English first"
         >
-          <Text style={[styles.switchChipText, { color: flipped ? '#fff' : colors.textSecondary }]}>English</Text>
+          <Text style={[styles.switchChipText, { color: flipped ? activeInk : colors.textSecondary }]}>English</Text>
         </TouchableOpacity>
       </View>
     </View>
   );
 };
 
-const QUIZ_EXTRA = ({ colors, addXp }) => {
+const QUIZ_EXTRA = ({ colors, addXp, sections = [] }) => {
+  const questions = useMemo(
+    () =>
+      sections
+        .flatMap((section) => section.items)
+        .filter((item) => item.native && item.english)
+        .map((item) => ({ q: `How do you say "${item.english}"?`, a: item.native })),
+    [sections]
+  );
+
+  if (!questions.length) return null;
+
+  // Keyed on the question set so the quiz resets when content changes.
+  return (
+    <QuizCard
+      key={questions.length}
+      questions={questions}
+      colors={colors}
+      addXp={addXp}
+    />
+  );
+};
+
+const QuizCard = ({ questions, colors, addXp }) => {
   const [active, setActive] = useState(0);
   const [revealed, setRevealed] = useState(false);
   const [done, setDone] = useState(false);
-
-  const questions = [
-    { q: 'How do you say "Thank you"?', a: 'Salamat' },
-    { q: 'How do you say "Please"?', a: 'Palihog' },
-    { q: 'How do you say "How are you?"', a: 'Kumusta ka?' },
-    { q: 'How do you say "I love you"?', a: 'Gihigugma ko ikaw' },
-  ];
 
   const current = questions[active];
 
@@ -235,20 +452,10 @@ export const ScenarioPracticeScreen = makeModuleScreen({
   title: 'Scenario Practice',
   subtitle: 'Roleplay real-life conversations',
   icon: 'chatbubbles',
-  gradient: ['#3B82F6', '#2563EB'],
+  gradientKey: 'scenario_practice',
   description: 'Step into realistic Bisaya conversations. Practice bargaining, riding, ordering, and more with SULTI.',
-  heroAction: { label: 'Start Roleplay', route: 'Tutor', params: { situation: 'Roleplay conversation', label: 'Scenario Practice' } },
-  sections: [
-    {
-      title: 'Scenarios',
-      items: [
-        { native: 'Palengke', english: 'At the Market', note: 'Bargaining & buying food' },
-        { native: 'Jeepney', english: 'Riding a Jeepney', note: 'Routes & paying the driver' },
-        { native: 'Karenderia', english: 'Eating Out', note: 'Ordering at a carenderia' },
-        { native: 'Ospital', english: 'At the Hospital', note: 'Emergency & checkup phrases' },
-      ],
-    },
-  ],
+  heroAction: { label: 'Start Roleplay', route: 'SULTI', tab: true, params: { situation: 'Roleplay conversation', label: 'Scenario Practice' } },
+  moduleKey: 'scenario_practice',
 });
 
 export const GrammarScreen = makeModuleScreen({
@@ -256,20 +463,10 @@ export const GrammarScreen = makeModuleScreen({
   title: 'Grammar',
   subtitle: 'Cebuano sentence structure',
   icon: 'school',
-  gradient: ['#8B5CF6', '#7C3AED'],
+  gradientKey: 'grammar',
   description: 'Learn the core building blocks of Cebuano grammar: particles, verb focus, and word order.',
-  heroAction: { label: 'Practice Grammar', route: 'Tutor', params: { situation: 'Grammar practice', label: 'Grammar' } },
-  sections: [
-    {
-      title: 'Core Rules',
-      items: [
-        { native: 'Ang + noun', english: 'The subject marker', note: 'Ang akong amigo = my friend' },
-        { native: 'Si + name', english: 'Proper noun marker', note: 'Si Maria muadto = Maria will go' },
-        { native: 'nag-/ni-', english: 'Verb focus prefixes', note: 'nagluto = cooking' },
-        { native: 'Palihog', english: 'Please (softener)', note: 'Palihog ug hatag = please give' },
-      ],
-    },
-  ],
+  heroAction: { label: 'Practice Grammar', route: 'SULTI', tab: true, params: { situation: 'Grammar practice', label: 'Grammar' } },
+  moduleKey: 'grammar',
 });
 
 export const ListeningScreen = makeModuleScreen({
@@ -277,20 +474,10 @@ export const ListeningScreen = makeModuleScreen({
   title: 'Listening',
   subtitle: 'Train your ear for Bisaya',
   icon: 'ear',
-  gradient: ['#F59E0B', '#F97316'],
+  gradientKey: 'listening',
   description: 'Hear everyday Bisaya phrases at natural speed. Play them back and repeat out loud.',
   heroAction: { label: 'Start Listening', route: 'VoiceMode', params: { situation: 'Listening practice', label: 'Listening' } },
-  sections: [
-    {
-      title: 'Daily Expressions',
-      items: [
-        { native: 'Kumusta ka?', english: 'How are you?', note: 'Casual greeting' },
-        { native: 'Asa ka paingon?', english: 'Where are you going?', note: 'Small talk' },
-        { native: 'Moadto ko sa merkado', english: 'I am going to the market', note: 'Future tense' },
-        { native: 'Nindot ang panahon karon', english: 'The weather is nice today', note: 'Weather small talk' },
-      ],
-    },
-  ],
+  moduleKey: 'listening',
 });
 
 export const WritingScreen = makeModuleScreen({
@@ -298,20 +485,10 @@ export const WritingScreen = makeModuleScreen({
   title: 'Writing',
   subtitle: 'Compose in Cebuano',
   icon: 'create',
-  gradient: ['#EC4899', '#DB2777'],
+  gradientKey: 'writing',
   description: 'Build writing confidence with guided prompts. SULTI checks your sentences and offers corrections.',
-  heroAction: { label: 'Writing Coach', route: 'Tutor', params: { situation: 'Writing help', label: 'Writing Coach' } },
-  sections: [
-    {
-      title: 'Vocabulary Bank',
-      items: [
-        { native: 'matulog', english: 'to sleep', note: 'verb' },
-        { native: 'mumata', english: 'to wake up', note: 'verb' },
-        { native: 'pamahaw', english: 'breakfast', note: 'noun' },
-        { native: 'trabaho', english: 'work', note: 'noun' },
-      ],
-    },
-  ],
+  heroAction: { label: 'Writing Coach', route: 'SULTI', tab: true, params: { situation: 'Writing help', label: 'Writing Coach' } },
+  moduleKey: 'writing',
   renderExtra: WRITING_EXTRA,
 });
 
@@ -320,20 +497,10 @@ export const ReadingScreen = makeModuleScreen({
   title: 'Reading',
   subtitle: 'Read & understand Bisaya',
   icon: 'book',
-  gradient: ['#14B8A6', '#0D9488'],
+  gradientKey: 'reading',
   description: 'Read short Bisaya passages with full English translations and key vocabulary.',
-  heroAction: { label: 'Reading Session', route: 'Tutor', params: { situation: 'Reading comprehension', label: 'Reading' } },
-  sections: [
-    {
-      title: 'Today\u2019s Passage',
-      items: [
-        { native: 'Ako si Juan.', english: 'I am Juan.', note: 'Introduction' },
-        { native: 'Taga-Cebu ko.', english: 'I am from Cebu.', note: 'Origin' },
-        { native: 'Nagtuon ko og Bisaya.', english: 'I am studying Bisaya.', note: 'Study' },
-        { native: 'Gusto ko makakat-on og dugang.', english: 'I want to learn more.', note: 'Desire' },
-      ],
-    },
-  ],
+  heroAction: { label: 'Reading Session', route: 'SULTI', tab: true, params: { situation: 'Reading comprehension', label: 'Reading' } },
+  moduleKey: 'reading',
 });
 
 export const SultiSwitchScreen = makeModuleScreen({
@@ -341,20 +508,10 @@ export const SultiSwitchScreen = makeModuleScreen({
   title: 'Sulti Switch',
   subtitle: 'Bilingual thinking mode',
   icon: 'swap-horizontal',
-  gradient: ['#06B6D4', '#0891B2'],
+  gradientKey: 'sulti_switch',
   description: 'Toggle between Bisaya and English to train instant translation recall.',
-  heroAction: { label: 'Switch Mode', route: 'Tutor', params: { situation: 'Translation practice', label: 'Sulti Switch' } },
-  sections: [
-    {
-      title: 'Practice Pairs',
-      items: [
-        { native: 'Unsa ni?', english: 'What is this?', note: 'Question' },
-        { native: 'Gusto ko ani.', english: 'I want this.', note: 'Preference' },
-        { native: 'Pila ni?', english: 'How much is this?', note: 'Shopping' },
-        { native: 'Asa ang banyo?', english: 'Where is the bathroom?', note: 'Directions' },
-      ],
-    },
-  ],
+  heroAction: { label: 'Switch Mode', route: 'SULTI', tab: true, params: { situation: 'Translation practice', label: 'Sulti Switch' } },
+  moduleKey: 'sulti_switch',
   renderExtra: SWITCH_EXTRA,
 });
 
@@ -363,20 +520,10 @@ export const CultureNotesScreen = makeModuleScreen({
   title: 'Culture Notes',
   subtitle: 'Understand Cebuano life',
   icon: 'compass',
-  gradient: ['#10B981', '#059669'],
+  gradientKey: 'culture_notes',
   description: 'Cultural context behind the language — from festivals to everyday etiquette.',
-  heroAction: { label: 'Ask About Culture', route: 'Tutor', params: { situation: 'Culture discussion', label: 'Culture Notes' } },
-  sections: [
-    {
-      title: 'Did You Know?',
-      items: [
-        { native: 'Sinulog Festival', english: 'Cebu\u2019s grandest celebration', note: 'Every January in Cebu City' },
-        { native: 'Bahala Na', english: 'Come what may', note: 'A famous Filipino mindset' },
-        { native: 'Po & Opo', english: 'Respect markers', note: 'Shown to elders and authority' },
-        { native: 'Kamayan', english: 'Eating with hands', note: 'Common in casual meals' },
-      ],
-    },
-  ],
+  heroAction: { label: 'Ask About Culture', route: 'SULTI', tab: true, params: { situation: 'Culture discussion', label: 'Culture Notes' } },
+  moduleKey: 'culture_notes',
 });
 
 export const ReviewCenterScreen = makeModuleScreen({
@@ -384,20 +531,10 @@ export const ReviewCenterScreen = makeModuleScreen({
   title: 'Review Center',
   subtitle: 'Reinforce what you learned',
   icon: 'refresh',
-  gradient: ['#F43F5E', '#E11D48'],
+  gradientKey: 'review_center',
   description: 'Quick quizzes that turn learned phrases into lasting memory. Earn XP for every correct recall.',
-  heroAction: { label: 'Review Session', route: 'Tutor', params: { situation: 'Review session', label: 'Review Center' } },
-  sections: [
-    {
-      title: 'Key Phrases',
-      items: [
-        { native: 'Salamat', english: 'Thank you', note: 'Essential' },
-        { native: 'Palihog', english: 'Please', note: 'Essential' },
-        { native: 'Kumusta ka?', english: 'How are you?', note: 'Essential' },
-        { native: 'Gihigugma ko ikaw', english: 'I love you', note: 'Essential' },
-      ],
-    },
-  ],
+  heroAction: { label: 'Review Session', route: 'SULTI', tab: true, params: { situation: 'Review session', label: 'Review Center' } },
+  moduleKey: 'review_center',
   renderExtra: QUIZ_EXTRA,
 });
 
@@ -412,15 +549,31 @@ const styles = StyleSheet.create({
     ...shadows.md,
   },
   heroIcon: { width: 48, height: 48, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.sm },
-  heroTitle: { fontSize: 22, fontWeight: '800', color: '#fff', letterSpacing: -0.4 },
-  heroDesc: { fontSize: 13, lineHeight: 19, color: 'rgba(255,255,255,0.85)', fontWeight: '500' },
+  heroTitle: { fontSize: 22, fontWeight: '800', letterSpacing: -0.4 },
+  heroDesc: { fontSize: 13, lineHeight: 19, fontWeight: '500' },
   heroBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm,
-    backgroundColor: '#fff', paddingVertical: spacing.md, borderRadius: borderRadius.full, marginTop: spacing.md,
+    paddingVertical: spacing.md, borderRadius: borderRadius.full, marginTop: spacing.md,
   },
-  heroBtnText: { fontSize: 14, fontWeight: '700', color: '#0F172A' },
+  heroBtnText: { fontSize: 14, fontWeight: '700' },
   section: { marginBottom: spacing.xl },
   sectionHeader: { marginBottom: spacing.sm },
+  progressBanner: { marginBottom: spacing.lg, gap: spacing.xs },
+  progressBannerHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  progressBannerText: { fontSize: 12, fontWeight: '600', flex: 1 },
+  progressBannerPct: { fontSize: 12, fontWeight: '800' },
+  progressTrack: { height: 6, borderRadius: borderRadius.full, overflow: 'hidden' },
+  progressFill: { height: '100%', borderRadius: borderRadius.full },
+  progressError: { fontSize: 11, fontWeight: '500' },
+  revealAllBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm,
+    paddingVertical: spacing.md, borderRadius: borderRadius.full, borderWidth: 1,
+    marginBottom: spacing.lg,
+  },
+  revealAllText: { fontSize: 13, fontWeight: '700' },
+  errorCard: { alignItems: 'center', gap: spacing.sm },
+  errorTitle: { fontSize: 16, fontWeight: '800' },
+  errorBody: { fontSize: 13, textAlign: 'center' },
   sectionTitle: { fontSize: 18, fontWeight: '700', letterSpacing: -0.2 },
   phraseRow: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.md,
@@ -449,8 +602,7 @@ const styles = StyleSheet.create({
   },
   switchLabel: { fontSize: 13, fontWeight: '600', flex: 1 },
   switchChip: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderRadius: borderRadius.full },
-  switchChipOn: { backgroundColor: '#14B8A6' },
-  switchChipOff: { backgroundColor: 'rgba(128,128,128,0.15)' },
+  
   switchChipText: { fontSize: 13, fontWeight: '700' },
   quizCard: { gap: spacing.md, alignItems: 'center' },
   quizProgress: { fontSize: 12, fontWeight: '600', alignSelf: 'flex-end' },

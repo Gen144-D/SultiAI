@@ -20,22 +20,44 @@ import {
 
 const router = Router();
 
+const POST_TYPE_KEYS = [
+  'question',
+  'discussion',
+  'tip',
+  'vocabulary',
+  'translation',
+  'pronunciation',
+  'culture',
+];
+
+/**
+ * `community_posts` stores the Bisaya/English pair in `phrase`/`translation`
+ * and the post classification in `category` (those columns were originally
+ * only used by resources). Map them onto the shape the mobile client renders.
+ */
+function serializePost(p: any) {
+  const type = POST_TYPE_KEYS.includes(p.category) ? p.category : 'discussion';
+  return {
+    id: p.postId,
+    user_id: p.userId,
+    type,
+    title: p.title,
+    content: p.content,
+    native: p.phrase || p.title,
+    english: p.translation,
+    author_name: p.authorName,
+    author_verified: !!p.authorVerified,
+    is_native: p.authorRole === 'native_speaker',
+    created_at: p.createdAt,
+    likes: p.likesCount || 0,
+    comments: p.commentsCount || 0,
+  };
+}
+
 router.get('/posts', authMiddleware, async (req: Request, res: Response) => {
   try {
     const posts = await getPosts();
-    success(
-      res,
-      posts.map((p: any) => ({
-        id: p.postId,
-        user_id: p.userId,
-        title: p.title,
-        content: p.content,
-        author_name: p.authorName,
-        author_verified: p.authorVerified || false,
-        created_at: p.createdAt,
-        likes: p.likes || 0,
-      }))
-    );
+    success(res, posts.map(serializePost));
   } catch (err) {
     errors.internal(res, 'Failed to get posts');
   }
@@ -43,7 +65,7 @@ router.get('/posts', authMiddleware, async (req: Request, res: Response) => {
 
 router.post('/posts', authMiddleware, async (req: Request, res: Response) => {
   try {
-    const { title, content } = req.body || {};
+    const { title, content, type, phrase, translation } = req.body || {};
     if (!title || !content) {
       errors.validation(res, 'Title and content are required');
       return;
@@ -53,8 +75,22 @@ router.post('/posts', authMiddleware, async (req: Request, res: Response) => {
       errors.notFound(res, 'User not found');
       return;
     }
-    const postId = await createPost(userId, { title, content });
-    success(res, { id: postId, title, content, created_at: new Date().toISOString() });
+    const category = POST_TYPE_KEYS.includes(type) ? type : 'discussion';
+    const postId = await createPost(userId, { title, content, phrase, translation, category });
+    success(res, {
+      id: postId,
+      type: category,
+      title,
+      content,
+      native: phrase || title,
+      english: translation || null,
+      author_name: req.user!.fullname || req.user!.email,
+      author_verified: false,
+      is_native: false,
+      created_at: new Date().toISOString(),
+      likes: 0,
+      comments: 0,
+    });
   } catch (err) {
     errors.internal(res, 'Failed to create post');
   }
@@ -111,6 +147,7 @@ router.get('/posts/:postId/comments', authMiddleware, async (req: Request, res: 
     success(
       res,
       comments.map((c: any) => ({
+        id: c.commentId,
         comment_id: c.commentId,
         post_id: c.postId,
         author_name: c.authorName,
@@ -137,9 +174,11 @@ router.post('/posts/:postId/comments', authMiddleware, async (req: Request, res:
     }
     const commentId = await createComment(Number(req.params.postId as string), userId, comment);
     success(res, {
+      id: commentId,
       comment_id: commentId,
       post_id: parseInt(req.params.postId as string),
       user_id: userId,
+      author_name: req.user!.fullname || req.user!.email,
       comment,
       created_at: new Date().toISOString(),
     });

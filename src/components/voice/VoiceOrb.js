@@ -5,7 +5,7 @@ import Animated, {
   withSequence, cancelAnimation, Easing,
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
-import { voice, orbCoreGradient } from './palette';
+import { useVoicePalette } from './palette';
 
 const WAVE_BAR_COUNT = 46;
 const PARTICLE_COUNT = 10;
@@ -42,7 +42,7 @@ const STATUS_LABEL = {
   speaking: 'Speaking',
 };
 
-function CircularWaveform({ size, amplitude, active, color }) {
+function CircularWaveform({ size, amplitude, active, color, styles }) {
   const wavePhase = useSharedValue(0);
   const halfSize = size / 2;
   const maxH = size * 0.16;
@@ -64,13 +64,13 @@ function CircularWaveform({ size, amplitude, active, color }) {
   return (
     <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.waveWrapper, fade]}>
       {waveBarData.map((bar, i) => (
-        <WaveBar key={i} bar={bar} amplitude={amplitude} wavePhase={wavePhase} maxH={maxH} ringRadius={ringRadius} halfSize={halfSize} color={color} />
+        <WaveBar key={i} bar={bar} amplitude={amplitude} wavePhase={wavePhase} maxH={maxH} ringRadius={ringRadius} halfSize={halfSize} color={color} styles={styles} />
       ))}
     </Animated.View>
   );
 }
 
-const WaveBar = React.memo(function WaveBar({ bar, amplitude, wavePhase, maxH, ringRadius, halfSize, color }) {
+const WaveBar = React.memo(function WaveBar({ bar, amplitude, wavePhase, maxH, ringRadius, halfSize, color, styles }) {
   const bodyStyle = useAnimatedStyle(() => {
     const wave = (Math.sin(bar.phase + wavePhase.value * Math.PI * 2) + 1) / 2;
     const h = 3 + wave * maxH * amplitude.value;
@@ -95,7 +95,7 @@ const WaveBar = React.memo(function WaveBar({ bar, amplitude, wavePhase, maxH, r
   );
 });
 
-function OrbitingParticles({ halfSize, active }) {
+function OrbitingParticles({ halfSize, active, styles }) {
   const orbit = useSharedValue(0);
 
   useEffect(() => {
@@ -110,13 +110,13 @@ function OrbitingParticles({ halfSize, active }) {
   return (
     <Animated.View pointerEvents="none" style={StyleSheet.absoluteFill}>
       {orbitParticles.map((p, i) => (
-        <OrbitParticle key={i} data={p} orbit={orbit} halfSize={halfSize} active={active} />
+        <OrbitParticle key={i} data={p} orbit={orbit} halfSize={halfSize} active={active} styles={styles} />
       ))}
     </Animated.View>
   );
 }
 
-const OrbitParticle = React.memo(function OrbitParticle({ data, orbit, halfSize, active }) {
+const OrbitParticle = React.memo(function OrbitParticle({ data, orbit, halfSize, active, styles }) {
   const style = useAnimatedStyle(() => {
     const a = data.angle + orbit.value * Math.PI * 2;
     const r = halfSize * data.radius;
@@ -131,7 +131,7 @@ const OrbitParticle = React.memo(function OrbitParticle({ data, orbit, halfSize,
   return <Animated.View style={[styles.orbitParticle, { width: data.size, height: data.size, borderRadius: data.size / 2 }, style]} />;
 });
 
-function EnergyRing({ halfSize, active, color }) {
+function EnergyRing({ halfSize, active, color, styles }) {
   const rot = useSharedValue(0);
   const fade = useSharedValue(0);
 
@@ -164,7 +164,7 @@ function EnergyRing({ halfSize, active, color }) {
   );
 }
 
-function Shimmer({ halfSize, active }) {
+function Shimmer({ halfSize, active, styles }) {
   const sweep = useSharedValue(-0.6);
 
   useEffect(() => {
@@ -196,6 +196,8 @@ function Shimmer({ halfSize, active }) {
 }
 
 export default React.memo(function VoiceOrb({ state = 'idle', size = 240, amplitude, onPress }) {
+  const voice = useVoicePalette();
+  const styles = useMemo(() => createStyles(voice), [voice]);
   const pulse = useSharedValue(0.96);
   const glow = useSharedValue(0.5);
   const floatY = useSharedValue(0);
@@ -343,24 +345,24 @@ export default React.memo(function VoiceOrb({ state = 'idle', size = 240, amplit
 
         <Animated.View pointerEvents="none" style={[glowStyle, styles.glowBase]}>
           <LinearGradient
-            colors={['rgba(32,214,199,0.5)', 'rgba(32,214,199,0.12)', 'transparent']}
+            colors={[color + '80', color + '1F', 'transparent']}
             locations={[0, 0.6, 1]}
             style={StyleSheet.absoluteFill}
           />
         </Animated.View>
 
         <Animated.View pointerEvents="none" style={[styles.centered, { width: size, height: size }, ringStyle]}>
-          <View style={[StyleSheet.absoluteFill, { borderRadius: size / 2, borderWidth: 1.5, borderColor: 'rgba(124,247,232,0.55)' }]} />
+          <View style={[StyleSheet.absoluteFill, { borderRadius: size / 2, borderWidth: 1.5, borderColor: voice.accent + '8C' }]} />
         </Animated.View>
 
-        <CircularWaveform size={size} amplitude={amplitude} active={isWaveActive} color={color} />
+        <CircularWaveform size={size} amplitude={amplitude} active={isWaveActive} color={color} styles={styles} />
 
-        {isThinking && <EnergyRing halfSize={halfSize} active={isThinking} color={color} />}
-        <OrbitingParticles halfSize={halfSize} active={isThinking} />
+        {isThinking && <EnergyRing halfSize={halfSize} active={isThinking} color={color} styles={styles} />}
+        <OrbitingParticles halfSize={halfSize} active={isThinking} styles={styles} />
 
         <Animated.View pointerEvents="none" style={[styles.centered, { width: size, height: size }, orbStyle]}>
           <LinearGradient
-            colors={orbCoreGradient}
+            colors={voice.orbCoreGradient}
             start={{ x: 0.2, y: 0 }} end={{ x: 0.85, y: 1 }}
             style={[StyleSheet.absoluteFill, { borderRadius: halfSize }]}
           />
@@ -371,7 +373,7 @@ export default React.memo(function VoiceOrb({ state = 'idle', size = 240, amplit
               style={[StyleSheet.absoluteFill, { borderRadius: halfSize }]}
             />
           </View>
-          <Shimmer halfSize={halfSize} active={isThinking} />
+          <Shimmer halfSize={halfSize} active={isThinking} styles={styles} />
           <View pointerEvents="none" style={[StyleSheet.absoluteFill, { borderRadius: halfSize, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.25)' }]} />
           <View style={[StyleSheet.absoluteFill, { borderRadius: halfSize, overflow: 'hidden' }]}>
             <LinearGradient
@@ -389,7 +391,7 @@ export default React.memo(function VoiceOrb({ state = 'idle', size = 240, amplit
   );
 });
 
-const styles = StyleSheet.create({
+const createStyles = (voice) => StyleSheet.create({
   touchable: { alignItems: 'center', justifyContent: 'center' },
   glowBase: { position: 'absolute', overflow: 'hidden' },
   centered: { position: 'absolute', alignItems: 'center', justifyContent: 'center' },

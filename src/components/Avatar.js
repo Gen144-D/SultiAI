@@ -5,7 +5,8 @@ import { useTheme } from '../context/ThemeContext';
 import { borderRadius } from '../theme';
 
 export default function Avatar({ uri, name, size = 48, style, badge, onPress }) {
-  const { colors } = useTheme();
+  const { colors, getContrastColor } = useTheme();
+  const onAccent = getContrastColor('#FFFFFF', '#042F2B');
   const [imgError, setImgError] = useState(false);
   const dim = typeof size === 'number' ? size : 48;
   const fontSize = dim * 0.4;
@@ -26,7 +27,7 @@ export default function Avatar({ uri, name, size = 48, style, badge, onPress }) 
       )}
       {badge && (
         <View style={[styles.badge, { backgroundColor: colors.accent, borderColor: colors.surface }]}>
-          <Ionicons name={badge} size={dim * 0.26} color={colors.textOnGradient} />
+          <Ionicons name={badge} size={dim * 0.26} color={onAccent} />
         </View>
       )}
     </View>

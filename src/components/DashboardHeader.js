@@ -10,6 +10,7 @@ import UserAvatar from './profile/UserAvatar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { spacing, typography } from '../theme';
 import { dashboardGradients } from '../theme/dashboardGradients';
+import { getUserAvatarUrl } from '../utils/avatar';
 
 /**
  * DashboardHeader
@@ -76,7 +77,7 @@ export default function DashboardHeader({ onNotificationPress, unreadCount = 0 }
           {/* Top row: avatar + greeting + notifications */}
           <View style={styles.topRow}>
             <View style={styles.leftSection}>
-              <UserAvatar avatarId={userAvatarId} name={user?.name} uri={user?.avatar?.image} size={44} />
+              <UserAvatar avatarId={userAvatarId} name={user?.name} uri={getUserAvatarUrl(user)} size={44} />
               <View style={styles.greetingBox}>
                 <Text style={styles.greeting}>Kumusta, {firstName}!</Text>
                 <Text style={styles.subGreeting}>Padayon sa pagkat-on</Text>
@@ -178,13 +179,10 @@ const styles = StyleSheet.create({
     marginLeft: spacing.md,
     flex: 1,
   },
-  greeting: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#fff',
-    letterSpacing: 0.36,
-    ...typography.h3,
-  },
+    greeting: {
+      color: '#fff',
+      ...typography.h3,
+    },
   subGreeting: {
     fontSize: 12,
     color: 'rgba(255, 255, 255, 0.75)',

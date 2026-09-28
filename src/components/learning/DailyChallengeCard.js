@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../context/ThemeContext';
 import GlassCard from '../GlassCard';
+import { Skeleton, SkeletonRow } from '../Skeleton';
 import { spacing, borderRadius, shadows } from '../../theme';
 import { api } from '../../services/api';
 
@@ -120,17 +121,14 @@ export default function DailyChallengeCard({ onStart, navigation, refreshKey = 0
           transform: [{ translateY: slideAnim }],
         }}
       >
-        <GlassCard variant="elevated" style={styles.skeletonCard} padding="lg">
-          <View style={styles.skeletonRow}>
-            <View style={styles.skeletonIcon} />
-            <View style={styles.skeletonText} />
-          </View>
-          <View style={styles.skeletonRow}>
-            <View style={styles.skeletonBar} />
-            <View style={styles.skeletonBarShort} />
-          </View>
-          <View style={styles.skeletonBtn} />
-        </GlassCard>
+            <GlassCard variant="elevated" style={styles.skeletonCard} padding="lg">
+              <SkeletonRow avatar lines={2} />
+              <View style={styles.skeletonBarRow}>
+                <Skeleton height={14} radius={6} style={{ flex: 1 }} />
+                <Skeleton height={14} radius={6} width={80} />
+              </View>
+              <Skeleton height={44} radius={borderRadius.full} style={{ marginTop: spacing.md }} />
+            </GlassCard>
       </Animated.View>
     );
   }
@@ -283,41 +281,10 @@ const styles = StyleSheet.create({
   skeletonCard: {
     minHeight: 160,
   },
-  skeletonRow: {
+  skeletonBarRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: spacing.md,
     gap: spacing.md,
-  },
-  skeletonIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-  },
-  skeletonText: {
-    flex: 1,
-    height: 20,
-    borderRadius: 8,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-  },
-  skeletonBar: {
-    flex: 1,
-    height: 14,
-    borderRadius: 6,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    marginRight: spacing.md,
-  },
-  skeletonBarShort: {
-    width: 80,
-    height: 14,
-    borderRadius: 6,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-  },
-  skeletonBtn: {
-    height: 44,
-    borderRadius: borderRadius.full,
-    backgroundColor: 'rgba(255,255,255,0.1)',
     marginTop: spacing.md,
   },
   challengeHeader: {

@@ -1,5 +1,5 @@
-import { getDb } from '../../db/connection';
-import * as schema from '../../db/schema-sqlite';
+﻿import { eq } from 'drizzle-orm';
+import { getDb, getSchema } from '../../db/connection';
 import adaptiveLearningEngine from './learningEngine';
 import logger from '../../utils/logger';
 
@@ -99,13 +99,14 @@ export class RecommendationEngine {
   private async getDueWords(userId: number): Promise<string[]> {
     try {
       const db = getDb();
+      const schema = getSchema();
       const now = new Date().toISOString();
       const due = await (db as any)
         .select()
         .from(schema.vocabularyReviews)
         .where(
           (db as any).and(
-            (db as any).eq(schema.vocabularyReviews.userId, userId),
+            eq(schema.vocabularyReviews.userId, userId),
             (db as any).lte(schema.vocabularyReviews.nextReview, now)
           )
         )
@@ -119,10 +120,11 @@ export class RecommendationEngine {
   private async getWeakAreas(userId: number): Promise<string[]> {
     try {
       const db = getDb();
+      const schema = getSchema();
       const rows = await (db as any)
         .select()
         .from(schema.learnerProfiles)
-        .where((db as any).eq(schema.learnerProfiles.userId, userId))
+        .where(eq(schema.learnerProfiles.userId, userId))
         .limit(1);
 
       if (rows.length === 0) return [];
@@ -143,10 +145,11 @@ export class RecommendationEngine {
   private async getRecentMistakes(userId: number): Promise<string[]> {
     try {
       const db = getDb();
+      const schema = getSchema();
       const rows = await (db as any)
         .select()
         .from(schema.learnerProfiles)
-        .where((db as any).eq(schema.learnerProfiles.userId, userId))
+        .where(eq(schema.learnerProfiles.userId, userId))
         .limit(1);
 
       if (rows.length === 0) return [];

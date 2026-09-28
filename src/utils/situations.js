@@ -26,6 +26,7 @@ export const SITUATIONS = [
     color: '#10B981',
     prompt: 'Buying food at a public market in Cebu',
     roleplay: 'Bargaining at the local market for fresh produce',
+    character: 'Sulti is a market vendor at Carbon Market. You are bargaining for fresh mangoes.',
     difficulty: 'beginner',
     category: 'daily',
   },
@@ -38,6 +39,8 @@ export const SITUATIONS = [
     color: '#F59E0B',
     prompt: 'Ordering at a restaurant in Cebu',
     roleplay: 'Ordering food at a restaurant in Cebu and asking for recommendations',
+    character:
+      'Sulti is your waiter at a busy restaurant in Cebu. You want to order lechon and rice.',
     difficulty: 'beginner',
     category: 'daily',
   },
@@ -62,6 +65,7 @@ export const SITUATIONS = [
     color: '#EF4444',
     prompt: 'Riding a jeepney and paying the fare',
     roleplay: 'Riding the jeepney, telling the driver where to stop, and paying fare',
+    character: 'Sulti is your jeepney driver. Tell him where you are getting off.',
     difficulty: 'intermediate',
     category: 'travel',
   },
@@ -74,6 +78,8 @@ export const SITUATIONS = [
     color: '#06B6D4',
     prompt: 'Visiting a hospital or clinic and describing symptoms',
     roleplay: 'At the hospital explaining symptoms to a nurse or doctor',
+    character:
+      'Sulti is the receptionist at a hospital. You need to describe your symptoms.',
     difficulty: 'intermediate',
     category: 'essential',
   },
@@ -86,6 +92,7 @@ export const SITUATIONS = [
     color: '#FF6B6B',
     prompt: 'Emergency situation phrases and asking for help',
     roleplay: 'An emergency situation where you need to ask for help in Bisaya',
+    character: 'Sulti is a 911 dispatcher. Describe the emergency clearly and calmly.',
     difficulty: 'intermediate',
     category: 'essential',
   },
@@ -98,6 +105,8 @@ export const SITUATIONS = [
     color: '#EC4899',
     prompt: 'Casual conversation with friends in Bisaya',
     roleplay: 'Meeting new friends and having a casual chat',
+    character:
+      'Sulti is a friendly local you just met at a gathering in Cebu. Get to know each other.',
     difficulty: 'beginner',
     category: 'social',
   },
@@ -110,6 +119,7 @@ export const SITUATIONS = [
     color: '#2563EB',
     prompt: 'Travel and tourism phrases around Cebu',
     roleplay: 'Traveling around Cebu as a tourist asking about places to visit',
+    character: 'Sulti is a tour guide showing you around Cebu. Ask about places to visit.',
     difficulty: 'intermediate',
     category: 'travel',
   },
@@ -122,6 +132,8 @@ export const SITUATIONS = [
     color: '#6366F1',
     prompt: 'Job interview phrases in Bisaya and professional introductions',
     roleplay: 'A job interview conducted partly in Bisaya',
+    character:
+      'Sulti is the interviewer at a job interview. You are applying for a customer service job.',
     difficulty: 'advanced',
     category: 'work',
   },
@@ -213,6 +225,38 @@ export function getRoleplaySituations() {
     color: s.color,
     difficulty: s.difficulty,
   }));
+}
+
+/**
+ * Ordered role-play set surfaced by the Tutor hub chips and the
+ * "All Role-Play Scenarios" bottom sheet. Order is intentional: the first
+ * ROLEPLAY_CHIPS_LIMIT entries are the inline hub chips.
+ */
+export const TUTOR_ROLEPLAY_IDS = [
+  'restaurant',
+  'market',
+  'jeepney',
+  'hospital',
+  'interview',
+  'friends',
+  'travel',
+  'emergency',
+];
+
+export function getTutorRoleplayScenarios() {
+  return TUTOR_ROLEPLAY_IDS.map((id) => {
+    const s = getSituationById(id);
+    if (!s) return null;
+    return {
+      id: s.id,
+      label: s.label,
+      emoji: s.emoji,
+      prompt: s.roleplay,
+      color: s.color,
+      difficulty: s.difficulty,
+      character: s.character,
+    };
+  }).filter(Boolean);
 }
 
 /** Phrase practice suggestions */

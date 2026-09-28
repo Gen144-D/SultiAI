@@ -6,6 +6,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useUser } from '../context/UserContext';
 import { useGame } from '../context/GameContext';
 import { useOfflineSync } from '../hooks/useOfflineSync';
+import EmptyState from '../components/EmptyState';
 import { api } from '../services/api';
 import Header from '../components/Header';
 import Avatar from '../components/Avatar';
@@ -13,6 +14,7 @@ import Badge from '../components/Badge';
 import LoadingState from '../components/LoadingState';
 import GlassCard from '../components/GlassCard';
 import { spacing, borderRadius, shadows } from '../theme';
+import { getUserAvatarUrl } from '../utils/avatar';
 
 const PODIUM_HEIGHTS = [88, 64, 48];
 const PODIUM_COLORS = ['#FFD700', '#C0C0C0', '#CD7F32'];
@@ -127,7 +129,7 @@ export default function LeaderboardScreen({ navigation }) {
           <View style={[styles.rankContainer, { backgroundColor: colors.primary + '20' }]}>
             <Text style={[styles.rankNumber, { color: colors.primary }]}>—</Text>
           </View>
-          <Avatar name={user?.name} uri={user?.avatar?.image} size={40} />
+          <Avatar name={user?.name} uri={getUserAvatarUrl(user)} size={40} />
           <View style={styles.userInfo}>
             <Text style={[styles.userName, { color: colors.text }]}>{user?.name || 'You'}</Text>
             {streak > 0 && (
@@ -184,23 +186,13 @@ export default function LeaderboardScreen({ navigation }) {
   };
 
   const renderEmpty = () => (
-    <View style={styles.empty}>
-      <View style={[styles.emptyIcon, { backgroundColor: colors.primary + '10' }]}>
-        <Ionicons name="podium" size={48} color={colors.primary} />
-      </View>
-      <Text style={[styles.emptyTitle, { color: colors.text }]}>No rankings yet</Text>
-      <Text style={[styles.emptyDesc, { color: colors.textSecondary }]}>
-        Start learning to appear on the leaderboard!
-      </Text>
-      <TouchableOpacity
-        style={[styles.emptyCta, { backgroundColor: colors.primary }]}
-        onPress={() => navigation.navigate('Main', { screen: 'Learn' })}
-        activeOpacity={0.8}
-      >
-        <Ionicons name="sparkles" size={18} color="#fff" />
-        <Text style={styles.emptyCtaText}>Start Practicing</Text>
-      </TouchableOpacity>
-    </View>
+    <EmptyState
+      icon="podium"
+      title="No rankings yet"
+      message="Start learning to appear on the leaderboard!"
+      actionLabel="Start Practicing"
+      onAction={() => navigation.navigate('Main', { screen: 'Learn' })}
+    />
   );
 
   return (
@@ -279,12 +271,6 @@ const styles = StyleSheet.create({
   xpContainer: { alignItems: 'center', marginRight: spacing.md },
   xpValue: { fontSize: 18, fontWeight: '800' },
   xpLabel: { fontSize: 10, fontWeight: '500' },
-  empty: { alignItems: 'center', paddingTop: 60, paddingHorizontal: spacing.xxl },
-  emptyIcon: { width: 88, height: 88, borderRadius: 44, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.lg },
-  emptyTitle: { fontSize: 20, fontWeight: '700', marginBottom: spacing.sm },
-  emptyDesc: { fontSize: 14, textAlign: 'center', lineHeight: 20, marginBottom: spacing.xxl },
-  emptyCta: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, paddingVertical: 14, borderRadius: borderRadius.full, gap: spacing.sm, ...shadows.md },
-  emptyCtaText: { fontSize: 15, fontWeight: '700', color: '#fff' },
   currentUserSection: { marginBottom: spacing.md },
   sectionTitle: { fontSize: 13, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: spacing.sm },
   currentUserCard: { flexDirection: 'row', alignItems: 'center', padding: spacing.md, borderRadius: borderRadius.md, borderWidth: 1.5 },

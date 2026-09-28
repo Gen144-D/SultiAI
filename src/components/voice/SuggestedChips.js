@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
-import { voice } from './palette';
+import { useVoicePalette } from './palette';
 
 const CHIPS = [
   { label: 'Teach Greetings', icon: 'hand-left-outline' },
@@ -13,6 +13,8 @@ const CHIPS = [
 ];
 
 export default function SuggestedChips({ onPick, disabled }) {
+  const voice = useVoicePalette();
+  const styles = useMemo(() => createStyles(voice), [voice]);
   return (
     <View style={styles.wrap}>
       <Text style={styles.heading} accessibilityRole="text">
@@ -39,7 +41,7 @@ export default function SuggestedChips({ onPick, disabled }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (voice) => StyleSheet.create({
   wrap: { alignItems: 'center', width: '100%', paddingHorizontal: 24 },
   heading: {
     color: voice.textMuted,

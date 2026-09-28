@@ -6,7 +6,18 @@ import { ConfirmModal } from '@/components/ConfirmModal';
 import { useToast } from '@/components/Toast';
 import { useAsync } from '@/hooks/useAsync';
 import { api } from '@/lib/api';
-import { Avatar, Card, EmptyState, ErrorState, LoadingState, StatusBadge } from '@/components/ui';
+import {
+  Avatar,
+  Card,
+  EmptyState,
+  ErrorState,
+  LoadingState,
+  StatusBadge,
+  dangerSoftBtn,
+  ghostBtn,
+  softBtn,
+  successSoftBtn,
+} from '@/components/ui';
 import { downloadCsv } from '@/lib/export';
 
 type Tab = 'posts' | 'reports';
@@ -53,53 +64,49 @@ export default function AdminCommunityPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-extrabold text-ink">Community</h1>
+          <h1 className="text-xl font-semibold tracking-tight text-ink">Community</h1>
           <p className="mt-1 text-sm text-ink-soft">Moderate posts, comments, and user reports.</p>
         </div>
-        <div className="flex items-center gap-3">
-          {posts.data && posts.data.length > 0 && (
-            <button
-              type="button"
-              onClick={() =>
-                downloadCsv(
-                  posts.data!.map((p) => ({
-                    id: p.id,
-                    title: p.title,
-                    author: p.author.name,
-                    category: p.category,
-                    likes: p.likes,
-                    comments: p.comments,
-                    reports: p.reports,
-                    featured: p.featured,
-                    hidden: p.hidden,
-                    createdAt: p.createdAt,
-                  })),
-                  `sultiai-community-posts-${new Date().toISOString().split('T')[0]}.csv`
-                )
-              }
-              className="rounded-xl border border-line bg-white px-4 py-2.5 text-sm font-semibold text-ink transition-colors hover:border-brand"
-            >
-              Export Posts
-            </button>
-          )}
-        </div>
+        {posts.data && posts.data.length > 0 && (
+          <button
+            type="button"
+            onClick={() =>
+              downloadCsv(
+                posts.data!.map((p) => ({
+                  id: p.id,
+                  title: p.title,
+                  author: p.author.name,
+                  category: p.category,
+                  likes: p.likes,
+                  comments: p.comments,
+                  reports: p.reports,
+                  featured: p.featured,
+                  hidden: p.hidden,
+                  createdAt: p.createdAt,
+                })),
+                `sultiai-community-posts-${new Date().toISOString().split('T')[0]}.csv`
+              )
+            }
+            className={ghostBtn}
+          >
+            Export Posts
+          </button>
+        )}
       </div>
 
-      <div className="inline-flex rounded-xl border border-line bg-white p-1">
+      <div className="inline-flex gap-0.5 rounded-lg border border-line bg-surface-2 p-0.5">
         {(['posts', 'reports'] as Tab[]).map((t) => (
           <button
             key={t}
             type="button"
             onClick={() => setTab(t)}
-            className={`rounded-lg px-5 py-2 text-sm font-semibold capitalize transition-colors ${
-              tab === t
-                ? 'bg-gradient-to-r from-brand to-brand-dark text-white'
-                : 'text-ink-soft hover:text-ink'
+            className={`inline-flex items-center rounded-md px-3.5 py-1.5 text-sm font-medium capitalize transition-colors ${
+              tab === t ? 'bg-surface text-ink shadow-card' : 'text-ink-soft hover:text-ink'
             }`}
           >
             {t}
             {t === 'reports' && reports.data && (
-              <span className="ml-1.5 rounded-full bg-danger/15 px-1.5 text-xs text-danger">
+              <span className="ml-1.5 rounded-full bg-danger-soft px-1.5 text-[10px] font-semibold tabular-nums text-danger">
                 {reports.data.filter((r) => r.status === 'open').length}
               </span>
             )}
@@ -170,24 +177,24 @@ function PostsTable({
       <div className="overflow-x-auto">
         <table className="w-full min-w-[760px] text-left text-sm">
           <thead>
-            <tr className="border-b border-line bg-surface text-xs uppercase tracking-wide text-ink-faint">
-              <th className="px-5 py-3.5 font-semibold">Post</th>
-              <th className="px-5 py-3.5 font-semibold">Category</th>
-              <th className="px-5 py-3.5 font-semibold">Engagement</th>
-              <th className="px-5 py-3.5 font-semibold">Reports</th>
-              <th className="px-5 py-3.5 font-semibold">Status</th>
-              <th className="px-5 py-3.5 text-right font-semibold">Actions</th>
+            <tr className="border-b border-line bg-surface-2 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
+              <th className="px-5 py-3">Post</th>
+              <th className="px-5 py-3">Category</th>
+              <th className="px-5 py-3">Engagement</th>
+              <th className="px-5 py-3">Reports</th>
+              <th className="px-5 py-3">Status</th>
+              <th className="px-5 py-3 text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
             {data.map((p) => (
               <tr
                 key={p.id}
-                className={`border-b border-line last:border-0 ${p.hidden ? 'bg-danger/5' : 'hover:bg-surface/60'}`}
+                className={`border-b border-line transition-colors last:border-0 ${p.hidden ? 'bg-danger-soft/40' : 'hover:bg-surface-2/60'}`}
               >
                 <td className="px-5 py-3.5">
-                  <p className="max-w-[260px] truncate font-semibold text-ink">
-                    {p.featured && <span className="mr-1.5 text-accent">★</span>}
+                  <p className="max-w-[260px] truncate font-medium text-ink">
+                    {p.featured && <span className="mr-1 text-warning">★</span>}
                     {p.title}
                   </p>
                   <p className="mt-0.5 flex items-center gap-1.5 text-xs text-ink-faint">
@@ -196,23 +203,23 @@ function PostsTable({
                   </p>
                 </td>
                 <td className="px-5 py-3.5 text-xs text-ink-soft">{p.category}</td>
-                <td className="px-5 py-3.5 text-xs text-ink-soft">
-                  ❤️ {p.likes} · 💬 {p.comments}
+                <td className="px-5 py-3.5 text-xs tabular-nums text-ink-soft">
+                  <span aria-hidden>♥</span> {p.likes} · <span aria-hidden>◍</span> {p.comments}
                 </td>
                 <td className="px-5 py-3.5">
                   {p.reports > 0 ? (
-                    <span className="rounded-full bg-danger/10 px-2.5 py-1 text-xs font-semibold text-danger">
+                    <span className="rounded-md bg-danger-soft px-2 py-0.5 text-[11px] font-semibold tabular-nums text-danger">
                       {p.reports}
                     </span>
                   ) : (
-                    <span className="text-xs text-ink-faint">0</span>
+                    <span className="text-xs tabular-nums text-ink-faint">0</span>
                   )}
                 </td>
                 <td className="px-5 py-3.5">
-                  <div className="flex flex-col gap-1">
+                  <div className="flex flex-col items-start gap-1">
                     {p.featured && <StatusBadge status="verified" label="Featured" />}
                     {p.hidden && <StatusBadge status="banned" label="Hidden" />}
-                    {!p.featured && !p.hidden && <StatusBadge status="published" label="Visible" />}
+                    {!p.featured && !p.hidden && <StatusBadge status="visible" label="Visible" />}
                   </div>
                 </td>
                 <td className="px-5 py-3.5">
@@ -220,8 +227,10 @@ function PostsTable({
                     <button
                       type="button"
                       onClick={() => onFeature(p)}
-                      className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold ${
-                        p.featured ? 'bg-line text-ink-soft' : 'bg-accent-light text-[#b45309]'
+                      className={`rounded-md px-2.5 py-1.5 text-xs font-semibold transition-colors ${
+                        p.featured
+                          ? 'bg-surface-2 text-ink-soft hover:bg-line'
+                          : 'bg-warning-soft text-warning hover:bg-warning-fill hover:text-on-brand'
                       }`}
                     >
                       {p.featured ? 'Unfeature' : 'Feature'}
@@ -229,14 +238,14 @@ function PostsTable({
                     <button
                       type="button"
                       onClick={() => onHide(p)}
-                      className="rounded-lg border border-line px-2.5 py-1.5 text-xs font-semibold text-ink hover:border-brand"
+                      className={`${softBtn} px-2.5 py-1.5 text-xs`}
                     >
                       {p.hidden ? 'Show' : 'Hide'}
                     </button>
                     <button
                       type="button"
                       onClick={() => onDelete(p)}
-                      className="rounded-lg bg-danger/10 px-2.5 py-1.5 text-xs font-semibold text-danger hover:bg-danger hover:text-white"
+                      className={`${dangerSoftBtn} px-2.5 py-1.5 text-xs`}
                     >
                       Delete
                     </button>
@@ -278,19 +287,22 @@ function ReportsTable({
       <div className="overflow-x-auto">
         <table className="w-full min-w-[640px] text-left text-sm">
           <thead>
-            <tr className="border-b border-line bg-surface text-xs uppercase tracking-wide text-ink-faint">
-              <th className="px-5 py-3.5 font-semibold">ID</th>
-              <th className="px-5 py-3.5 font-semibold">Post</th>
-              <th className="px-5 py-3.5 font-semibold">Reported by</th>
-              <th className="px-5 py-3.5 font-semibold">Reason</th>
-              <th className="px-5 py-3.5 font-semibold">Status</th>
-              <th className="px-5 py-3.5 text-right font-semibold">Actions</th>
+            <tr className="border-b border-line bg-surface-2 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
+              <th className="px-5 py-3">ID</th>
+              <th className="px-5 py-3">Post</th>
+              <th className="px-5 py-3">Reported by</th>
+              <th className="px-5 py-3">Reason</th>
+              <th className="px-5 py-3">Status</th>
+              <th className="px-5 py-3 text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
             {data.map((r) => (
-              <tr key={r.id} className="border-b border-line last:border-0 hover:bg-surface/60">
-                <td className="px-5 py-3.5 font-semibold text-ink">#{r.id}</td>
+              <tr
+                key={r.id}
+                className="border-b border-line transition-colors last:border-0 hover:bg-surface-2/60"
+              >
+                <td className="px-5 py-3.5 font-medium tabular-nums text-ink">#{r.id}</td>
                 <td className="px-5 py-3.5 text-xs text-ink-soft">Post #{r.postId}</td>
                 <td className="px-5 py-3.5 text-xs text-ink-soft">{r.reportedBy.name}</td>
                 <td className="px-5 py-3.5 text-xs text-ink-soft">{r.reason}</td>
@@ -303,7 +315,7 @@ function ReportsTable({
                       type="button"
                       disabled={r.status === 'resolved'}
                       onClick={() => onStatus(r, 'resolved')}
-                      className="rounded-lg bg-success/10 px-2.5 py-1.5 text-xs font-semibold text-success disabled:opacity-40"
+                      className={`${successSoftBtn} px-2.5 py-1.5 text-xs`}
                     >
                       Resolve
                     </button>
@@ -311,7 +323,7 @@ function ReportsTable({
                       type="button"
                       disabled={r.status === 'dismissed'}
                       onClick={() => onStatus(r, 'dismissed')}
-                      className="rounded-lg border border-line px-2.5 py-1.5 text-xs font-semibold text-ink disabled:opacity-40"
+                      className={`${softBtn} px-2.5 py-1.5 text-xs`}
                     >
                       Dismiss
                     </button>

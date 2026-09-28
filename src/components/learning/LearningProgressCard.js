@@ -11,7 +11,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../context/ThemeContext';
 import { useGame } from '../../context/GameContext';
 import GlassCard from '../GlassCard';
-import { spacing, borderRadius, typography, shadows } from '../../theme';
+import { Skeleton, SkeletonRow } from '../Skeleton';
+import { spacing, borderRadius, shadows } from '../../theme';
 import { api } from '../../services/api';
 import { getLevel, getNumericLevel } from '../../constants';
 
@@ -19,12 +20,33 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_WIDTH = SCREEN_WIDTH - spacing.xl * 2;
 
 export default function LearningProgressCard() {
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const { xp, streak, dailyGoal, dailyXp } = useGame();
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(20)).current;
+
+  // Declared before the effect that calls it, so the reference is never in a
+  // temporal dead zone (a const arrow above the effect was TDZ-fragile).
+  async function loadAnalytics() {
+    try {
+      const data = await api.getWeeklyProgress();
+      setAnalytics(data);
+    } catch {
+      // Offline: show real game-context data only, no fabricated analytics
+      setAnalytics({
+        wordsLearned: 0,
+        pronunciationAvg: 0,
+        weeklyXp: 0,
+        weeklyGoal: Math.max(1, dailyGoal * 7),
+        sessionsThisWeek: 0,
+        streak: streak,
+      });
+    } finally {
+      setLoading(false);
+    }
+  }
 
   useEffect(() => {
     loadAnalytics();
@@ -43,25 +65,6 @@ export default function LearningProgressCard() {
     ]).start();
   }, []);
 
-  const loadAnalytics = async () => {
-    try {
-      const data = await api.getWeeklyProgress();
-      setAnalytics(data);
-    } catch (e) {
-      // Offline: show real game-context data only, no fabricated analytics
-      setAnalytics({
-        wordsLearned: 0,
-        pronunciationAvg: 0,
-        weeklyXp: 0,
-        weeklyGoal: Math.max(1, dailyGoal * 7),
-        sessionsThisWeek: 0,
-        streak: streak,
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // Calculate level from XP
   const currentLevel = getLevel(xp);
   const xpForNextLevel = currentLevel.nextThreshold;
@@ -77,14 +80,11 @@ export default function LearningProgressCard() {
         }}
       >
         <GlassCard variant="elevated" style={styles.skeletonCard} padding="lg">
-          <View style={styles.skeletonRow}>
-            <View style={styles.skeletonAvatar} />
-            <View style={styles.skeletonText} />
-          </View>
+          <SkeletonRow avatar lines={2} style={{ marginBottom: spacing.lg }} />
           <View style={styles.skeletonStats}>
-            <View style={styles.skeletonStat} />
-            <View style={styles.skeletonStat} />
-            <View style={styles.skeletonStat} />
+            {[0, 1, 2].map((i) => (
+              <Skeleton key={i} height={60} radius={borderRadius.md} style={{ flex: 1 }} />
+            ))}
           </View>
         </GlassCard>
       </Animated.View>
@@ -227,40 +227,16 @@ export default function LearningProgressCard() {
 }
 
 const styles = StyleSheet.create({
-  skeletonCard: {
-    minHeight: 280,
-  },
-  skeletonRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.lg,
-    gap: spacing.md,
-  },
-  skeletonAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-  },
-  skeletonText: {
-    flex: 1,
-    height: 20,
-    borderRadius: 8,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-  },
-  skeletonStats: {
-    flexDirection: 'row',
-    gap: spacing.md,
-  },
-  skeletonStat: {
-    flex: 1,
-    height: 60,
-    borderRadius: borderRadius.md,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-  },
-  progressCard: {
-    width: CARD_WIDTH,
-  },
+    skeletonCard: {
+      minHeight: 280,
+    },
+    skeletonStats: {
+      flexDirection: 'row',
+      gap: spacing.md,
+    },
+    progressCard: {
+      width: CARD_WIDTH,
+    },
   header: {
     marginBottom: spacing.lg,
   },

@@ -1,22 +1,29 @@
 import React, { useMemo } from 'react';
 import { View, Text, Image, StyleSheet } from 'react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
-import { voice } from './palette';
+import { useVoicePalette } from './palette';
 import WordReveal from '../WordReveal';
 import { findVocabInText } from '../../utils/bisayaWords';
 import { PronunciationCard, RepeatCard, VocabCards } from './LearningCards';
 import { SULTI_IMAGES } from '../../constants/avatars';
 import UserAvatar from '../profile/UserAvatar';
 
+const staticStyles = StyleSheet.create({
+  avatarWrap: { marginBottom: 2 },
+  sultiAvatar: { width: 28, height: 28, borderRadius: 14 },
+});
+
 function SultiAvatar() {
   return (
-    <View style={styles.avatarWrap}>
-      <Image source={SULTI_IMAGES.idle} style={styles.sultiAvatar} />
+    <View style={staticStyles.avatarWrap}>
+      <Image source={SULTI_IMAGES.idle} style={staticStyles.sultiAvatar} />
     </View>
   );
 }
 
 export function UserMessage({ text, pronunciation, speaking, userAvatarId }) {
+  const voice = useVoicePalette();
+  const styles = useMemo(() => createStyles(voice), [voice]);
   const speed = useMemo(() => {
     if (!text) return 40;
     return Math.max(18, Math.min(60, Math.round(360 / (text.split(/\s+/).length || 1))));
@@ -33,14 +40,20 @@ export function UserMessage({ text, pronunciation, speaking, userAvatarId }) {
       </View>
       {pronunciation ? (
         <View style={styles.cardAlign}>
-          <PronunciationCard score={pronunciation.score} feedback={pronunciation.feedback} phonemes={pronunciation.phoneme_breakdown || []} />
+          <PronunciationCard
+            score={pronunciation.score}
+            feedback={pronunciation.feedback}
+            phonemes={pronunciation.phoneme_breakdown || []}
+          />
         </View>
       ) : null}
     </Animated.View>
   );
 }
 
-export function SultiMessage({ text, speaking, onSpeak }) {
+export function SultiMessage({ text, speaking, onSpeak, showRepeat = true, emphasis = false }) {
+  const voice = useVoicePalette();
+  const styles = useMemo(() => createStyles(voice), [voice]);
   const speed = useMemo(() => {
     if (!text) return 45;
     const words = text.split(/\s+/).length;
@@ -63,11 +76,16 @@ export function SultiMessage({ text, speaking, onSpeak }) {
               </View>
             )}
           </View>
-          <WordReveal text={text} speed={speed} showCursor={speaking} />
+          <WordReveal
+            text={text}
+            speed={speed}
+            showCursor={speaking}
+            style={emphasis ? styles.sultiTextEmphasis : styles.sultiText}
+          />
         </View>
       </View>
       <View style={styles.cardAlign}>
-        <RepeatCard text={text} onSpeak={onSpeak} />
+        {showRepeat && <RepeatCard text={text} onSpeak={onSpeak} />}
         <VocabCards entries={vocab} />
       </View>
     </Animated.View>
@@ -75,6 +93,8 @@ export function SultiMessage({ text, speaking, onSpeak }) {
 }
 
 export function TypingIndicator() {
+  const voice = useVoicePalette();
+  const styles = useMemo(() => createStyles(voice), [voice]);
   return (
     <Animated.View entering={FadeInUp.duration(250)} style={styles.sultiRow}>
       <SultiAvatar />
@@ -89,35 +109,50 @@ export function TypingIndicator() {
   );
 }
 
-const styles = StyleSheet.create({
-  avatarWrap: { marginBottom: 2 },
-  sultiAvatar: { width: 28, height: 28, borderRadius: 14 },
+const createStyles = (voice) => StyleSheet.create({
   userBlock: { alignItems: 'flex-end' },
   userRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, paddingLeft: 40 },
   userAvatar: { marginBottom: 2 },
   userBubble: {
-    backgroundColor: 'rgba(32,214,199,0.16)',
-    borderWidth: 1, borderColor: 'rgba(32,214,199,0.35)',
-    borderRadius: 20, borderTopRightRadius: 6,
-    paddingHorizontal: 14, paddingVertical: 10,
+    backgroundColor: voice.primary + '29',
+    borderWidth: 1,
+    borderColor: voice.primary + '59',
+    borderRadius: 20,
+    borderTopRightRadius: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     maxWidth: '85%',
   },
-  userLabel: { color: voice.primary, fontSize: 10, fontWeight: '800', letterSpacing: 0.8, marginBottom: 3 },
+  userLabel: {
+    color: voice.primary,
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    marginBottom: 3,
+  },
   userText: { color: voice.text, fontSize: 15, lineHeight: 21 },
   sultiBlock: { alignItems: 'flex-start' },
   sultiRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, paddingRight: 40 },
   sultiBubble: {
-    backgroundColor: 'rgba(13, 30, 48, 0.7)',
-    borderWidth: 1, borderColor: voice.glassBorder,
-    borderRadius: 20, borderTopLeftRadius: 6,
-    paddingHorizontal: 14, paddingVertical: 11,
+    backgroundColor: voice.surface,
+    borderWidth: 1,
+    borderColor: voice.glassBorder,
+    borderRadius: 20,
+    borderTopLeftRadius: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
     flex: 1,
   },
   sultiHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
   sultiLabel: { color: voice.secondary, fontSize: 10, fontWeight: '800', letterSpacing: 0.8 },
+  sultiText: { fontSize: 15, lineHeight: 22, color: voice.text },
+  sultiTextEmphasis: { fontSize: 17, lineHeight: 25, color: voice.text, fontWeight: '600' },
   typingDots: { flexDirection: 'row', gap: 3, alignItems: 'center', paddingVertical: 2 },
   dot: {
-    width: 5, height: 5, borderRadius: 2.5, backgroundColor: voice.primary,
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: voice.primary,
   },
   cardAlign: { paddingLeft: 36, alignItems: 'stretch' },
 });

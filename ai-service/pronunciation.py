@@ -8,7 +8,6 @@ then scores pronunciation using DTW alignment and phoneme comparison.
 from __future__ import annotations
 
 import io
-import os
 import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -19,12 +18,9 @@ import parselmouth
 from parselmouth.praat import call
 from pydub import AudioSegment
 
-# Add bundled ffmpeg to PATH for pydub
-_FFMPEG_DIR = Path(__file__).parent / "ffmpeg-9.0.1-essentials_build" / "bin"
-if _FFMPEG_DIR.exists():
-    os.environ["PATH"] = str(_FFMPEG_DIR) + os.pathsep + os.environ.get("PATH", "")
-    AudioSegment.converter = str(_FFMPEG_DIR / "ffmpeg.exe")
-    AudioSegment.ffprobe = str(_FFMPEG_DIR / "ffprobe.exe")
+# ffmpeg/ffprobe are expected to be available on PATH (installed via the
+# Dockerfile's `apt-get install ffmpeg`). pydub will locate them automatically;
+# no bundled-binary path juggling is needed here.
 
 from phonemes import text_to_phonemes
 

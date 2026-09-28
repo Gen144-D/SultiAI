@@ -4,7 +4,12 @@ import {
   ScrollView, TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Audio } from 'expo-audio';
+import {
+  useAudioRecorder,
+  RecordingPresets,
+  requestRecordingPermissionsAsync,
+  setAudioModeAsync,
+} from 'expo-audio';
 import { readAsStringAsync } from 'expo-file-system/legacy';
 import { speakTTSPromise } from '../utils/tts';
 import Animated, {
@@ -13,9 +18,9 @@ import Animated, {
 } from 'react-native-reanimated';
 import Svg, { Circle } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api } from '../services/api';
 import { useTheme } from '../context/ThemeContext';
+import Header from '../components/Header';
 import { DIALECTS } from '../data/pronunciationPhrases';
 import { hapticTap } from '../utils/haptics';
 
@@ -204,7 +209,7 @@ function MicButton({ isRecording, onPress }) {
         ]}
       >
         <TouchableOpacity style={styles.micTouch} onPress={onPress} activeOpacity={0.8}>
-          <Ionicons name={isRecording ? 'stop' : 'mic'} size={40} color={colors.textOnGradient} />
+          <Ionicons name={isRecording ? 'stop' : 'mic'} size={40} color={colors.onPrimary} />
         </TouchableOpacity>
       </Animated.View>
     </View>
@@ -225,12 +230,12 @@ function FeedbackScreen({ result, phrase, onNext, onDone }) {
   }, []);
 
   const flashStyle = useAnimatedStyle(() => ({
-    backgroundColor: isCorrect ? `rgba(52,211,153,${flashOpacity.value})` : `rgba(248,113,113,${flashOpacity.value})`,
+    opacity: flashOpacity.value,
   }));
 
   return (
     <Animated.View entering={FadeIn.duration(400)} style={styles.feedbackContainer}>
-      <Animated.View style={[styles.feedbackFlash, flashStyle]} />
+      <Animated.View style={[styles.feedbackFlash, { backgroundColor: isCorrect ? colors.success : colors.error }, flashStyle]} />
       <View style={styles.feedbackHeader}>
         <ScoreRing score={result.score} size={100} />
         <Text style={[styles.feedbackTitle, { color: isCorrect ? colors.success : colors.error }]}>
@@ -295,8 +300,8 @@ function FeedbackScreen({ result, phrase, onNext, onDone }) {
           <Text style={[styles.doneBtnText, { color: colors.primary }]}>Dashboard</Text>
         </TouchableOpacity>
         <TouchableOpacity style={[styles.nextBtn, { backgroundColor: colors.primary, boxShadow: `0 4px 12px ${colors.primary}66` }]} onPress={onNext} activeOpacity={0.8}>
-          <Text style={[styles.nextBtnText, { color: colors.textOnGradient }]}>Next Phrase</Text>
-          <Ionicons name="arrow-forward" size={18} color={colors.textOnGradient} />
+          <Text style={[styles.nextBtnText, { color: colors.onPrimary }]}>Next Phrase</Text>
+          <Ionicons name="arrow-forward" size={18} color={colors.onPrimary} />
         </TouchableOpacity>
       </View>
     </Animated.View>
@@ -329,7 +334,7 @@ function LibraryRow({ phrase, onPlay, onPractice }) {
         <Ionicons name={playing ? 'volume-high' : 'volume-medium'} size={20} color={colors.primary} />
       </TouchableOpacity>
       <TouchableOpacity style={[styles.libraryPractice, { backgroundColor: colors.primary }]} onPress={onPractice} activeOpacity={0.8} accessibilityLabel={`Practice ${phrase.bisaya}`}>
-        <Ionicons name="mic" size={20} color={colors.textOnGradient} />
+        <Ionicons name="mic" size={20} color={colors.onPrimary} />
       </TouchableOpacity>
     </Animated.View>
   );
@@ -337,18 +342,19 @@ function LibraryRow({ phrase, onPlay, onPractice }) {
 
 export default function PronunciationScreen({ navigation }) {
   const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
   const [step, setStep] = useState('home');
   const [selectedDialect, setSelectedDialect] = useState(DIALECTS[0]);
   const [currentPhrase, setCurrentPhrase] = useState(null);
   const [phraseIndex, setPhraseIndex] = useState(0);
   const [shuffledPhrases, setShuffledPhrases] = useState([]);
-  const [recording, setRecording] = useState(null);
+  const [isRecording, setIsRecording] = useState(false);
   const [result, setResult] = useState(null);
   const [isListening, setIsListening] = useState(false);
   const [stats, setStats] = useState({ bestScore: 0, totalScore: 0, sessions: 0, practiced: 0 });
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('All');
+
+  const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
 
   useEffect(() => {
     (async () => {
@@ -401,30 +407,33 @@ export default function PronunciationScreen({ navigation }) {
 
   const startRecording = useCallback(async () => {
     try {
-      const perm = await Audio.requestPermissionsAsync();
-      if (!perm.granted) {
+      const { granted } = await requestRecordingPermissionsAsync();
+      if (!granted) {
         Alert.alert('Permission denied', 'Microphone permission is needed');
         return;
       }
-      await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
-      const rec = await Audio.Recording.createAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
-      setRecording(rec);
+      await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
+      await audioRecorder.prepareToRecordAsync();
+      audioRecorder.record();
+      setIsRecording(true);
       setStep('recording');
-    } catch (_) {
-      Alert.alert('Error', 'Could not start recording');
+    } catch (e) {
+      setIsRecording(false);
+      Alert.alert('Error', `Could not start recording: ${e.message}`);
     }
-  }, []);
+  }, [audioRecorder]);
 
   const stopRecording = useCallback(async () => {
-    if (!recording) return;
+    if (!isRecording) return;
+    setIsRecording(false);
     setStep('analyzing');
     try {
-      await recording.stopAndUnloadAsync();
-      const uri = recording.getURI();
-      setRecording(null);
+      await audioRecorder.stop();
+      const uri = audioRecorder.uri;
+      if (!uri) throw new Error('No audio was captured');
       const audioBase64 = await readAsStringAsync(uri, { encoding: 'base64' });
 
-      // Send audio + expected text for acoustic analysis
+      // Send audio + expected text so the server can transcribe and score the match
       const expectedText = currentPhrase?.text || currentPhrase?.phrase || '';
       const pronunciation = await api.checkPronunciationAudio(
         audioBase64,
@@ -432,12 +441,8 @@ export default function PronunciationScreen({ navigation }) {
         selectedDialect?.language || 'ceb',
       );
 
-      // Also transcribe to show what was heard
-      let transcription = '';
-      try {
-        const data = await api.transcribe(audioBase64, selectedDialect?.language);
-        transcription = data.text || '';
-      } catch {}
+      // The server transcribes as part of scoring, so no extra round-trip.
+      const transcription = pronunciation.transcription || '';
 
       setResult({ transcription, ...pronunciation });
       setStep('result');
@@ -452,15 +457,15 @@ export default function PronunciationScreen({ navigation }) {
         try { AsyncStorage.setItem(STATS_KEY, JSON.stringify(next)); } catch {}
         return next;
       });
-    } catch (_) {
-      Alert.alert('Error', 'Failed to analyze pronunciation');
+    } catch (e) {
+      Alert.alert('Error', `Failed to analyze pronunciation: ${e.message}`);
       setStep('phrase');
     }
-  }, [recording, selectedDialect, currentPhrase]);
+  }, [audioRecorder, isRecording, selectedDialect, currentPhrase]);
 
   const toggleRecording = useCallback(() => {
-    if (recording) stopRecording(); else startRecording();
-  }, [recording, startRecording, stopRecording]);
+    if (isRecording) stopRecording(); else startRecording();
+  }, [isRecording, startRecording, stopRecording]);
 
   const nextPhrase = useCallback(() => {
     hapticTap();
@@ -480,10 +485,16 @@ export default function PronunciationScreen({ navigation }) {
 
   const goHome = useCallback(() => {
     hapticTap();
+    if (isRecording) audioRecorder.stop().catch(() => {});
+    setIsRecording(false);
     setStep('home');
     setCurrentPhrase(null);
     setResult(null);
-  }, []);
+  }, [isRecording, audioRecorder]);
+
+  useEffect(() => () => {
+    if (audioRecorder.isRecording) audioRecorder.stop().catch(() => {});
+  }, [audioRecorder]);
 
   const avgScore = stats.sessions ? Math.round(stats.totalScore / stats.sessions) : 0;
   const filtered = useMemo(() => {
@@ -496,25 +507,20 @@ export default function PronunciationScreen({ navigation }) {
   }, [query, category]);
 
   const renderHeader = () => (
-    <View style={[styles.header, { backgroundColor: colors.surface, paddingTop: insets.top + 16 }]}>
-      <TouchableOpacity onPress={step === 'home' ? () => navigation?.goBack() : goHome} style={styles.backBtn} accessibilityRole="button" accessibilityLabel="Go back">
-        <Ionicons name={step === 'home' ? 'arrow-back' : 'chevron-down'} size={24} color={colors.text} />
-      </TouchableOpacity>
-      <View style={styles.headerCenter}>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Pronunciation Lab</Text>
-        <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
-          {step === 'home' ? 'Master the sounds of Bisaya' : 'Record yourself speaking'}
-        </Text>
-      </View>
-      <View style={styles.backBtn}>
-        {stats.sessions > 0 && (
-          <View style={[styles.headerStat, { backgroundColor: colors.surfaceSecondary }]}>
-            <Ionicons name="flame" size={14} color={colors.warning} />
-            <Text style={[styles.headerStatText, { color: colors.text }]}>{stats.practiced}</Text>
-          </View>
-        )}
-      </View>
-    </View>
+    <Header
+      title="Pronunciation Lab"
+      subtitle={step === 'home' ? 'Master the sounds of Bisaya' : 'Record yourself speaking'}
+      leftIcon={step === 'home' ? 'arrow-back' : 'chevron-down'}
+      onLeftPress={step === 'home' ? () => navigation?.goBack() : goHome}
+      gradient={false}
+    >
+      {stats.sessions > 0 && (
+        <View style={[styles.headerStat, { backgroundColor: colors.surfaceSecondary }]}>
+          <Ionicons name="flame" size={14} color={colors.warning} />
+          <Text style={[styles.headerStatText, { color: colors.text }]}>{stats.practiced}</Text>
+        </View>
+      )}
+    </Header>
   );
 
   const renderHome = () => (
@@ -551,14 +557,14 @@ export default function PronunciationScreen({ navigation }) {
       </Animated.View>
 
       <TouchableOpacity style={[styles.startBtn, { backgroundColor: colors.primary, boxShadow: `0 6px 18px ${colors.primary}59`, elevation: 6 }]} onPress={startSession} activeOpacity={0.85}>
-        <View style={styles.startBtnIcon}>
-          <Ionicons name="mic" size={22} color={colors.textOnGradient} />
+        <View style={[styles.startBtnIcon, { backgroundColor: `${colors.onPrimary}38` }]}>
+          <Ionicons name="mic" size={22} color={colors.onPrimary} />
         </View>
         <View style={styles.startBtnTextWrap}>
-          <Text style={styles.startBtnTitle}>Start Practicing</Text>
-          <Text style={styles.startBtnSubtitle}>Pick a dialect and speak aloud for instant feedback</Text>
+          <Text style={[styles.startBtnTitle, { color: colors.onPrimary }]}>Start Practicing</Text>
+          <Text style={[styles.startBtnSubtitle, { color: colors.onPrimary, opacity: 0.75 }]}>Pick a dialect and speak aloud for instant feedback</Text>
         </View>
-        <Ionicons name="arrow-forward" size={22} color={colors.textOnGradient} />
+        <Ionicons name="arrow-forward" size={22} color={colors.onPrimary} />
       </TouchableOpacity>
 
       <View style={styles.dialectStrip}>
@@ -608,7 +614,7 @@ export default function PronunciationScreen({ navigation }) {
               activeOpacity={0.8}
               hitSlop={{ top: 6, bottom: 6 }}
             >
-              <Text style={[styles.categoryChipText, { color: active ? '#04111f' : colors.textSecondary }]}>{c}</Text>
+              <Text style={[styles.categoryChipText, { color: active ? colors.onPrimary : colors.textSecondary }]}>{c}</Text>
             </TouchableOpacity>
           );
         })}
@@ -653,8 +659,8 @@ export default function PronunciationScreen({ navigation }) {
           <PhraseCard phrase={currentPhrase} onListen={listenToPhrase} isListening={isListening} />
         )}
 
-        <MicButton isRecording={step === 'recording'} onPress={toggleRecording} />
-        <Text style={[styles.statusText, { color: colors.textSecondary }]}>{step === 'recording' ? 'Tap to stop' : 'Tap to record'}</Text>
+        <MicButton isRecording={isRecording} onPress={toggleRecording} />
+        <Text style={[styles.statusText, { color: colors.textSecondary }]}>{isRecording ? 'Tap to stop' : 'Tap to record'}</Text>
 
         <View style={styles.progressRow}>
           <Text style={[styles.progressText, { color: colors.textLight }]}>{phraseIndex + 1} / {shuffledPhrases.length}</Text>
@@ -701,13 +707,8 @@ export default function PronunciationScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', paddingBottom: 16, paddingHorizontal: 16 },
-  backBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
-  headerCenter: { flex: 1, alignItems: 'center' },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: '#FFFFFF' },
-  headerSubtitle: { fontSize: 12, color: 'rgba(255,255,255,0.7)', marginTop: 2 },
-  headerStat: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(255,255,255,0.14)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999 },
-  headerStatText: { fontSize: 13, fontWeight: '800', color: '#fff' },
+  headerStat: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999 },
+  headerStatText: { fontSize: 13, fontWeight: '800' },
   content: { flex: 1 },
   contentContainer: { padding: 16, paddingBottom: 40 },
   homeContent: { padding: 16, paddingBottom: 40 },
@@ -715,60 +716,59 @@ const styles = StyleSheet.create({
   // Hero
   heroCard: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#0D1E30', borderWidth: 1, borderColor: 'rgba(124,247,232,0.16)',
+    borderWidth: 1,
     borderRadius: 22, padding: 20, marginBottom: 16,
   },
   heroRing: { marginRight: 16 },
   heroInfo: { flex: 1 },
-  heroTitle: { fontSize: 20, fontWeight: '800', color: '#fff', letterSpacing: -0.3 },
-  heroSubtitle: { fontSize: 12, color: 'rgba(255,255,255,0.6)', marginTop: 4, lineHeight: 17 },
+  heroTitle: { fontSize: 20, fontWeight: '800', letterSpacing: -0.3 },
+  heroSubtitle: { fontSize: 12, marginTop: 4, lineHeight: 17 },
   heroStats: { flexDirection: 'row', alignItems: 'center', marginTop: 14 },
   heroStatItem: { flex: 1, alignItems: 'center', gap: 2 },
-  heroStatValue: { fontSize: 16, fontWeight: '800', color: '#fff' },
-  heroStatLabel: { fontSize: 10, color: 'rgba(255,255,255,0.5)' },
-  heroStatDivider: { width: 1, height: 26, backgroundColor: 'rgba(255,255,255,0.12)' },
+  heroStatValue: { fontSize: 16, fontWeight: '800' },
+  heroStatLabel: { fontSize: 10 },
+  heroStatDivider: { width: 1, height: 26 },
 
   startBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: '#2DD4BF', borderRadius: 18, padding: 16, marginBottom: 12,
-    boxShadow: '0 6px 18px rgba(45,212,191,0.35)', elevation: 6,
+    borderRadius: 18, padding: 16, marginBottom: 12,
   },
   startBtnIcon: {
-    width: 42, height: 42, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.22)',
+    width: 42, height: 42, borderRadius: 14,
     alignItems: 'center', justifyContent: 'center',
   },
   startBtnTextWrap: { flex: 1 },
-  startBtnTitle: { fontSize: 16, fontWeight: '800', color: '#04111f' },
-  startBtnSubtitle: { fontSize: 11, color: 'rgba(4,17,31,0.7)', marginTop: 2 },
+  startBtnTitle: { fontSize: 16, fontWeight: '800' },
+  startBtnSubtitle: { fontSize: 11, marginTop: 2 },
 
   dialectStrip: { flexDirection: 'row', gap: 8, marginBottom: 20 },
   dialectChip: {
     flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8,
-    borderRadius: 999, backgroundColor: 'rgba(45,212,191,0.12)', borderWidth: 1, borderColor: 'rgba(45,212,191,0.3)',
+    borderRadius: 999, borderWidth: 1,
   },
-  dialectChipText: { fontSize: 12, fontWeight: '700', color: '#2DD4BF' },
+  dialectChipText: { fontSize: 12, fontWeight: '700' },
 
   libraryHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
-  libraryTitle: { fontSize: 20, fontWeight: '800', color: '#fff', letterSpacing: -0.3 },
-  libraryCount: { fontSize: 12, color: 'rgba(255,255,255,0.5)' },
+  libraryTitle: { fontSize: 20, fontWeight: '800', letterSpacing: -0.3 },
+  libraryCount: { fontSize: 12 },
 
   searchBox: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 14, borderWidth: 1, paddingHorizontal: 12, marginBottom: 12 },
   searchInput: { flex: 1, paddingVertical: 12, fontSize: 14 },
   clearBtn: { padding: 2 },
 
   categoryRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
-  categoryChip: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 999, backgroundColor: 'rgba(13,30,48,0.7)', borderWidth: 1, borderColor: 'rgba(124,247,232,0.14)' },
+  categoryChip: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 999, borderWidth: 1 },
   categoryChipText: { fontSize: 12, fontWeight: '700' },
 
   libraryRow: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
-    backgroundColor: 'rgba(13,30,48,0.65)', borderWidth: 1, borderColor: 'rgba(124,247,232,0.12)',
+    borderWidth: 1,
     borderRadius: 16, padding: 14, marginBottom: 10,
   },
   libraryRowMain: { flex: 1 },
-  libraryBisaya: { fontSize: 16, fontWeight: '800', color: '#fff' },
-  libraryEnglish: { fontSize: 13, color: 'rgba(255,255,255,0.7)', marginTop: 2 },
-  libraryPron: { fontSize: 12, color: 'rgba(255,255,255,0.45)', fontStyle: 'italic', marginTop: 2 },
+  libraryBisaya: { fontSize: 16, fontWeight: '800' },
+  libraryEnglish: { fontSize: 13, marginTop: 2 },
+  libraryPron: { fontSize: 12, fontStyle: 'italic', marginTop: 2 },
   libraryPlay: {
     width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center',
   },
@@ -777,107 +777,103 @@ const styles = StyleSheet.create({
   },
 
   emptyLibrary: { alignItems: 'center', paddingVertical: 40 },
-  emptyLibraryText: { color: 'rgba(255,255,255,0.4)', fontSize: 14, marginTop: 10 },
+  emptyLibraryText: { fontSize: 14, marginTop: 10 },
 
   // Practice flow
   dialectContainer: { paddingTop: 20 },
-  dialectTitle: { fontSize: 24, fontWeight: '700', color: '#FFFFFF', textAlign: 'center', marginBottom: 8 },
-  dialectSubtitle: { fontSize: 14, color: 'rgba(255,255,255,0.6)', textAlign: 'center', marginBottom: 32 },
+  dialectTitle: { fontSize: 24, fontWeight: '700', textAlign: 'center', marginBottom: 8 },
+  dialectSubtitle: { fontSize: 14, textAlign: 'center', marginBottom: 32 },
   dialectCard: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: 'rgba(13, 30, 48, 0.65)', borderWidth: 1, borderColor: 'rgba(124, 247, 232, 0.14)',
+    borderWidth: 1,
     borderRadius: 16, padding: 16, marginBottom: 12,
   },
   dialectIcon: {
-    width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(124,247,232,0.12)',
-    alignItems: 'center', justifyContent: 'center', marginRight: 14,
+    width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginRight: 14,
   },
   dialectInfo: { flex: 1 },
-  dialectName: { fontSize: 16, fontWeight: '700', color: '#FFFFFF' },
-  dialectDesc: { fontSize: 12, color: 'rgba(255,255,255,0.6)', marginTop: 2 },
+  dialectName: { fontSize: 16, fontWeight: '700' },
+  dialectDesc: { fontSize: 12, marginTop: 2 },
 
   practiceContainer: { alignItems: 'center', paddingTop: 20 },
   dialectBadge: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: 'rgba(45, 212, 191, 0.15)', borderWidth: 1, borderColor: 'rgba(45, 212, 191, 0.3)',
+    borderWidth: 1,
     borderRadius: 999, paddingHorizontal: 16, paddingVertical: 8, marginBottom: 24, gap: 6,
   },
-  dialectBadgeText: { fontSize: 14, fontWeight: '600', color: '#2DD4BF' },
+  dialectBadgeText: { fontSize: 14, fontWeight: '600' },
 
   phraseCard: {
-    backgroundColor: 'rgba(13, 30, 48, 0.65)', borderWidth: 1, borderColor: 'rgba(124, 247, 232, 0.14)',
+    borderWidth: 1,
     borderRadius: 18, padding: 20, width: '100%', marginBottom: 32,
   },
-  phraseLabel: { fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 },
-  phraseBisaya: { fontSize: 28, fontWeight: '800', color: '#FFFFFF', marginBottom: 8 },
-  phraseEnglish: { fontSize: 16, color: 'rgba(255,255,255,0.7)', marginBottom: 16 },
+  phraseLabel: { fontSize: 12, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 },
+  phraseBisaya: { fontSize: 28, fontWeight: '800', marginBottom: 8 },
+  phraseEnglish: { fontSize: 16, marginBottom: 16 },
   pronunciationRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   listenBtn: {
     width: 44, height: 44, borderRadius: 22,
-    backgroundColor: 'rgba(45, 212, 191, 0.15)', borderWidth: 1, borderColor: 'rgba(45, 212, 191, 0.3)',
+    borderWidth: 1,
     justifyContent: 'center', alignItems: 'center',
   },
-  listenBtnActive: { backgroundColor: 'rgba(45, 212, 191, 0.3)' },
-  phrasePron: { fontSize: 15, color: 'rgba(255,255,255,0.6)', fontStyle: 'italic', flex: 1 },
+  listenBtnActive: {},
+  phrasePron: { fontSize: 15, fontStyle: 'italic', flex: 1 },
 
   micContainer: { alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
-  micGlow: { position: 'absolute', width: 140, height: 140, borderRadius: 70, backgroundColor: 'rgba(45, 212, 191, 0.3)' },
+  micGlow: { position: 'absolute', width: 140, height: 140, borderRadius: 70 },
   micBtn: {
-    width: 100, height: 100, borderRadius: 50, backgroundColor: '#2DD4BF',
-    justifyContent: 'center', alignItems: 'center',
-    boxShadow: '0 4px 16px rgba(45,212,199,0.4)', elevation: 8,
+    width: 100, height: 100, borderRadius: 50, justifyContent: 'center', alignItems: 'center',
   },
-  micBtnRecording: { backgroundColor: '#F87171', boxShadow: '0 4px 16px rgba(248,113,113,0.4)' },
+  micBtnRecording: {},
   micTouch: { width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center' },
 
-  statusText: { fontSize: 14, color: 'rgba(255,255,255,0.5)', marginBottom: 24 },
+  statusText: { fontSize: 14, marginBottom: 24 },
   progressRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 16 },
-  progressText: { fontSize: 13, color: 'rgba(255,255,255,0.4)' },
+  progressText: { fontSize: 13 },
   exitPractice: { paddingHorizontal: 10, paddingVertical: 4 },
-  exitPracticeText: { fontSize: 13, color: 'rgba(45,212,191,0.8)', fontWeight: '600' },
+  exitPracticeText: { fontSize: 13, fontWeight: '600' },
 
   analyzingContainer: { alignItems: 'center', paddingTop: 80 },
-  analyzingText: { fontSize: 16, color: 'rgba(255,255,255,0.7)', marginTop: 16 },
+  analyzingText: { fontSize: 16, marginTop: 16 },
 
   // Feedback
   feedbackContainer: { alignItems: 'center', paddingTop: 20 },
   feedbackFlash: { position: 'absolute', top: 0, left: -16, right: -16, bottom: 0 },
   feedbackHeader: { alignItems: 'center', marginBottom: 24 },
   ringWrap: { alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
-  scoreText: { position: 'absolute', fontSize: 24, fontWeight: '800', color: '#FFFFFF' },
-  scoreCaption: { position: 'absolute', bottom: 18, fontSize: 9, color: 'rgba(255,255,255,0.5)', fontWeight: '600' },
+  scoreText: { position: 'absolute', fontSize: 24, fontWeight: '800' },
+  scoreCaption: { position: 'absolute', bottom: 18, fontSize: 9, fontWeight: '600' },
   feedbackTitle: { fontSize: 28, fontWeight: '800', marginBottom: 8 },
-  feedbackSubtitle: { fontSize: 16, color: 'rgba(255,255,255,0.7)' },
+  feedbackSubtitle: { fontSize: 16 },
 
   feedbackCard: {
-    backgroundColor: 'rgba(13, 30, 48, 0.65)', borderWidth: 1, borderColor: 'rgba(124, 247, 232, 0.14)',
+    borderWidth: 1,
     borderRadius: 16, padding: 16, width: '100%', marginBottom: 16,
   },
-  feedbackLabel: { fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 },
-  feedbackText: { fontSize: 15, color: '#FFFFFF', lineHeight: 22 },
-  feedbackValue: { fontSize: 18, color: '#FFFFFF', fontWeight: '700' },
+  feedbackLabel: { fontSize: 12, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 },
+  feedbackText: { fontSize: 15, lineHeight: 22 },
+  feedbackValue: { fontSize: 18, fontWeight: '700' },
 
   phonemeSection: { width: '100%', marginBottom: 24 },
-  phonemeLabel: { fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 },
+  phonemeLabel: { fontSize: 12, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 },
   phonemeList: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   phonemeChip: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8,
+    borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8,
   },
-  phonemeExpected: { fontSize: 14, fontWeight: '700', color: '#FFFFFF' },
-  phonemeHeard: { fontSize: 13, color: 'rgba(255,255,255,0.5)', fontStyle: 'italic' },
+  phonemeExpected: { fontSize: 14, fontWeight: '700' },
+  phonemeHeard: { fontSize: 13, fontStyle: 'italic' },
 
   feedbackActions: { flexDirection: 'row', gap: 12, width: '100%' },
   doneBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    backgroundColor: 'rgba(45,212,191,0.12)', borderWidth: 1, borderColor: 'rgba(45,212,191,0.35)',
+    borderWidth: 1,
     borderRadius: 999, paddingHorizontal: 20, paddingVertical: 16,
   },
-  doneBtnText: { fontSize: 15, fontWeight: '700', color: '#2DD4BF' },
+  doneBtnText: { fontSize: 15, fontWeight: '700' },
   nextBtn: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    backgroundColor: '#2DD4BF', borderRadius: 999, paddingVertical: 16, gap: 8,
-    boxShadow: '0 4px 12px rgba(45,212,199,0.4)', elevation: 6,
+    borderRadius: 999, paddingVertical: 16, gap: 8,
   },
-  nextBtnText: { fontSize: 16, fontWeight: '700', color: '#FFFFFF' },
+  nextBtnText: { fontSize: 16, fontWeight: '700' },
 });

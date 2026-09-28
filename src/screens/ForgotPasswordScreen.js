@@ -1,9 +1,20 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, TextInput, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, TouchableOpacity, Animated } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
+  View,
+  Text,
+  TextInput,
+  StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  ActivityIndicator,
+  TouchableOpacity,
+  Animated,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { supabase } from '../lib/supabase';
+import Header from '../components/Header';
 import { spacing, borderRadius, shadows } from '../theme';
 
 function FadeSlideIn({ delay = 0, children, style }) {
@@ -13,7 +24,13 @@ function FadeSlideIn({ delay = 0, children, style }) {
   useEffect(() => {
     Animated.parallel([
       Animated.timing(fade, { toValue: 1, duration: 450, delay, useNativeDriver: true }),
-      Animated.spring(slide, { toValue: 0, friction: 8, tension: 50, delay, useNativeDriver: true }),
+      Animated.spring(slide, {
+        toValue: 0,
+        friction: 8,
+        tension: 50,
+        delay,
+        useNativeDriver: true,
+      }),
     ]).start();
   }, []);
 
@@ -31,7 +48,13 @@ function ScaleIn({ delay = 0, children, style }) {
   useEffect(() => {
     Animated.parallel([
       Animated.timing(fade, { toValue: 1, duration: 400, delay, useNativeDriver: true }),
-      Animated.spring(scale, { toValue: 1, friction: 7, tension: 40, delay, useNativeDriver: true }),
+      Animated.spring(scale, {
+        toValue: 1,
+        friction: 7,
+        tension: 40,
+        delay,
+        useNativeDriver: true,
+      }),
     ]).start();
   }, []);
 
@@ -42,10 +65,9 @@ function ScaleIn({ delay = 0, children, style }) {
   );
 }
 
-export default function ForgotPasswordScreen({ navigation }) {
-  const insets = useSafeAreaInsets();
+export default function ForgotPasswordScreen({ navigation, route }) {
   const { colors } = useTheme();
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(route?.params?.email || '');
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState('');
@@ -80,20 +102,17 @@ export default function ForgotPasswordScreen({ navigation }) {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.backBtn}
-          accessibilityRole="button"
-          accessibilityLabel="Go back"
-        >
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Reset Password</Text>
-        <View style={styles.backBtn} />
-      </View>
+      <Header
+        title="Reset Password"
+        leftIcon="arrow-back"
+        onLeftPress={() => navigation.goBack()}
+        gradient={false}
+      />
 
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{ flex: 1 }}
+      >
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           {/* Icon */}
           <FadeSlideIn delay={0}>
@@ -116,7 +135,10 @@ export default function ForgotPasswordScreen({ navigation }) {
             /* Success state */
             <ScaleIn delay={0}>
               <View
-                style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                style={[
+                  styles.card,
+                  { backgroundColor: colors.surface, borderColor: colors.border },
+                ]}
                 accessibilityLiveRegion="polite"
               >
                 <View style={[styles.successIcon, { backgroundColor: colors.success + '15' }]}>
@@ -131,18 +153,22 @@ export default function ForgotPasswordScreen({ navigation }) {
                 </Text>
                 <TouchableOpacity
                   activeOpacity={0.8}
-                  onPress={() => navigation.goBack()}
+                  onPress={() => navigation.navigate('Auth', { mode: 'signIn', email })}
                   style={[styles.primaryBtn, { backgroundColor: colors.primary }]}
                   accessibilityRole="button"
                   accessibilityLabel="Back to Sign In"
                 >
-                  <Text style={[styles.primaryBtnText, { color: colors.textOnGradient }]}>Back to Sign In</Text>
+                  <Text style={[styles.primaryBtnText, { color: colors.textOnGradient }]}>
+                    Back to Sign In
+                  </Text>
                 </TouchableOpacity>
               </View>
             </ScaleIn>
           ) : (
             /* Form state */
-            <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <View
+              style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}
+            >
               {/* Email input */}
               <Text style={[styles.label, { color: colors.textSecondary }]}>Email Address</Text>
               <View
@@ -181,7 +207,10 @@ export default function ForgotPasswordScreen({ navigation }) {
               {/* Error */}
               {!!error && (
                 <View
-                  style={[styles.errorBox, { backgroundColor: colors.error + '15', borderColor: colors.error + '30' }]}
+                  style={[
+                    styles.errorBox,
+                    { backgroundColor: colors.error + '15', borderColor: colors.error + '30' },
+                  ]}
                   accessibilityLiveRegion="polite"
                 >
                   <Ionicons name="alert-circle" size={16} color={colors.error} />
@@ -202,7 +231,9 @@ export default function ForgotPasswordScreen({ navigation }) {
                 {loading ? (
                   <ActivityIndicator size="small" color={colors.textOnGradient} />
                 ) : (
-                  <Text style={[styles.primaryBtnText, { color: colors.textOnGradient }]}>Send Reset Link</Text>
+                  <Text style={[styles.primaryBtnText, { color: colors.textOnGradient }]}>
+                    Send Reset Link
+                  </Text>
                 )}
               </TouchableOpacity>
 
@@ -213,7 +244,9 @@ export default function ForgotPasswordScreen({ navigation }) {
                 accessibilityRole="button"
                 accessibilityLabel="Back to Sign In"
               >
-                <Text style={[styles.backLinkText, { color: colors.primary }]}>Back to Sign In</Text>
+                <Text style={[styles.backLinkText, { color: colors.primary }]}>
+                  Back to Sign In
+                </Text>
               </TouchableOpacity>
             </View>
           )}
@@ -225,22 +258,31 @@ export default function ForgotPasswordScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: {
-    flexDirection: 'row',
+
+  scroll: {
+    flexGrow: 1,
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.xl,
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingBottom: 12,
   },
-  backBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { fontSize: 17, fontWeight: '600' },
 
-  scroll: { flexGrow: 1, paddingHorizontal: spacing.xl, paddingTop: spacing.xl, alignItems: 'center' },
-
-  iconWrap: { width: 80, height: 80, borderRadius: borderRadius.xxl, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.lg },
+  iconWrap: {
+    width: 80,
+    height: 80,
+    borderRadius: borderRadius.xxl,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.lg,
+  },
 
   title: { fontSize: 26, fontWeight: '800', textAlign: 'center', marginBottom: spacing.sm },
-  subtitle: { fontSize: 15, textAlign: 'center', marginBottom: spacing.xxl, lineHeight: 22, paddingHorizontal: spacing.md },
+  subtitle: {
+    fontSize: 15,
+    textAlign: 'center',
+    marginBottom: spacing.xxl,
+    lineHeight: 22,
+    paddingHorizontal: spacing.md,
+  },
 
   card: {
     width: '100%',
@@ -288,7 +330,15 @@ const styles = StyleSheet.create({
   backLink: { marginTop: spacing.md, alignItems: 'center' },
   backLinkText: { fontSize: 15, fontWeight: '600' },
 
-  successIcon: { width: 80, height: 80, borderRadius: 40, alignItems: 'center', justifyContent: 'center', alignSelf: 'center', marginBottom: spacing.md },
+  successIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'center',
+    marginBottom: spacing.md,
+  },
   sentTitle: { fontSize: 22, fontWeight: '700', textAlign: 'center', marginBottom: spacing.sm },
   sentDesc: { fontSize: 15, textAlign: 'center', lineHeight: 22, marginBottom: spacing.sm },
   sentNote: { fontSize: 13, textAlign: 'center', marginBottom: spacing.xl },

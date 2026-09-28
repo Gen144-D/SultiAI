@@ -3,6 +3,8 @@
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useToast } from '@/components/Toast';
+import { ThemeToggle } from '@/components/ThemeToggle';
+import { inputCls, primaryBtn } from '@/components/ui';
 import { sessionMock } from '@/lib/mock/session';
 
 export default function AdminLoginPage() {
@@ -46,18 +48,21 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-brand-light to-surface px-4">
-      <div className="w-full max-w-md rounded-3xl border border-line bg-white p-8 shadow-sm">
+    <div className="relative flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-brand-soft to-bg px-4">
+      <div className="absolute top-4 right-4">
+        <ThemeToggle />
+      </div>
+      <div className="w-full max-w-sm rounded-xl border border-line bg-surface p-8 shadow-card">
         <div className="text-center">
-          <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-brand to-brand-dark text-xl font-bold text-white">
+          <span className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-brand-solid text-base font-semibold text-on-brand">
             S
           </span>
-          <h1 className="mt-5 text-xl font-bold text-ink">SultiAI Admin</h1>
+          <h1 className="mt-5 text-base font-semibold tracking-tight text-ink">SultiAI Admin</h1>
           <p className="mt-1.5 text-sm text-ink-soft">Sign in to manage the platform.</p>
         </div>
 
         {error && (
-          <div className="mt-4 rounded-xl border border-danger/20 bg-danger/5 p-3 text-center text-sm text-danger">
+          <div className="mt-5 rounded-lg border border-danger/30 bg-danger-soft px-3.5 py-2.5 text-sm text-danger">
             {error}
           </div>
         )}
@@ -72,7 +77,7 @@ export default function AdminLoginPage() {
                 setEmail(e.target.value);
                 setError('');
               }}
-              className="w-full rounded-xl border border-line bg-white px-3.5 py-2.5 text-sm text-ink outline-none transition-colors placeholder:text-ink-faint focus:border-brand"
+              className={inputCls}
               placeholder="admin@sultiai.com"
               autoComplete="email"
               disabled={busy}
@@ -88,7 +93,7 @@ export default function AdminLoginPage() {
                   setPassword(e.target.value);
                   setError('');
                 }}
-                className="w-full rounded-xl border border-line bg-white px-3.5 py-2.5 pr-10 text-sm text-ink outline-none transition-colors placeholder:text-ink-faint focus:border-brand"
+                className={`${inputCls} pr-10`}
                 placeholder="Min 6 characters"
                 autoComplete="current-password"
                 disabled={busy}
@@ -131,11 +136,7 @@ export default function AdminLoginPage() {
               </button>
             </div>
           </div>
-          <button
-            type="submit"
-            disabled={busy}
-            className="mt-2 w-full rounded-xl bg-gradient-to-r from-brand to-brand-dark py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
-          >
+          <button type="submit" disabled={busy} className={`${primaryBtn} mt-2 w-full py-2.5`}>
             {busy ? 'Signing in...' : 'Sign in'}
           </button>
         </form>

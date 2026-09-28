@@ -1,8 +1,12 @@
-import { eq, or, and, sql } from 'drizzle-orm';
-import { getDb, getSqliteRaw } from '../connection';
-import * as schema from '../schema-sqlite';
+import { eq, gte, desc, sql } from 'drizzle-orm';
+import { getDb } from '../connection';
+import * as schema from '../schema-pg';
 import { isMongoConnected } from '../mongodb/connection';
 import { LearnerProfile } from '../mongodb/learnerProfile.model';
+
+function randomId(): string {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
 
 function parseJsonField(val: any): any {
   if (!val) return [];
@@ -204,52 +208,89 @@ export async function getLeaderboard(period: string): Promise<any[]> {
       );
   }
 
-  const leaders = await getSqliteRaw()!
-    .prepare(
-      `
-    SELECT lp.user_id as id, u.fullname as name, u.username,
-           lp.total_xp as xp, lp.streak,
-           (SELECT COUNT(*) FROM daily_activity da WHERE da.user_id = lp.user_id AND da.activity_date >= ?) as active_days
-    FROM learner_profiles lp
-    JOIN users u ON u.user_id = lp.user_id
-    WHERE lp.last_active >= ?
-    ORDER BY lp.total_xp DESC
-    LIMIT 50
-  `
-    )
-    .all(since, since);
+  const db = getDb();
+  const leaders = await (db as any)
+    .select({
+      id: schema.learnerProfiles.userId,
+      name: schema.users.fullname,
+      username: schema.users.username,
+      xp: schema.learnerProfiles.totalXp,
+      streak: schema.learnerProfiles.streak,
+    })
+    .from(schema.learnerProfiles)
+    .innerJoin(schema.users, eq(schema.users.userId, schema.learnerProfiles.userId))
+    .where(gte(schema.learnerProfiles.lastActive, since))
+    .orderBy(desc(schema.learnerProfiles.totalXp))
+    .limit(50);
   return leaders.map((l: any, i: number) => ({ ...l, rank: i + 1 }));
 }
 
+/**
+ * Claims the daily reward exactly once per user per calendar day. Relies on the
+ * unique index on daily_activity(user_id, activity_date) added by
+ * supabase/migrations/20261001_gamification_integrity.sql — without it this
+ * ON CONFLICT is a no-op and the row is inserted unconditionally every call.
+ */
 export async function addDailyReward(
   userId: number,
   reward: { xp: number; coins: number }
-): Promise<void> {
+): Promise<{ claimed: boolean }> {
   const db = getDb();
   const today = new Date().toISOString().split('T')[0];
-  const existing = getSqliteRaw()!
-    .prepare('SELECT 1 FROM daily_activity WHERE user_id = ? AND activity_date = ?')
-    .get(userId, today);
-  if (existing) return; // already claimed today
 
-  getSqliteRaw()!
-    .prepare('INSERT INTO daily_activity (user_id, activity_date, xp_earned) VALUES (?, ?, ?)')
-    .run(userId, today, reward.xp);
-  await (db as any)
-    .update(schema.learnerProfiles)
-    .set({
-      totalXp: sql`total_xp + ${reward.xp}`,
-      coins: sql`coins + ${reward.coins}`,
+  const inserted = await (db as any)
+    .insert(schema.dailyActivity)
+    .values({ userId, activityDate: today, xpEarned: reward.xp })
+    .onConflictDoNothing({
+      target: [schema.dailyActivity.userId, schema.dailyActivity.activityDate],
     })
-    .where(eq(schema.learnerProfiles.userId, userId));
+    .returning({ activityId: schema.dailyActivity.activityId });
+
+  if (!inserted.length) return { claimed: false }; // already claimed today
+
+  await addXp(userId, reward.xp, { source: 'daily_reward', idempotencyKey: `daily_reward:${userId}:${today}` });
+  await addCoins(userId, reward.coins);
+  return { claimed: true };
 }
 
-export async function addXp(userId: number, amount: number): Promise<void> {
+/**
+ * Credits XP. When `opts.idempotencyKey` is provided, the credit is recorded in
+ * xp_logs with a unique (user_id, idempotency_key) constraint (see the
+ * 20261001 migration) so a retried/duplicated call for the same action only
+ * pays out once. Without a key, this is an unconditional increment — use only
+ * for flows that cannot be retried/duplicated by the client.
+ */
+export async function addXp(
+  userId: number,
+  amount: number,
+  opts?: { source?: string; idempotencyKey?: string }
+): Promise<{ credited: boolean }> {
   const db = getDb();
+
+  if (opts?.idempotencyKey) {
+    const inserted = await (db as any)
+      .insert(schema.xpLogs)
+      .values({
+        id: randomId(),
+        userId,
+        amount,
+        source: opts.source || 'unknown',
+        idempotencyKey: opts.idempotencyKey,
+        timestamp: new Date().toISOString(),
+      })
+      .onConflictDoNothing({
+        target: [schema.xpLogs.userId, schema.xpLogs.idempotencyKey],
+      })
+      .returning({ id: schema.xpLogs.id });
+
+    if (!inserted.length) return { credited: false };
+  }
+
   await (db as any)
     .update(schema.learnerProfiles)
-    .set({ totalXp: sql`total_xp + ${amount}` })
+    .set({ totalXp: sql`total_xp + ${amount}`, dailyXp: sql`daily_xp + ${amount}` })
     .where(eq(schema.learnerProfiles.userId, userId));
+  return { credited: true };
 }
 
 export async function addCoins(userId: number, amount: number): Promise<void> {

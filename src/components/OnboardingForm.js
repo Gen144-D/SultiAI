@@ -202,12 +202,10 @@ const styles = StyleSheet.create({
   form: {
     marginTop: spacing.lg,
   },
-  fieldLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    marginBottom: spacing.sm,
-    ...typography.caption,
-  },
+    fieldLabel: {
+      marginBottom: spacing.sm,
+      ...typography.caption,
+    },
   chipRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',

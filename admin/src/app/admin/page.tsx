@@ -1,6 +1,6 @@
 'use client';
 
-import { BarChart, LineChart } from '@/components/ChartCard';
+import { BarChart, LineChart, chartColor } from '@/components/ChartCard';
 import { StatCard } from '@/components/StatCard';
 import { Card, CardHeader, ErrorState, LoadingState, StatusBadge } from '@/components/ui';
 import { useAsync } from '@/hooks/useAsync';
@@ -19,7 +19,7 @@ export default function AdminDashboardPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-extrabold text-ink">Dashboard</h1>
+          <h1 className="text-xl font-semibold tracking-tight text-ink">Dashboard</h1>
           <p className="mt-1 text-sm text-ink-soft">Platform overview and live health.</p>
         </div>
         <div className="flex items-center gap-3">
@@ -93,13 +93,13 @@ export default function AdminDashboardPage() {
         <Card>
           <CardHeader title="Weekly active users" subtitle="Last 7 days" />
           <div className="p-6">
-            <BarChart data={weeklyActive} />
+            <BarChart data={weeklyActive} color={chartColor(0)} />
           </div>
         </Card>
         <Card>
           <CardHeader title="Lessons completed" subtitle="Last 7 days" />
           <div className="p-6">
-            <BarChart data={lessonsTrend} color="#10b981" />
+            <BarChart data={lessonsTrend} color={chartColor(1)} />
           </div>
         </Card>
       </div>
@@ -108,7 +108,7 @@ export default function AdminDashboardPage() {
         <Card>
           <CardHeader title="AI request volume" subtitle="Last 7 days" />
           <div className="p-6">
-            <LineChart data={aiTrend} color="#7c3aed" />
+            <LineChart data={aiTrend} color={chartColor(3)} gradientId="ai-trend" />
           </div>
         </Card>
 
@@ -122,14 +122,14 @@ export default function AdminDashboardPage() {
               { label: 'Whisper', value: health.whisper, ok: health.whisper === 'configured' },
               { label: 'Storage', value: health.storage, ok: health.storage === 'up' },
             ].map((s) => (
-              <div key={s.label} className="rounded-2xl border border-line bg-surface p-4">
-                <p className="text-xs text-ink-faint">{s.label}</p>
-                <div className="mt-2 flex items-center gap-2">
+              <div key={s.label} className="rounded-lg bg-surface-2 p-3">
+                <p className="text-[11px] font-medium text-ink-faint">{s.label}</p>
+                <div className="mt-1.5 flex items-center gap-2">
                   <span
-                    className={`h-2.5 w-2.5 rounded-full ${s.ok ? 'bg-success' : 'bg-danger'}`}
+                    className={`h-2 w-2 rounded-full ${s.ok ? 'bg-success-fill' : 'bg-danger-fill'}`}
                   />
                   <span
-                    className={`text-sm font-bold capitalize ${s.ok ? 'text-success' : 'text-danger'}`}
+                    className={`text-sm font-medium capitalize ${s.ok ? 'text-success' : 'text-danger'}`}
                   >
                     {s.value}
                   </span>

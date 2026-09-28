@@ -101,7 +101,7 @@ router.post('/promote', async (req, res) => {
   // Simple bootstrap protection: require a secret or allow if no admins exist yet
   try {
     const { getDb } = await import('../db/connection');
-    const schema = await import('../db/schema-sqlite');
+    const schema = await import('../db/schema-pg');
     const { eq, count } = await import('drizzle-orm');
     const db = getDb();
 

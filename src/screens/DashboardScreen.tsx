@@ -1,33 +1,36 @@
-import React, { useRef, useState, useEffect } from 'react';
-import { View, ScrollView, StyleSheet, Animated, RefreshControl, Platform } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, Animated, RefreshControl, Platform, TouchableOpacity } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { useGame } from '../context/GameContext';
 import { spacing } from '../theme';
-import { SmartWelcomeHeader } from './dashboard/components/SmartWelcomeHeader';
-import { AILearningSummary } from './dashboard/components/AILearningSummary';
-import { AILearningCoach } from './dashboard/components/AILearningCoach';
-import { PhraseOfTheDay } from './dashboard/components/PhraseOfTheDay';
-import { AIChatTutor } from './dashboard/components/AIChatTutor';
-import { TodayMission } from './dashboard/components/TodayMission';
-import { AchievementsPreview } from './dashboard/components/AchievementsPreview';
-import { DailyDiscovery } from './dashboard/components/DailyDiscovery';
-import { DailyRewardCard } from './dashboard/components/DailyRewardCard';
-import { WeeklyActivity } from './dashboard/components/WeeklyActivity';
+import { ensureContrast } from '../theme/moduleColors';
+import AuroraBackground from '../components/AuroraBackground';
+import { api } from '../services/api';
+import { HomeHeader } from './dashboard/components/HomeHeader';
+import { DailyMotivation } from './dashboard/components/DailyMotivation';
+import { DailyGoalCard } from './dashboard/components/DailyGoalCard';
+import { ContinueLearningCard } from './dashboard/components/ContinueLearningCard';
+import { HomeRecommendation } from './dashboard/components/HomeRecommendation';
+import { QuickPractice } from './dashboard/components/QuickPractice';
+import { CommunityPreview } from './dashboard/components/CommunityPreview';
+import { FeaturesGrid } from './dashboard/components/FeaturesGrid';
+import { SultiPrompt } from './dashboard/components/SultiPrompt';
 import OnboardingForm from '../components/OnboardingForm';
-import FeatureGrid from '../components/FeatureGrid';
-import DailyChallengeCard from '../components/learning/DailyChallengeCard';
 
 interface DashboardScreenProps {
   navigation: any;
 }
 
 export default function DashboardScreen({ navigation }: DashboardScreenProps) {
-  const { colors, getAnimationDuration } = useTheme();
-  const { addXp } = useGame() as any;
-  const scrollY = useRef(new Animated.Value(0)).current;
-  const [refreshing, setRefreshing] = React.useState(false);
+  const { colors, onPrimary: onPrimaryInk } = useTheme();
+  const { xp, loading: gameLoading } = useGame() as any;
+  const [scrollY] = useState(() => new Animated.Value(0));
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
   const [onboardingComplete, setOnboardingComplete] = useState<boolean | null>(null);
+  const [totalSessions, setTotalSessions] = useState<number>(0);
 
   useEffect(() => {
     (async () => {
@@ -37,8 +40,20 @@ export default function DashboardScreen({ navigation }: DashboardScreenProps) {
       } catch {
         setOnboardingComplete(true);
       }
+      try {
+        const level = await api.getTutorLevel();
+        setTotalSessions(level?.total_sessions ?? 0);
+      } catch {
+        setTotalSessions(0);
+      }
     })();
   }, []);
+
+  const isNewUser = !gameLoading && onboardingComplete !== false && onboardingComplete !== null && totalSessions === 0 && (xp ?? 0) === 0;
+
+  const handleStartFirstChat = () => {
+    navigation.navigate('SULTI');
+  };
 
   const finishOnboarding = async () => {
     setOnboardingComplete(true);
@@ -49,14 +64,21 @@ export default function DashboardScreen({ navigation }: DashboardScreenProps) {
     }
   };
 
-  const headerOpacity = scrollY.interpolate({
-    inputRange: [0, 100],
-    outputRange: [1, 0.9],
+  const headerTranslateY = scrollY.interpolate({
+    inputRange: [0, 120],
+    outputRange: [0, -20],
+    extrapolate: 'clamp',
+  });
+
+  const headerScale = scrollY.interpolate({
+    inputRange: [0, 120],
+    outputRange: [1, 0.96],
     extrapolate: 'clamp',
   });
 
   const onRefresh = async () => {
     setRefreshing(true);
+    setRefreshKey((k) => k + 1);
     await new Promise((resolve) => setTimeout(resolve, 1000));
     setRefreshing(false);
   };
@@ -65,31 +87,13 @@ export default function DashboardScreen({ navigation }: DashboardScreenProps) {
     navigation.navigate('Learn');
   };
 
-  const handleStartCoaching = () => {
-    addXp(10, 'ai_coaching');
-    navigation.navigate('SULTI', { situation: 'AI Coaching Session', label: 'AI Coach' });
-  };
-
-  const handleOpenTutor = () => {
-    navigation.navigate('SULTI');
-  };
-
-  const handleViewAchievements = () => {
-    navigation.navigate('Achievements');
-  };
-
-  const handleStartChallenge = (challenge: any) => {
-    if (challenge) {
-      navigation.navigate('SULTI', { situation: challenge.scenario, label: challenge.title });
-    }
-  };
-
-  const handleCultureNotes = () => {
-    navigation.navigate('CultureNotes');
-  };
-
+  // Measure the ink against the actual CTA fill instead of hardcoding one
+  // theme's value as the fallback: '#042F2B' is Midnight Teal's dark ink and
+  // only reaches 2.65:1 on Soft Academic Light's emerald, where the label and
+  // arrow would be unreadable.
+  const onPrimary = ensureContrast(onPrimaryInk, colors.primary, 4.5);
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <AuroraBackground style={styles.container} atmosphere="home">
       <Animated.ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
@@ -101,10 +105,14 @@ export default function DashboardScreen({ navigation }: DashboardScreenProps) {
         scrollEventThrottle={16}
       >
         <View style={styles.contentWidth}>
-          <Animated.View style={{ opacity: headerOpacity }}>
-            <SmartWelcomeHeader
+          <Animated.View style={{
+            transform: [
+              { translateY: headerTranslateY },
+              { scale: headerScale },
+            ],
+          }}>
+            <HomeHeader
               onNotificationPress={() => navigation.navigate('Notifications')}
-              onSettingsPress={() => navigation.navigate('Profile')}
               onProfilePress={() => navigation.navigate('Profile')}
             />
           </Animated.View>
@@ -119,22 +127,44 @@ export default function DashboardScreen({ navigation }: DashboardScreenProps) {
             </View>
           )}
 
-          <TodayMission onStart={handleContinueLearning} />
-          <AILearningSummary onContinueLearning={handleContinueLearning} />
-          <AILearningCoach onStartCoaching={handleStartCoaching} />
-          <AIChatTutor navigation={navigation} onOpenTutor={handleOpenTutor} />
-          <PhraseOfTheDay />
-          <FeatureGrid navigation={navigation} />
-          <DailyChallengeCard onStart={handleStartChallenge} navigation={navigation} />
-          <WeeklyActivity />
-          <DailyDiscovery onLearnMore={handleCultureNotes} />
-          <DailyRewardCard />
-          <AchievementsPreview onViewAll={handleViewAchievements} />
+          {isNewUser && (
+            <View style={[styles.gettingStartedCard, { backgroundColor: colors.primary + '10', borderColor: colors.primary + '30' }]}>
+              <View style={[styles.gettingStartedIcon, { backgroundColor: colors.primary + '18' }]}>
+                <Ionicons name="rocket" size={22} color={colors.primary} />
+              </View>
+              <View style={styles.gettingStartedInfo}>
+                <Text style={[styles.gettingStartedTitle, { color: colors.text }]}>
+                  Welcome! Ready to learn Bisaya?
+                </Text>
+                <Text style={[styles.gettingStartedSub, { color: colors.textSecondary }]}>
+                  Ask Sulti anything — greetings, phrases, pronunciation — and earn your first XP.
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={[styles.gettingStartedCta, { backgroundColor: colors.primary }]}
+                onPress={handleStartFirstChat}
+                activeOpacity={0.85}
+                accessibilityRole="button"
+              >
+                <Text style={[styles.gettingStartedCtaText, { color: onPrimary }]}>Start your first chat</Text>
+                <Ionicons name="arrow-forward" size={16} color={onPrimary} />
+              </TouchableOpacity>
+            </View>
+          )}
+
+          <DailyMotivation />
+          <DailyGoalCard onStart={handleContinueLearning} />
+          <ContinueLearningCard onContinue={handleContinueLearning} refreshKey={refreshKey} />
+          <HomeRecommendation navigation={navigation} refreshKey={refreshKey} />
+          <QuickPractice navigation={navigation} />
+          <CommunityPreview navigation={navigation} refreshKey={refreshKey} />
+          <FeaturesGrid navigation={navigation} />
+          <SultiPrompt navigation={navigation} />
 
           <View style={styles.bottomSpacer} />
         </View>
       </Animated.ScrollView>
-    </View>
+    </AuroraBackground>
   );
 }
 
@@ -144,6 +174,31 @@ const styles = StyleSheet.create({
   scrollContent: { paddingBottom: 120 },
   bottomSpacer: { height: 40 },
   onboardingWrap: { marginBottom: spacing.lg },
+  gettingStartedCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: spacing.md,
+    borderRadius: 20,
+    borderWidth: 1,
+    padding: spacing.lg,
+    marginBottom: spacing.lg,
+  },
+  gettingStartedIcon: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
+  gettingStartedInfo: { flex: 1, minWidth: 180 },
+  gettingStartedTitle: { fontSize: 16, fontWeight: '800', letterSpacing: -0.2 },
+  gettingStartedSub: { fontSize: 13, lineHeight: 19, marginTop: 4 },
+  gettingStartedCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    borderRadius: 999,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 12,
+    marginTop: spacing.xs,
+    minHeight: 44,
+  },
+  gettingStartedCtaText: { fontSize: 14, fontWeight: '700' },
   contentWidth: {
     width: '100%',
     maxWidth: Platform.OS === 'web' ? 720 : undefined,

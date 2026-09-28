@@ -1,6 +1,6 @@
 import { eq, desc } from 'drizzle-orm';
 import { getDb } from '../connection';
-import * as schema from '../schema-sqlite';
+import * as schema from '../schema-pg';
 import { isMongoConnected } from '../mongodb/connection';
 import { TutorSession } from '../mongodb/tutorSession.model';
 

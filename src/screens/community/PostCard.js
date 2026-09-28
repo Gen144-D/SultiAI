@@ -5,7 +5,7 @@ import { useTheme } from '../../context/ThemeContext';
 import Card from '../../components/Card';
 import Avatar from '../../components/Avatar';
 import Badge from '../../components/Badge';
-import { POST_TYPES } from '../../services/communityMock';
+import { POST_TYPES } from '../../constants/community';
 import { spacing, borderRadius } from '../../theme';
 
 const formatDate = (dateStr) => {
@@ -19,17 +19,17 @@ const formatDate = (dateStr) => {
 };
 
 export default function PostCard({
-  post, liked, saved, translated, expanded, comments = [],
-  onToggleComments, onAddComment, onToggleLike, onToggleSave, onToggleTranslate,
-  onMarkHelpful, onReport,
+  post, expanded, comments = [],
+  onToggleComments, onAddComment, onReport,
 }) {
   const { colors, isDark } = useTheme();
   const [newComment, setNewComment] = useState('');
   const type = POST_TYPES[post.type] || POST_TYPES.discussion;
-  const isQuestion = post.type === 'question' || post.type === 'translation' || post.type === 'pronunciation';
 
   const handleComment = () => {
-    onAddComment(post.id, newComment);
+    const text = newComment.trim();
+    if (!text) return;
+    onAddComment(post.id, text);
     setNewComment('');
   };
 
@@ -46,7 +46,9 @@ export default function PostCard({
         <Avatar name={post.author_name} size={36} />
         <View style={styles.authorInfo}>
           <View style={styles.authorRow}>
-            <Text style={[styles.authorName, { color: colors.text }]}>{post.author_name}</Text>
+            <Text style={[styles.authorName, { color: colors.text }]} numberOfLines={1}>
+              {post.author_name || 'Anonymous'}
+            </Text>
             {post.author_verified && <Badge icon="shield-checkmark" title="Native" variant="success" size="sm" />}
           </View>
           <View style={styles.metaRow}>
@@ -63,77 +65,48 @@ export default function PostCard({
       </View>
 
       <View style={styles.body}>
-        <Text style={[styles.nativeText, { color: colors.text }]}>{post.native}</Text>
-        {translated ? (
-          <>
-            <Text style={[styles.englishText, { color: colors.textSecondary }]}>{post.english}</Text>
-            {post.bisaya_translation && (
-              <View style={[styles.aiBox, { backgroundColor: colors.primary + '0D' }]}>
-                <Ionicons name="sparkles" size={13} color={colors.primary} />
-                <Text style={[styles.aiText, { color: colors.primary }]}>
-                  {post.bisaya_translation}
-                </Text>
-              </View>
-            )}
-          </>
-        ) : (
-          <Text style={[styles.englishText, { color: colors.textSecondary }]}>
-            {post.english}
-          </Text>
+        <Text style={[styles.titleText, { color: colors.text }]}>{post.title}</Text>
+        {!!post.english && (
+          <Text style={[styles.englishText, { color: colors.textSecondary }]}>{post.english}</Text>
         )}
-        {post.tags && post.tags.length > 0 && (
-          <View style={styles.tagRow}>
-            {post.tags.map((t) => (
-              <View key={t} style={[styles.tag, { backgroundColor: colors.surfaceSecondary }]}>
-                <Text style={[styles.tagText, { color: colors.textSecondary }]}>#{t}</Text>
-              </View>
-            ))}
-          </View>
+        {!!post.content && post.content !== post.title && (
+          <Text style={[styles.contentText, { color: colors.textSecondary }]}>{post.content}</Text>
         )}
       </View>
 
       <View style={[styles.actions, { borderTopColor: colors.border }]}>
-        <TouchableOpacity onPress={() => onToggleComments && onToggleComments(post.id)} style={styles.action}>
+        <TouchableOpacity
+          onPress={() => onToggleComments && onToggleComments(post.id)}
+          style={styles.action}
+          accessibilityRole="button"
+          accessibilityLabel={`${post.comments || 0} comments`}
+        >
           <Ionicons name="chatbubble-outline" size={18} color={colors.textLight} />
           <Text style={[styles.actionText, { color: colors.textLight }]}>{post.comments || 0}</Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => onToggleLike && onToggleLike(post.id)} style={styles.action}>
-          <Ionicons name={liked ? 'heart' : 'heart-outline'} size={18} color={liked ? colors.error : colors.textLight} />
-          <Text style={[styles.actionText, { color: liked ? colors.error : colors.textLight }]}>
-            {(post.likes || 0) + (liked ? 1 : 0)}
-          </Text>
-        </TouchableOpacity>
-        {isQuestion && (
-          <TouchableOpacity onPress={() => onMarkHelpful && onMarkHelpful(post)} style={styles.action}>
-            <Ionicons name="thumbs-up-outline" size={18} color={colors.primary} />
-            <Text style={[styles.actionText, { color: colors.primary }]}>Helpful</Text>
-          </TouchableOpacity>
-        )}
-        <TouchableOpacity onPress={() => onToggleTranslate && onToggleTranslate(post.id)} style={styles.action}>
-          <Ionicons name="language" size={18} color={translated ? colors.primary : colors.textLight} />
-          <Text style={[styles.actionText, { color: translated ? colors.primary : colors.textLight }]}>
-            {translated ? 'Translate' : 'English'}
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => onToggleSave && onToggleSave(post.id)} style={styles.action}>
-          <Ionicons name={saved ? 'bookmark' : 'bookmark-outline'} size={18} color={saved ? colors.accent : colors.textLight} />
-        </TouchableOpacity>
+        <View style={styles.action}>
+          <Ionicons name="heart-outline" size={18} color={colors.textLight} />
+          <Text style={[styles.actionText, { color: colors.textLight }]}>{post.likes || 0}</Text>
+        </View>
       </View>
 
       {expanded && (
         <View style={[styles.comments, { borderTopColor: colors.border }]}>
-          {comments.map((c) => (
-            <View key={c.id} style={styles.comment}>
-              <Avatar name={c.author_name} size={24} />
-              <View style={styles.commentBody}>
-                <Text style={[styles.commentAuthor, { color: colors.text }]}>{c.author_name}</Text>
-                <Text style={[styles.commentText, { color: colors.textSecondary }]}>{c.comment}</Text>
+          {comments.length === 0 ? (
+            <Text style={[styles.noComments, { color: colors.textLight }]}>No comments yet.</Text>
+          ) : (
+            comments.map((c) => (
+              <View key={c.id} style={styles.comment}>
+                <Avatar name={c.author_name} size={24} />
+                <View style={styles.commentBody}>
+                  <Text style={[styles.commentAuthor, { color: colors.text }]}>
+                    {c.author_name || 'Anonymous'}
+                  </Text>
+                  <Text style={[styles.commentText, { color: colors.textSecondary }]}>{c.comment}</Text>
+                </View>
               </View>
-              {c.is_helpful && (
-                <Badge icon="checkmark-circle" title="Helpful" variant="success" size="sm" />
-              )}
-            </View>
-          ))}
+            ))
+          )}
           <View style={styles.commentInputRow}>
             <TextInput
               id="comment"
@@ -163,24 +136,21 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md },
   authorInfo: { flex: 1, marginLeft: spacing.md },
   authorRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexWrap: 'wrap' },
-  authorName: { fontSize: 14, fontWeight: '700' },
+  authorName: { fontSize: 14, fontWeight: '700', flexShrink: 1 },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: 4 },
   typePill: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 2, borderRadius: borderRadius.full },
   typeText: { fontSize: 10, fontWeight: '800' },
   timeText: { fontSize: 11, fontWeight: '500' },
   reportBtn: { padding: 4 },
   body: { marginBottom: spacing.md },
-  nativeText: { fontSize: 17, fontWeight: '700', lineHeight: 22, marginBottom: spacing.xs },
-  englishText: { fontSize: 14, lineHeight: 20, marginBottom: spacing.sm },
-  aiBox: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, borderRadius: borderRadius.md, padding: spacing.sm, marginBottom: spacing.sm },
-  aiText: { flex: 1, fontSize: 12, fontWeight: '600', lineHeight: 17 },
-  tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
-  tag: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: borderRadius.full },
-  tagText: { fontSize: 11, fontWeight: '600' },
-  actions: { flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, paddingTop: spacing.sm },
+  titleText: { fontSize: 17, fontWeight: '700', lineHeight: 22, marginBottom: spacing.xs },
+  englishText: { fontSize: 14, lineHeight: 20, fontStyle: 'italic', marginBottom: spacing.xs },
+  contentText: { fontSize: 14, lineHeight: 20, marginBottom: spacing.xs },
+  actions: { flexDirection: 'row', gap: spacing.xl, borderTopWidth: 1, paddingTop: spacing.sm },
   action: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   actionText: { fontSize: 12, fontWeight: '600' },
   comments: { marginTop: spacing.md, paddingTop: spacing.md, borderTopWidth: 1 },
+  noComments: { fontSize: 13, marginBottom: spacing.md, fontStyle: 'italic' },
   comment: { flexDirection: 'row', marginBottom: spacing.md, gap: spacing.sm, alignItems: 'flex-start' },
   commentBody: { flex: 1 },
   commentAuthor: { fontSize: 13, fontWeight: '600' },

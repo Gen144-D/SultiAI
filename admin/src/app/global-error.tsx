@@ -20,8 +20,8 @@ export default function GlobalError({
             fontFamily: 'system-ui, sans-serif',
             padding: 32,
             textAlign: 'center',
-            backgroundColor: '#0f172a',
-            color: '#e2e8f0',
+            backgroundColor: '#0a0e14',
+            color: '#e8edf4',
           }}
         >
           <div
@@ -29,7 +29,7 @@ export default function GlobalError({
               width: 64,
               height: 64,
               borderRadius: 16,
-              backgroundColor: '#ef444420',
+              backgroundColor: 'rgba(239,68,68,0.15)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -41,7 +41,7 @@ export default function GlobalError({
               height="32"
               viewBox="0 0 24 24"
               fill="none"
-              stroke="#ef4444"
+              stroke="#f87171"
               strokeWidth="2"
             >
               <circle cx="12" cy="12" r="10" />
@@ -50,18 +50,18 @@ export default function GlobalError({
             </svg>
           </div>
           <h2 style={{ fontSize: 20, fontWeight: 700, margin: '0 0 8px' }}>Something went wrong</h2>
-          <p style={{ fontSize: 14, color: '#94a3b8', margin: '0 0 24px', maxWidth: 400 }}>
+          <p style={{ fontSize: 14, color: '#a3b0c2', margin: '0 0 24px', maxWidth: 400 }}>
             {error?.message || 'An unexpected error occurred.'}
           </p>
           <button
             onClick={() => reset()}
             style={{
               padding: '10px 24px',
-              borderRadius: 999,
+              borderRadius: 8,
               border: 'none',
               cursor: 'pointer',
-              backgroundColor: '#0d9488',
-              color: '#fff',
+              backgroundColor: '#4f46e5',
+              color: '#ffffff',
               fontWeight: 600,
               fontSize: 14,
             }}

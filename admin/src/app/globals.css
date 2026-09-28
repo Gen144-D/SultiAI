@@ -1,33 +1,346 @@
 @import "tailwindcss";
 
-@theme {
-  --color-brand: #1e6f9f;
-  --color-brand-dark: #155a7e;
-  --color-brand-light: #e8f4f8;
-  --color-accent: #ffb347;
-  --color-accent-light: #fff3e0;
-  --color-ink: #1a1a2e;
-  --color-ink-soft: #6b7280;
-  --color-ink-faint: #9ca3af;
-  --color-line: #e5e7eb;
-  --color-surface: #f7f9fb;
-  --color-success: #10b981;
-  --color-danger: #ef4444;
+@custom-variant dark (&:where([data-theme-family="dark"], [data-theme-family="dark"] *));
+@custom-variant light (&:where([data-theme-family="light"], [data-theme-family="light"] *));
+
+/*
+ * SultiAI Admin — 4-Theme Design System
+ * -------------------------------------
+ * Themes: midnightTeal, warmCyberSunset, obsidianEmerald, softAcademicLight
+ * All colors defined as CSS variables on [data-theme="..."] for zero-runtime switching.
+ */
+
+/* ─── Base (midnightTeal) ────────────────────────────────────────── */
+[data-theme="midnightTeal"] {
+  color-scheme: dark;
+
+  /* Brand */
+  --brand: #00D4BD;
+  --brand-solid: #00B8A3;
+  --brand-hover: #33DDD0;
+  --brand-soft: #0A2E2A;
+  --brand-ink: #00B8A3;
+  --on-brand: #04111F;
+
+  /* Backgrounds */
+  --bg: #0B1120;
+  --bg-deep: #080E1A;
+  --surface: #111827;
+  --surface-2: #0F172A;
+  --surface-strong: rgba(22,36,55,0.82);
+  --card: #111827;
+
+  /* Lines & overlays */
+  --line: #1E293B;
+  --line-strong: #334155;
+  --overlay: rgba(15,23,42,0.6);
+  --shadow-card: 0 1px 2px rgba(15,23,42,0.04);
+
+  /* Text */
+  --ink: #F8FAFC;
+  --ink-soft: #94A3B8;
+  --ink-faint: #64748B;
+
+  /* Status */
+  --success: #34D399;
+  --success-fill: #34D399;
+  --success-soft: #0A2E2A;
+  --warning: #FCD34D;
+  --warning-fill: #FBBF24;
+  --warning-soft: #3D3224;
+  --danger: #FB7185;
+  --danger-fill: #FB7185;
+  --danger-soft: #3D2424;
+  --info: #5EEAD4;
+  --info-fill: #5EEAD4;
+  --info-soft: #0A2E2A;
+  --violet: #8B5CF6;
+  --violet-fill: #7C3AED;
+  --violet-soft: #131A2E;
+
+  /* Charts */
+  --chart-1: #00D4BD;
+  --chart-2: #34D399;
+  --chart-3: #FBBF24;
+  --chart-4: #8B5CF6;
+  --chart-5: #FB7185;
+  --chart-6: #06B6D4;
+  --chart-7: #EC4899;
 }
 
-:root {
-  --background: #ffffff;
-  --foreground: var(--color-ink);
+/* ─── warmCyberSunset ────────────────────────────────────────────── */
+[data-theme="warmCyberSunset"] {
+  color-scheme: dark;
+
+  --brand: #FF7A59;
+  --brand-solid: #E8603F;
+  --brand-hover: #FF9478;
+  --brand-soft: #3D2530;
+  --brand-ink: #E8603F;
+  --on-brand: #2A1206;
+
+  --bg: #241B2E;
+  --bg-deep: #1B1424;
+  --surface: #2E2138;
+  --surface-2: #281E32;
+  --surface-strong: rgba(46,33,56,0.9);
+  --card: #2E2138;
+
+  --line: #3D2E48;
+  --line-strong: #4E3B5C;
+  --overlay: rgba(20,14,26,0.6);
+  --shadow-card: 0 1px 2px rgba(20,14,26,0.04);
+
+  --ink: #FBF3EC;
+  --ink-soft: #C9B8D6;
+  --ink-faint: #A393B4;
+
+  --success: #4ADE80;
+  --success-fill: #4ADE80;
+  --success-soft: #1F2E2C;
+  --warning: #FBBF24;
+  --warning-fill: #FBBF24;
+  --warning-soft: #3D3224;
+  --danger: #FB7185;
+  --danger-fill: #FB7185;
+  --danger-soft: #3D2424;
+  --info: #FDBA74;
+  --info-fill: #FDBA74;
+  --info-soft: #3D2A1C;
+  --violet: #A855F7;
+  --violet-fill: #9333EA;
+  --violet-soft: #2A2138;
+
+  --chart-1: #FF7A59;
+  --chart-2: #F5A524;
+  --chart-3: #FBBF24;
+  --chart-4: #A855F7;
+  --chart-5: #FB7185;
+  --chart-6: #FB923C;
+  --chart-7: #F472B6;
 }
 
-body {
-  background: var(--color-surface);
-  color: var(--foreground);
-  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
-  -webkit-font-smoothing: antialiased;
+/* ─── obsidianEmerald ────────────────────────────────────────────── */
+[data-theme="obsidianEmerald"] {
+  color-scheme: dark;
+
+  --brand: #2DD4A7;
+  --brand-solid: #1FB88E;
+  --brand-hover: #54E0BC;
+  --brand-soft: #12241E;
+  --brand-ink: #1FB88E;
+  --on-brand: #04111F;
+
+  --bg: #0A0A0A;
+  --bg-deep: #050505;
+  --surface: #161616;
+  --surface-2: #121212;
+  --surface-strong: rgba(22,22,22,0.9);
+  --card: #161616;
+
+  --line: #262626;
+  --line-strong: #333333;
+  --overlay: rgba(0,0,0,0.6);
+  --shadow-card: 0 1px 2px rgba(0,0,0,0.04);
+
+  --ink: #F5F5F5;
+  --ink-soft: #A3A3A3;
+  --ink-faint: #737373;
+
+  --success: #34D399;
+  --success-fill: #34D399;
+  --success-soft: #0F1E1B;
+  --warning: #FBBF24;
+  --warning-fill: #FBBF24;
+  --warning-soft: #2E2718;
+  --danger: #F87171;
+  --danger-fill: #F87171;
+  --danger-soft: #2E1D1D;
+  --info: #5EEAD4;
+  --info-fill: #5EEAD4;
+  --info-soft: #0F211D;
+  --violet: #A855F7;
+  --violet-fill: #9333EA;
+  --violet-soft: #16151C;
+
+  --chart-1: #2DD4A7;
+  --chart-2: #6EE7B7;
+  --chart-3: #FBBF24;
+  --chart-4: #A855F7;
+  --chart-5: #F87171;
+  --chart-6: #22D3EE;
+  --chart-7: #F472B6;
 }
 
-::selection {
-  background: var(--color-brand-light);
-  color: var(--color-brand-dark);
+/* ─── softAcademicLight ──────────────────────────────────────────── */
+[data-theme="softAcademicLight"] {
+  color-scheme: light;
+
+  --brand: #4F46E5;
+  --brand-solid: #4338CA;
+  --brand-hover: #4F46E5;
+  --brand-soft: #E0E7FF;
+  --brand-ink: #4338CA;
+  --on-brand: #FFFFFF;
+
+  --bg: #F4F6F8;
+  --bg-deep: #E8ECF0;
+  --surface: #FFFFFF;
+  --surface-2: #EEF1F5;
+  --surface-strong: rgba(255,255,255,0.92);
+  --card: #FFFFFF;
+
+  --line: #E2E8F0;
+  --line-strong: #CBD5E1;
+  --overlay: rgba(30,41,59,0.4);
+  --shadow-card: 0 1px 2px rgba(15,23,42,0.04);
+
+  --ink: #1E293B;
+  --ink-soft: #64748B;
+  --ink-faint: #94A3B8;
+
+  --success: #059669;
+  --success-fill: #10B981;
+  --success-soft: #E6F7F3;
+  --warning: #D97706;
+  --warning-fill: #F59E0B;
+  --warning-soft: #FEF3C7;
+  --danger: #DC2626;
+  --danger-fill: #EF4444;
+  --danger-soft: #FEE2E2;
+  --info: #3B5BDB;
+  --info-fill: #3B82F6;
+  --info-soft: #E7EBFC;
+  --violet: #6D28D9;
+  --violet-fill: #7C3AED;
+  --violet-soft: #EDE9FE;
+
+  --chart-1: #4F46E5;
+  --chart-2: #059669;
+  --chart-3: #D97706;
+  --chart-4: #6D28D9;
+  --chart-5: #DC2626;
+  --chart-6: #0891B2;
+  --chart-7: #DB2777;
+}
+
+/* ─── Tailwind v4 theme mapping ──────────────────────────────────── */
+@theme inline {
+  --color-bg: var(--bg);
+  --color-bg-deep: var(--bg-deep);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-strong: var(--surface-strong);
+  --color-card: var(--card);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-overlay: var(--overlay);
+  --shadow-card: var(--shadow-card);
+
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-faint: var(--ink-faint);
+
+  --color-brand: var(--brand);
+  --color-brand-solid: var(--brand-solid);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-soft: var(--brand-soft);
+  --color-brand-ink: var(--brand-ink);
+  --color-on-brand: var(--on-brand);
+
+  --color-success: var(--success);
+  --color-success-fill: var(--success-fill);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-fill: var(--warning-fill);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-fill: var(--danger-fill);
+  --color-danger-soft: var(--danger-soft);
+  --color-info: var(--info);
+  --color-info-fill: var(--info-fill);
+  --color-info-soft: var(--info-soft);
+  --color-violet: var(--violet);
+  --color-violet-fill: var(--violet-fill);
+  --color-violet-soft: var(--violet-soft);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-chart-6: var(--chart-6);
+  --color-chart-7: var(--chart-7);
+
+  /* Legacy aliases */
+  --color-brand-dark: var(--brand-ink);
+  --color-brand-light: var(--brand-soft);
+  --color-accent: var(--warning);
+  --color-accent-light: var(--warning-soft);
+}
+
+/* ─── Base layer ─────────────────────────────────────────────────── */
+@layer base {
+  * {
+    border-color: var(--line);
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-geist-sans), ui-sans-serif, system-ui, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  :where(a, button, input, select, textarea, [tabindex]):focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background-color: var(--brand-soft);
+    color: var(--brand-ink);
+  }
+
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  textarea:-webkit-autofill,
+  select:-webkit-autofill {
+    -webkit-text-fill-color: var(--ink);
+    -webkit-box-shadow: 0 0 0 1000px var(--surface) inset;
+    caret-color: var(--ink);
+  }
+
+  input[type='checkbox'],
+  input[type='radio'] {
+    accent-color: var(--brand-solid);
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--line-strong);
+    border: 2px solid transparent;
+    background-clip: content-box;
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--ink-faint);
+  }
+}
+
+/* ─── Theme transition ───────────────────────────────────────────── */
+* {
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }

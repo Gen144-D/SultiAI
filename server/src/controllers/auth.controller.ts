@@ -3,7 +3,7 @@ import { Request, Response } from 'express';
 import { eq, and, or } from 'drizzle-orm';
 import axios from 'axios';
 import { getDb } from '../db/connection';
-import * as schema from '../db/schema-sqlite';
+import * as schema from '../db/schema-pg';
 import { hashPassword, verifyPassword } from '../utils/crypto';
 import { generateTokenPair, verifyRefreshToken } from '../utils/jwt';
 import { success, errors, created } from '../utils/apiResponse';

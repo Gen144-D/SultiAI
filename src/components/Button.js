@@ -2,7 +2,8 @@ import React, { useMemo } from 'react';
 import { TouchableOpacity, Text, ActivityIndicator, StyleSheet, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../context/ThemeContext';
-import { borderRadius, spacing, shadows } from '../theme';
+import { borderRadius, spacing, shadows, typography } from '../theme';
+import { readableOnGradient } from '../theme/moduleColors';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function Button({
@@ -14,6 +15,14 @@ export default function Button({
   const isSmall = size === 'sm';
   const isLarge = size === 'lg';
 
+  // Primary uses the brand color, which shifts per theme (mint in dark themes,
+  // orange in Warm Cyber Sunset) — so the label ink is chosen against the actual
+  // button gradient rather than the OS colour scheme.
+  const brandGradient = variant === 'premium'
+    ? [colors.primary, colors.secondary]
+    : [colors.primary, colors.primaryDark];
+  const onBrand = readableOnGradient(brandGradient);
+
   const onPressIn = () => {
     Animated.spring(scaleAnim, { toValue: 0.96, friction: 8, tension: 200, useNativeDriver: true }).start();
   };
@@ -21,7 +30,8 @@ export default function Button({
     Animated.spring(scaleAnim, { toValue: 1, friction: 8, tension: 200, useNativeDriver: true }).start();
   };
 
-  const textColor = variant === 'primary' || variant === 'danger' ? colors.textOnGradient
+  const textColor = variant === 'primary' ? onBrand
+    : variant === 'danger' ? colors.textOnGradient
     : variant === 'secondary' ? colors.text
     : variant === 'glass' ? colors.text
     : colors.primary;
@@ -59,7 +69,7 @@ export default function Button({
   );
 
   if ((gradient && variant === 'primary') || variant === 'premium') {
-    const gradColors = variant === 'premium' ? [colors.primary, colors.secondary] : [colors.primary, colors.primaryDark];
+    const gradColors = brandGradient;
     return (
       <Animated.View style={{ transform: [{ scale: scaleAnim }], borderRadius: borderRadius.lg }}>
         <TouchableOpacity
@@ -111,7 +121,7 @@ const styles = StyleSheet.create({
   small: { paddingVertical: 8, paddingHorizontal: 16 },
   large: { paddingVertical: 18, paddingHorizontal: 32 },
   fullWidth: { width: '100%' },
-  text: { fontSize: 17, fontWeight: '600', letterSpacing: -0.41 },
+  text: { ...typography.button },
   textSmall: { fontSize: 13, fontWeight: '600' },
   textLarge: { fontSize: 18, fontWeight: '700' },
   disabled: { opacity: 0.5 },

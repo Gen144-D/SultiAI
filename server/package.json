@@ -12,6 +12,7 @@
     "db:push": "drizzle-kit push",
     "db:migrate": "drizzle-kit migrate",
     "db:setup-supabase": "node scripts/setup-supabase.js",
+    "db:seed-learning": "tsx src/scripts/seed-learning-content.ts",
     "db:test-supabase": "node scripts/test-supabase-connection.js",
     "test": "jest",
     "test:watch": "jest --watch",

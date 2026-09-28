@@ -6,6 +6,30 @@ export const avatars = pgTable('avatars', {
   avatarImage: text('avatar_image').notNull(),
 });
 
+export const roles = pgTable('roles', {
+  roleId: serial('role_id').primaryKey(),
+  name: text('name').notNull().unique(),
+  description: text('description'),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+export const permissions = pgTable('permissions', {
+  permissionId: serial('permission_id').primaryKey(),
+  name: text('name').notNull().unique(),
+  resource: text('resource').notNull(),
+  action: text('action').notNull(),
+  description: text('description'),
+});
+
+export const rolePermissions = pgTable('role_permissions', {
+  roleId: integer('role_id')
+    .notNull()
+    .references(() => roles.roleId, { onDelete: 'cascade' }),
+  permissionId: integer('permission_id')
+    .notNull()
+    .references(() => permissions.permissionId, { onDelete: 'cascade' }),
+});
+
 export const users = pgTable('users', {
   userId: serial('user_id').primaryKey(),
   fullname: text('fullname').notNull(),
@@ -127,8 +151,23 @@ export const phraseRecommendations = pgTable('phrase_recommendations', {
 export const learningModules = pgTable('learning_modules', {
   moduleId: serial('module_id').primaryKey(),
   moduleTitle: text('module_title').notNull(),
+  moduleKey: text('module_key'),
+  sortOrder: integer('sort_order').default(0),
   difficulty: text('difficulty').default('beginner'),
   language: text('language'),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+export const lessonItems = pgTable('lesson_items', {
+  itemId: serial('item_id').primaryKey(),
+  moduleId: integer('module_id')
+    .notNull()
+    .references(() => learningModules.moduleId, { onDelete: 'cascade' }),
+  sectionTitle: text('section_title'),
+  nativeText: text('native_text').notNull(),
+  englishText: text('english_text'),
+  note: text('note'),
+  sortOrder: integer('sort_order').default(0),
   createdAt: timestamp('created_at').defaultNow(),
 });
 
@@ -141,7 +180,24 @@ export const learningProgress = pgTable('learning_progress', {
     .notNull()
     .references(() => learningModules.moduleId, { onDelete: 'cascade' }),
   completionPercent: real('completion_percent').default(0),
+  masteryScore: real('mastery_score').default(0),
   createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+export const learningSessions = pgTable('learning_sessions', {
+  sessionId: serial('session_id').primaryKey(),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.userId, { onDelete: 'cascade' }),
+  moduleId: integer('module_id').references(() => learningModules.moduleId, {
+    onDelete: 'set null',
+  }),
+  activityType: text('activity_type').notNull(),
+  startedAt: timestamp('started_at').defaultNow(),
+  endedAt: timestamp('ended_at'),
+  durationSeconds: integer('duration_seconds').default(0),
+  xpEarned: integer('xp_earned').default(0),
 });
 
 export const communityPosts = pgTable('community_posts', {
@@ -198,6 +254,8 @@ export const learnerProfiles = pgTable('learner_profiles', {
   streak: integer('streak').default(0),
   dailyXp: integer('daily_xp').default(0),
   dailyGoal: integer('daily_goal').default(50),
+  hearts: integer('hearts').default(5),
+  xpToNextLevel: integer('xp_to_next_level').default(100),
   totalSessions: integer('total_sessions').default(0),
   lastActive: text('last_active'),
 });
@@ -296,16 +354,23 @@ export const conversationSummaries = pgTable('conversation_summaries', {
   timestamp: text('timestamp'),
 });
 
-export const xpLogs = pgTable('xp_logs', {
-  id: text('id').primaryKey(),
-  userId: integer('user_id')
-    .notNull()
-    .references(() => users.userId, { onDelete: 'cascade' }),
-  amount: integer('amount').notNull(),
-  source: text('source').notNull(),
-  description: text('description'),
-  timestamp: text('timestamp'),
-});
+export const xpLogs = pgTable(
+  'xp_logs',
+  {
+    id: text('id').primaryKey(),
+    userId: integer('user_id')
+      .notNull()
+      .references(() => users.userId, { onDelete: 'cascade' }),
+    amount: integer('amount').notNull(),
+    source: text('source').notNull(),
+    description: text('description'),
+    idempotencyKey: text('idempotency_key'),
+    timestamp: text('timestamp'),
+  },
+  (table) => ({
+    uniqueUserIdempotency: unique('idx_xp_logs_idempotency').on(table.userId, table.idempotencyKey),
+  })
+);
 
 export const aiRecommendations = pgTable('ai_recommendations', {
   id: text('id').primaryKey(),
@@ -411,14 +476,20 @@ export const auditLogs = pgTable('audit_logs', {
   timestamp: timestamp('timestamp').defaultNow(),
 });
 
-export const dailyActivity = pgTable('daily_activity', {
-  activityId: serial('activity_id').primaryKey(),
-  userId: integer('user_id')
-    .notNull()
-    .references(() => users.userId, { onDelete: 'cascade' }),
-  activityDate: text('activity_date').notNull(),
-  xpEarned: integer('xp_earned').default(0),
-});
+export const dailyActivity = pgTable(
+  'daily_activity',
+  {
+    activityId: serial('activity_id').primaryKey(),
+    userId: integer('user_id')
+      .notNull()
+      .references(() => users.userId, { onDelete: 'cascade' }),
+    activityDate: text('activity_date').notNull(),
+    xpEarned: integer('xp_earned').default(0),
+  },
+  (table) => ({
+    uniqueUserDate: unique('idx_daily_activity_user_date').on(table.userId, table.activityDate),
+  })
+);
 
 export const userAchievements = pgTable(
   'user_achievements',
@@ -450,14 +521,26 @@ export const userBadges = pgTable(
   })
 );
 
-export const completedChallenges = pgTable('completed_challenges', {
-  id: serial('id').primaryKey(),
-  userId: integer('user_id')
-    .notNull()
-    .references(() => users.userId, { onDelete: 'cascade' }),
-  challengeId: text('challenge_id').notNull(),
-  completedAt: timestamp('completed_at').defaultNow(),
-});
+export const completedChallenges = pgTable(
+  'completed_challenges',
+  {
+    id: serial('id').primaryKey(),
+    userId: integer('user_id')
+      .notNull()
+      .references(() => users.userId, { onDelete: 'cascade' }),
+    challengeId: text('challenge_id').notNull(),
+    type: text('type').notNull().default('daily'),
+    completedDate: text('completed_date').notNull(),
+    completedAt: timestamp('completed_at').defaultNow(),
+  },
+  (table) => ({
+    uniqueUserChallengeDate: unique('idx_completed_challenges_user_challenge_date').on(
+      table.userId,
+      table.challengeId,
+      table.completedDate
+    ),
+  })
+);
 
 export const follows = pgTable('follows', {
   id: serial('id').primaryKey(),

@@ -1,6 +1,6 @@
 import { eq, desc, and, sql } from 'drizzle-orm';
 import { getDb } from '../connection';
-import * as schema from '../schema-sqlite';
+import * as schema from '../schema-pg';
 
 export async function createVerificationRequest(
   userId: number,

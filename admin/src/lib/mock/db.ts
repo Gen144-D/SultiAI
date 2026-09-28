@@ -285,7 +285,11 @@ export const seedReports: CommunityReport[] = Array.from({ length: 12 }, (_, i) 
 
 export const seedFeedback: FeedbackItem[] = Array.from({ length: 15 }, (_, i) => ({
   id: i + 1,
-  user: { id: seedUsers[i % seedUsers.length].id, name: seedUsers[i % seedUsers.length].name },
+  user: {
+    id: seedUsers[i % seedUsers.length].id,
+    name: seedUsers[i % seedUsers.length].name,
+    email: seedUsers[i % seedUsers.length].email,
+  },
   functionality: randomInt(1, 5),
   usability: randomInt(1, 5),
   reliability: randomInt(1, 5),

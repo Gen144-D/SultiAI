@@ -11,11 +11,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { useGame } from '../../context/GameContext';
 import GlassCard from '../GlassCard';
+import { Skeleton, SkeletonRow } from '../Skeleton';
 import { spacing, borderRadius, shadows } from '../../theme';
 import { api } from '../../services/api';
 
 // Map recommendation modules to existing SultiAI routes (SULTI tutor flow, NOT "Tutor").
-const MODULE_ROUTES = {
+export const MODULE_ROUTES = {
   phrasebook: 'Phrasebook',
   daily_challenge: 'SULTI',
   pronunciation: 'Pronunciation',
@@ -26,7 +27,7 @@ const MODULE_ROUTES = {
   scenario: 'ScenarioPractice',
 };
 
-function buildRecommendation({ analytics, game, pronunciationStats, inProgressModule }) {
+export function buildRecommendation({ analytics, game, pronunciationStats, inProgressModule }) {
   const started = Number(analytics?.modules_started) || 0;
   const avgCompletion = Number(analytics?.avg_completion) || 0;
   const pronAttempts = Number(pronunciationStats?.totalAttempts) || 0;
@@ -214,13 +215,10 @@ export default function AIRecommendationCard({
           transform: [{ translateY: slideAnim }],
         }}
       >
-        <GlassCard variant="elevated" style={styles.skeletonCard} padding="lg">
-          <View style={styles.skeletonRow}>
-            <View style={styles.skeletonIcon} />
-            <View style={styles.skeletonText} />
-          </View>
-          <View style={styles.skeletonBtn} />
-        </GlassCard>
+            <GlassCard variant="elevated" style={styles.skeletonCard} padding="lg">
+              <SkeletonRow avatar lines={2} />
+              <Skeleton height={44} radius={borderRadius.full} style={{ marginTop: spacing.md }} />
+            </GlassCard>
       </Animated.View>
     );
   }
@@ -284,34 +282,10 @@ const styles = StyleSheet.create({
   recCard: {
     overflow: 'hidden',
   },
-  skeletonCard: {
-    minHeight: 140,
-  },
-  skeletonRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.md,
-    gap: spacing.md,
-  },
-  skeletonIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-  },
-  skeletonText: {
-    flex: 1,
-    height: 18,
-    borderRadius: 8,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-  },
-  skeletonBtn: {
-    height: 44,
-    borderRadius: borderRadius.full,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    marginTop: spacing.md,
-  },
-  recHeader: {
+    skeletonCard: {
+      minHeight: 140,
+    },
+    recHeader: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',

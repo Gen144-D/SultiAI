@@ -181,20 +181,14 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.5,
   },
-  moduleTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: -0.32,
-    marginBottom: spacing.xs,
-    ...typography.h4,
-  },
-  moduleDescription: {
-    fontSize: 12,
-    lineHeight: 17,
-    letterSpacing: -0.08,
-    marginBottom: spacing.md,
-    ...typography.caption,
-  },
+    moduleTitle: {
+      marginBottom: spacing.xs,
+      ...typography.h4,
+    },
+    moduleDescription: {
+      marginBottom: spacing.md,
+      ...typography.caption,
+    },
   progressWrap: {
     marginBottom: spacing.md,
   },

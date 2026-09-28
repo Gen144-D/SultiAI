@@ -13,7 +13,6 @@ import Animated, {
   useSharedValue, useAnimatedStyle, withSpring, withTiming,
   withDelay, withRepeat, withSequence, Easing,
 } from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useGame } from '../context/GameContext';
 import { useTheme } from '../context/ThemeContext';
 import { api } from '../services/api';
@@ -21,7 +20,9 @@ import { speakTTS, stopTTS } from '../utils/tts';
 import GlassCard from '../components/GlassCard';
 import Badge from '../components/Badge';
 import AuroraBackground from '../components/AuroraBackground';
+import Header from '../components/Header';
 import { spacing, borderRadius } from '../theme';
+import { ensureContrast } from '../theme/moduleColors';
 
 const PHILIPPINE_LANGUAGES = [
   { id: 'tagalog', label: 'Tagalog', native: 'Tagalog', region: 'Central/Southern Luzon', flag: '\u{1F1F5}\u{1F1ED}', color: '#2563EB', speakers: '28M+' },
@@ -103,9 +104,8 @@ function TypingDots() {
 }
 
 export default function WhisperAIScreen({ navigation }) {
-  const { colors, isDark } = useTheme();
+  const { colors, isDark, onPrimary } = useTheme();
   const { addXp } = useGame();
-  const insets = useSafeAreaInsets();
 
   const [selectedLanguage, setSelectedLanguage] = useState(PHILIPPINE_LANGUAGES[0]);
   const [showLanguagePicker, setShowLanguagePicker] = useState(false);
@@ -158,10 +158,10 @@ export default function WhisperAIScreen({ navigation }) {
     try {
       const data = await api.whisperChat(msg, selectedLanguage.id);
       const reply = data.reply || 'Pasayloa ko, wala ko kasabot. Please try again!';
-      setMessages((prev) => [...prev, { id: (Date.now() + 1).toString(), role: 'assistant', text: reply, detected: data.detected || null }]);
+      setMessages((prev) => [...prev, { id: (Date.now() + 1).toString(), role: 'assistant', text: reply }]);
       addXp(XP_VALUES.WHISPER_INTERACTION, 'whisper');
     } catch (err) {
-      setMessages((prev) => [...prev, { id: (Date.now() + 1).toString(), role: 'assistant', text: 'Sorry, I had trouble connecting. Please try again. \u{1F614}' }]);
+      setMessages((prev) => [...prev, { id: (Date.now() + 1).toString(), role: 'assistant', text: 'Sorry, I had trouble connecting. Please try again.' }]);
     } finally {
       setLoading(false);
     }
@@ -236,24 +236,20 @@ export default function WhisperAIScreen({ navigation }) {
   const currentLang = selectedLanguage;
 
   const renderHeader = () => (
-    <LinearGradient colors={[colors.primary, colors.primaryDark]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.header, { paddingTop: insets.top + 12 }]}>
-      <View style={styles.headerRow}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Ionicons name="chevron-back" size={24} color="#fff" />
-        </TouchableOpacity>
-        <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>Whisper AI</Text>
-          <Text style={styles.headerSubtitle}>Philippine Dialect Companion</Text>
-        </View>
-        <TouchableOpacity onPress={() => setShowLanguagePicker(!showLanguagePicker)} style={styles.langBtn}>
-          <LinearGradient colors={[currentLang.color, currentLang.color]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.langPill}>
-            <Text style={styles.langFlag}>{currentLang.flag}</Text>
-            <Text style={styles.langLabel}>{currentLang.native}</Text>
-            <Ionicons name={showLanguagePicker ? 'chevron-up' : 'chevron-down'} size={14} color="#fff" />
-          </LinearGradient>
-        </TouchableOpacity>
-      </View>
-    </LinearGradient>
+    <Header
+      title="Whisper AI"
+      subtitle="Philippine Dialect Companion"
+      leftIcon="chevron-back"
+      onLeftPress={() => navigation.goBack()}
+    >
+      <TouchableOpacity onPress={() => setShowLanguagePicker(!showLanguagePicker)} accessibilityRole="button" accessibilityLabel="Select a language">
+        <LinearGradient colors={[currentLang.color, currentLang.color]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.langPill}>
+          <Text style={styles.langFlag}>{currentLang.flag}</Text>
+          <Text style={styles.langLabel}>{currentLang.native}</Text>
+          <Ionicons name={showLanguagePicker ? 'chevron-up' : 'chevron-down'} size={14} color="#fff" />
+        </LinearGradient>
+      </TouchableOpacity>
+    </Header>
   );
 
   const renderLanguagePicker = () => (
@@ -375,7 +371,7 @@ export default function WhisperAIScreen({ navigation }) {
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
-      <AuroraBackground>
+      <AuroraBackground atmosphere="sulti">
         {renderHeader()}
         {showLanguagePicker && renderLanguagePicker()}
 
@@ -399,14 +395,17 @@ export default function WhisperAIScreen({ navigation }) {
           />
 
           <View style={[styles.inputBar, { backgroundColor: isDark ? colors.surface : colors.white, borderTopColor: colors.border }]}>
-            <TouchableOpacity
+<TouchableOpacity
               onPressIn={startRecording}
               onPressOut={stopRecording}
-              style={[styles.micBtn, recording ? styles.micBtnActive : { backgroundColor: colors.surface }]}
+              style={[
+                { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.border },
+                { backgroundColor: colors.surface }
+              ]}
               accessibilityRole="button"
               accessibilityLabel={recording ? 'Stop recording' : 'Record voice message'}
             >
-              <Ionicons name={recording ? 'mic' : 'mic-outline'} size={22} color={recording ? '#EF4444' : colors.primary} />
+              <Ionicons name={recording ? 'mic' : 'mic-outline'} size={22} color={recording ? colors.error : colors.primary} />
             </TouchableOpacity>
             <TextInput
               id="whisperInput"
@@ -427,8 +426,23 @@ export default function WhisperAIScreen({ navigation }) {
               accessibilityHint="Type your message here"
               importantForAutofill="no"
             />
-             <TouchableOpacity style={[styles.sendBtn, { backgroundColor: colors.primary, opacity: input.trim() ? 1 : 0.5 }]} onPress={() => sendMessage()} disabled={!input.trim() || loading} accessibilityRole="button" accessibilityLabel="Send message">
-              <Ionicons name="send" size={18} color="#fff" />
+            <TouchableOpacity
+              style={[
+                styles.sendBtn,
+                {
+                  backgroundColor: colors.primary,
+                  opacity: input.trim() ? 1 : 0.5,
+                  // White-on-primary is the only ink that fails on some themes, so
+                  // measure it against the actual fill instead of assuming.
+                  borderColor: colors.border,
+                },
+              ]}
+              onPress={() => sendMessage()}
+              disabled={!input.trim() || loading}
+              accessibilityRole="button"
+              accessibilityLabel="Send message"
+            >
+              <Ionicons name="send" size={18} color={ensureContrast(onPrimary, colors.primary, 4.5)} />
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
@@ -439,14 +453,7 @@ export default function WhisperAIScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   root: { flex: 1, minHeight: 0 },
-  header: { paddingBottom: 16, paddingHorizontal: spacing.lg },
-  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  backBtn: { padding: 4, marginRight: 8 },
-  headerCenter: { flex: 1, alignItems: 'center' },
-  headerTitle: { fontSize: 20, fontWeight: '700', color: '#fff', letterSpacing: -0.5 },
-  headerSubtitle: { fontSize: 12, color: 'rgba(255,255,255,0.7)', marginTop: 2 },
-  langBtn: {},
-  langPill: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 6, borderRadius: borderRadius.full, gap: 6 },
+langPill: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999 },
   langFlag: { fontSize: 14 },
   langLabel: { fontSize: 13, fontWeight: '600', color: '#fff' },
   container: { flex: 1, minHeight: 0 },
@@ -489,9 +496,9 @@ const styles = StyleSheet.create({
   msgAssistant: { borderBottomLeftRadius: 4, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', elevation: 1 },
   msgText: { fontSize: 15, lineHeight: 21 },
   msgSpeak: { position: 'absolute', bottom: 6, right: 6, padding: 4 },
+  // This block is evaluated once at module load, so it cannot read the theme.
+  // The themed background/border are applied inline at the render site.
   inputBar: { flexDirection: 'row', alignItems: 'flex-end', paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderTopWidth: 1, gap: spacing.sm },
-  micBtn: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#E5E7EB' },
-  micBtnActive: { backgroundColor: '#FEE2E2', borderColor: '#EF4444' },
   textInput: { flex: 1, borderRadius: borderRadius.lg, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, fontSize: 15, maxHeight: 100 },
   sendBtn: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center' },
 });

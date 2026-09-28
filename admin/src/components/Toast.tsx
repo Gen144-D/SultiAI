@@ -19,7 +19,11 @@ export function useToast() {
   return useContext(ToastContext);
 }
 
-const icons: Record<ToastKind, string> = { success: '✓', error: '✕', info: 'ℹ' };
+const toneStyles: Record<ToastKind, string> = {
+  success: 'border-success/30 bg-success-soft text-success',
+  error: 'border-danger/30 bg-danger-soft text-danger',
+  info: 'border-brand/30 bg-brand-soft text-brand',
+};
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<ToastItem[]>([]);
@@ -34,26 +38,17 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={{ push }}>
       {children}
-      <div className="pointer-events-none fixed bottom-5 right-5 z-[100] flex w-72 flex-col gap-2">
+      <div className="pointer-events-none fixed right-4 bottom-4 z-[100] flex w-80 max-w-[calc(100vw-2rem)] flex-col gap-2">
         {items.map((t) => (
           <div
             key={t.id}
-            className={`pointer-events-auto flex items-start gap-2.5 rounded-xl border bg-white px-4 py-3 shadow-lg ${
-              t.kind === 'success'
-                ? 'border-success/30'
-                : t.kind === 'error'
-                  ? 'border-danger/30'
-                  : 'border-brand/30'
-            }`}
+            role="status"
+            className={`pointer-events-auto flex items-start gap-2.5 rounded-lg border px-3.5 py-2.5 text-sm shadow-card ${toneStyles[t.kind]}`}
           >
-            <span
-              className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white ${
-                t.kind === 'success' ? 'bg-success' : t.kind === 'error' ? 'bg-danger' : 'bg-brand'
-              }`}
-            >
-              {icons[t.kind]}
+            <span className="mt-px shrink-0 font-semibold">
+              {t.kind === 'success' ? '✓' : t.kind === 'error' ? '✕' : 'ℹ'}
             </span>
-            <p className="text-xs font-medium leading-relaxed text-ink">{t.message}</p>
+            <p className="text-xs leading-relaxed font-medium text-ink">{t.message}</p>
           </div>
         ))}
       </div>

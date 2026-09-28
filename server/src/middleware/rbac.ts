@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { verifyToken, JwtPayload } from '../utils/jwt';
 import { getDb } from '../db/connection';
-import * as schema from '../db/schema-sqlite';
+import * as schema from '../db/schema-pg';
 import { eq } from 'drizzle-orm';
 import { verifyCredentials } from '@supabase/server/core';
 import { errors } from '../utils/apiResponse';
@@ -31,8 +31,11 @@ function extractCredentials(req: Request) {
   };
 }
 
-async function resolveSupabaseUser(payload: any): Promise<JwtPayload | null> {
-  const supabaseId = payload.sub || '';
+async function resolveSupabaseUser(authResult: any): Promise<JwtPayload | null> {
+  // verifyCredentials returns an AuthResult wrapper:
+  // { authMode, token, userClaims, jwtClaims, keyName }. Claims are nested.
+  const payload = authResult?.userClaims || authResult?.jwtClaims || authResult || {};
+  const supabaseId = payload.sub || payload.id || '';
   const email = payload.email || '';
   let userId = 0;
 
@@ -47,7 +50,7 @@ async function resolveSupabaseUser(payload: any): Promise<JwtPayload | null> {
         .where(eq(schema.users.email, email))
         .limit(1);
       if (existing) {
-        userId = existing.user_id;
+        userId = existing.userId ?? existing.user_id;
         if (supabaseId) userIdCache.set(supabaseId, userId);
       }
     } catch {

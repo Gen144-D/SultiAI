@@ -1,9 +1,10 @@
 import { Request, Response, NextFunction } from 'express';
 import { verifyToken, JwtPayload } from '../utils/jwt';
-import { getDb } from '../db/connection';
 import { verifyCredentials } from '@supabase/server/core';
 import { errors } from '../utils/apiResponse';
 import { env } from '../config';
+import { ensureUserByEmail } from '../db/repositories/user.repo';
+import { logger } from '../utils/logger';
 
 // Cache for Supabase UUID → local user ID mapping
 const userIdCache = new Map<string, number>();
@@ -56,44 +57,45 @@ export async function authMiddleware(
       });
 
       if (!error && data) {
-        // data contains the verified payload
-        const payload = data as any;
-        const session: JwtPayload = {
-          email: payload.email || '',
-          userId: 0, // Will be resolved via email lookup
-          id: 0,
-          sub: payload.sub || payload.user_sub || '',
-          iat: payload.iat,
-          exp: payload.exp,
-        };
+        // data is an AuthResult wrapper: { authMode, token, userClaims, jwtClaims, keyName }.
+        // The claims are nested, NOT on the top-level object.
+        const claims = (data as any).userClaims || (data as any).jwtClaims || null;
+        const supabaseEmail = (claims?.email as string) || '';
+        const supabaseSub = (claims?.id as string) || (claims?.sub as string) || '';
 
-        // Resolve Supabase UUID → local user ID
-        const supabaseId = session.sub || '';
-        const email = session.email || '';
+        if (supabaseEmail || supabaseSub) {
+          const session: JwtPayload = {
+            email: supabaseEmail,
+            userId: 0, // Will be resolved via email lookup
+            id: 0,
+            sub: supabaseSub,
+            iat: claims?.iat,
+            exp: claims?.exp,
+          };
 
-        if (supabaseId && userIdCache.has(supabaseId)) {
-          session.userId = userIdCache.get(supabaseId)!;
-        } else if (email) {
-          try {
-            const db = getDb();
-            const schema = require('../db/schema-sqlite');
-            const { eq } = require('drizzle-orm');
-            const [existing] = (db as any)
-              .select()
-              .from(schema.users)
-              .where(eq(schema.users.email, email))
-              .limit(1);
-            if (existing) {
-              session.userId = existing.user_id;
-              if (supabaseId) userIdCache.set(supabaseId, existing.user_id);
+          // Resolve Supabase UUID → local user ID, provisioning the row if needed
+          const supabaseId = session.sub;
+          const email = session.email;
+
+          if (supabaseId && userIdCache.has(supabaseId)) {
+            session.userId = userIdCache.get(supabaseId)!;
+          } else if (email) {
+            try {
+              const userId = await ensureUserByEmail(email, supabaseId || undefined);
+              if (userId) {
+                session.userId = userId;
+                if (supabaseId) userIdCache.set(supabaseId, userId);
+              }
+            } catch (dbErr) {
+              logger.warn('User resolution failed', { error: (dbErr as Error).message });
             }
-          } catch (dbErr) {
-            // DB lookup failed — userId stays 0
           }
-        }
 
-        req.user = { ...session, id: session.userId };
-        return next();
+          req.user = { ...session, id: session.userId };
+          return next();
+        }
+        // Claims were empty/unusable — fall through to legacy verification
+        // rather than attaching an unidentified session.
       }
     } catch (err) {
       // JWKS verification failed, fall through to legacy
@@ -112,20 +114,13 @@ export async function authMiddleware(
         legacySession.userId = userIdCache.get(supabaseId)!;
       } else {
         try {
-          const db = getDb();
-          const schema = require('../db/schema-sqlite');
-          const { eq } = require('drizzle-orm');
-          const [existing] = (db as any)
-            .select()
-            .from(schema.users)
-            .where(eq(schema.users.email, email))
-            .limit(1);
-          if (existing) {
-            legacySession.userId = existing.user_id;
-            if (supabaseId) userIdCache.set(supabaseId, existing.user_id);
+          const userId = await ensureUserByEmail(email, supabaseId || undefined);
+          if (userId) {
+            legacySession.userId = userId;
+            if (supabaseId) userIdCache.set(supabaseId, userId);
           }
         } catch (dbErr) {
-          // DB lookup failed — userId stays 0
+          logger.warn('User resolution failed', { error: (dbErr as Error).message });
         }
       }
     }

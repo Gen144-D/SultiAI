@@ -2,7 +2,6 @@ export * from './useAnimations';
 export { useApi, useApiLazy } from './useApi';
 export { useDashboardData } from './useDashboardData';
 export { default as useAdaptiveTutor } from './useAdaptiveTutor';
-export { useAudioRecorder } from './useAudioRecorder';
 export { useOfflineSync } from './useOfflineSync';
 export { useAccessibility } from './useAccessibility';
 export { useNotifications } from './useNotifications';

@@ -1,5 +1,9 @@
 import { Router, Request, Response } from 'express';
+import { and, eq, gte } from 'drizzle-orm';
 import { authMiddleware } from '../middleware/auth';
+import { getDb } from '../db/connection';
+import * as schema from '../db/schema-pg';
+import { addXp, addCoins } from '../db/repositories/learner.repo';
 
 const router = Router();
 
@@ -85,17 +89,25 @@ const WEEKLY_CHALLENGES = [
   },
 ];
 
+async function getCompletedIds(userId: number, type: 'daily' | 'weekly', sinceDate: string) {
+  const db = getDb();
+  const rows = await (db as any)
+    .select({ challengeId: schema.completedChallenges.challengeId })
+    .from(schema.completedChallenges)
+    .where(
+      and(
+        eq(schema.completedChallenges.userId, userId),
+        eq(schema.completedChallenges.type, type),
+        gte(schema.completedChallenges.completedDate, sinceDate)
+      )
+    );
+  return new Set(rows.map((r: any) => r.challengeId));
+}
+
 router.get('/daily', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const today = new Date().toISOString().split('T')[0];
-    const { getDb } = await import('../db/connection');
-    const db = getDb();
-    const completed = db
-      .prepare(
-        'SELECT challenge_id FROM completed_challenges WHERE user_id = ? AND type = ? AND completed_date = ?'
-      )
-      .all(req.user!.id, 'daily', today) as any[];
-    const completedIds = new Set(completed.map((c: any) => c.challenge_id));
+    const completedIds = await getCompletedIds(req.user!.id, 'daily', today);
     const challenges = DAILY_CHALLENGES.map((c) => ({
       ...c,
       completed: completedIds.has(c.id),
@@ -109,15 +121,8 @@ router.get('/daily', authMiddleware, async (req: AuthRequest, res: Response) => 
 
 router.get('/weekly', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    const { getDb } = await import('../db/connection');
-    const db = getDb();
     const weekStart = getWeekStart();
-    const completed = db
-      .prepare(
-        'SELECT challenge_id FROM completed_challenges WHERE user_id = ? AND type = ? AND completed_date >= ?'
-      )
-      .all(req.user!.id, 'weekly', weekStart) as any[];
-    const completedIds = new Set(completed.map((c: any) => c.challenge_id));
+    const completedIds = await getCompletedIds(req.user!.id, 'weekly', weekStart);
     const challenges = WEEKLY_CHALLENGES.map((c) => ({
       ...c,
       completed: completedIds.has(c.id),
@@ -128,34 +133,90 @@ router.get('/weekly', authMiddleware, async (req: AuthRequest, res: Response) =>
   }
 });
 
+/**
+ * Server-side completion checks against real activity tables, where the
+ * criterion is cheap to verify. Challenges not listed here fall back to
+ * trusting the client's completion claim (still deduped — see below) — a
+ * known gap to close as a fast-follow, not a blocker for this cutover.
+ */
+async function verifyCompletion(challengeId: string, userId: number, today: string): Promise<boolean> {
+  const db = getDb();
+  if (challengeId === 'daily_2') {
+    // "Record 3 pronunciation attempts"
+    const rows = await (db as any)
+      .select({ id: schema.pronunciationAttempts.id })
+      .from(schema.pronunciationAttempts)
+      .where(
+        and(
+          eq(schema.pronunciationAttempts.userId, userId),
+          gte(schema.pronunciationAttempts.timestamp, today)
+        )
+      );
+    return rows.length >= 3;
+  }
+  if (challengeId === 'daily_4') {
+    // "Complete any lesson today"
+    const rows = await (db as any)
+      .select({ id: schema.learningProgress.progressId })
+      .from(schema.learningProgress)
+      .where(
+        and(
+          eq(schema.learningProgress.userId, userId),
+          gte(schema.learningProgress.updatedAt, new Date(`${today}T00:00:00.000Z`))
+        )
+      );
+    return rows.length > 0;
+  }
+  return true; // not yet verifiable server-side; trust the client's claim
+}
+
 router.post('/:id/complete', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const challengeId = req.params.id;
-    const { getDb } = await import('../db/connection');
-    const db = getDb();
+    const userId = req.user!.id;
     const now = new Date().toISOString();
     const today = now.split('T')[0];
-    const type = challengeId.startsWith('weekly') ? 'weekly' : 'daily';
-
-    db.prepare(
-      `
-      INSERT OR IGNORE INTO completed_challenges (user_id, challenge_id, type, completed_date, created_at)
-      VALUES (?, ?, ?, ?, ?)
-    `
-    ).run(req.user!.id, challengeId, type, today, now);
+    const type: 'daily' | 'weekly' = challengeId.startsWith('weekly') ? 'weekly' : 'daily';
 
     const challenge = [...DAILY_CHALLENGES, ...WEEKLY_CHALLENGES].find((c) => c.id === challengeId);
-    if (challenge) {
-      const repo = (await import('../db/repositories/learner.repo')).getLearnerRepo();
-      await repo.addXp(req.user!.id, challenge.xpReward);
-      await repo.addCoins(req.user!.id, challenge.coinReward);
+    if (!challenge) {
+      res.status(404).json({ error: 'Unknown challenge' });
+      return;
     }
 
-    res.json({
-      success: true,
-      xpReward: challenge?.xpReward || 0,
-      coinReward: challenge?.coinReward || 0,
+    const verified = await verifyCompletion(challengeId, userId, type === 'weekly' ? getWeekStart() : today);
+    if (!verified) {
+      res.status(400).json({ error: 'Challenge criteria not met' });
+      return;
+    }
+
+    const db = getDb();
+    // Relies on unique(user_id, challenge_id, completed_date) — a duplicate
+    // complete call for the same day inserts nothing and credits nothing.
+    const inserted = await (db as any)
+      .insert(schema.completedChallenges)
+      .values({ userId, challengeId, type, completedDate: today })
+      .onConflictDoNothing({
+        target: [
+          schema.completedChallenges.userId,
+          schema.completedChallenges.challengeId,
+          schema.completedChallenges.completedDate,
+        ],
+      })
+      .returning({ id: schema.completedChallenges.id });
+
+    if (!inserted.length) {
+      res.json({ success: true, alreadyCompleted: true, xpReward: 0, coinReward: 0 });
+      return;
+    }
+
+    await addXp(userId, challenge.xpReward, {
+      source: 'challenge',
+      idempotencyKey: `challenge:${userId}:${challengeId}:${today}`,
     });
+    await addCoins(userId, challenge.coinReward);
+
+    res.json({ success: true, xpReward: challenge.xpReward, coinReward: challenge.coinReward });
   } catch (err) {
     console.error('Challenge complete error:', err);
     res.status(500).json({ error: 'Failed to complete challenge' });

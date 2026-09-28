@@ -1,5 +1,5 @@
-import { getDb } from '../../db/connection';
-import * as schema from '../../db/schema-sqlite';
+﻿import { eq } from 'drizzle-orm';
+import { getDb, getSchema } from '../../db/connection';
 import { ADAPTIVE_PARAMS, XP_VALUES } from '../../config';
 import logger from '../../utils/logger';
 import type { RecommendationInput, RecommendationOutput } from '../../types';
@@ -81,6 +81,7 @@ export class AdaptiveLearningEngine {
   ): Promise<void> {
     try {
       const db = getDb();
+      const schema = getSchema();
       const now = new Date().toISOString();
 
       const existing = await (db as any)
@@ -88,8 +89,8 @@ export class AdaptiveLearningEngine {
         .from(schema.learningProgress)
         .where(
           (db as any).and(
-            (db as any).eq(schema.learningProgress.userId, userId),
-            (db as any).eq(schema.learningProgress.moduleId, await this.getModuleId(topic))
+            eq(schema.learningProgress.userId, userId),
+            eq(schema.learningProgress.moduleId, await this.getModuleId(topic))
           )
         )
         .limit(1);
@@ -100,7 +101,7 @@ export class AdaptiveLearningEngine {
         await (db as any)
           .update(schema.learningProgress)
           .set({ completionPercent: newCompletion, updatedAt: now })
-          .where((db as any).eq(schema.learningProgress.progressId, current.progressId));
+          .where(eq(schema.learningProgress.progressId, current.progressId));
       } else {
         await (db as any).insert(schema.learningProgress).values({
           userId,
@@ -120,10 +121,11 @@ export class AdaptiveLearningEngine {
   async getAdaptiveState(userId: number): Promise<AdaptiveState> {
     try {
       const db = getDb();
+      const schema = getSchema();
       const profileRows = await (db as any)
         .select()
         .from(schema.learnerProfiles)
-        .where((db as any).eq(schema.learnerProfiles.userId, userId))
+        .where(eq(schema.learnerProfiles.userId, userId))
         .limit(1);
 
       const profile = profileRows[0];
@@ -134,7 +136,7 @@ export class AdaptiveLearningEngine {
       const progressRows = await (db as any)
         .select()
         .from(schema.learningProgress)
-        .where((db as any).eq(schema.learningProgress.userId, userId));
+        .where(eq(schema.learningProgress.userId, userId));
 
       const topicMasteries = this.calculateTopicMasteries(progressRows);
       const compositeScore = this.calculateCompositeScore(topicMasteries, profile);
@@ -155,7 +157,9 @@ export class AdaptiveLearningEngine {
       {};
 
     for (const row of progressRows) {
-      const topic = row.topic || 'general';
+      // Postgres stores a denormalised `topic`; SQLite/MySQL key progress by
+      // module, so fall back to the module id to keep topics distinct.
+      const topic = row.topic || `module_${row.moduleId}`;
       if (!topics[topic]) {
         topics[topic] = {
           attempts: 0,
@@ -201,6 +205,7 @@ export class AdaptiveLearningEngine {
   private async getDueReviewWords(userId: number): Promise<string[]> {
     try {
       const db = getDb();
+      const schema = getSchema();
       const now = new Date().toISOString();
 
       const due = await (db as any)
@@ -208,7 +213,7 @@ export class AdaptiveLearningEngine {
         .from(schema.vocabularyReviews)
         .where(
           (db as any).and(
-            (db as any).eq(schema.vocabularyReviews.userId, userId),
+            eq(schema.vocabularyReviews.userId, userId),
             (db as any).lte(schema.vocabularyReviews.nextReview, now)
           )
         )
@@ -242,6 +247,7 @@ export class AdaptiveLearningEngine {
   private async getModuleId(topic: string): Promise<number> {
     try {
       const db = getDb();
+      const schema = getSchema();
       const modules = await (db as any)
         .select()
         .from(schema.learningModules)

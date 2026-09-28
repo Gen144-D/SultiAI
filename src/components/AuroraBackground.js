@@ -6,15 +6,22 @@ import Animated, {
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { useTheme } from '../context/ThemeContext';
+import { useAtmosphere } from '../theme/atmosphere';
 
 const BLOBS = [
-  { size: 0.7, top: -0.2, left: -0.15, colorKey: 'aurora1', dur: 9000, rangeX: 0.16, rangeY: 0.1, delay: 0, opacity: 0.5, tone: 'teal' },
-  { size: 0.5, top: 0.05, right: -0.1, colorKey: 'aurora2', dur: 11000, rangeX: 0.12, rangeY: 0.08, delay: 1.4, opacity: 0.42, tone: 'blue' },
-  { size: 0.42, bottom: 0.12, left: 0.08, colorKey: 'aurora3', dur: 13000, rangeX: 0.14, rangeY: 0.09, delay: 2.8, opacity: 0.4, tone: 'teal' },
-  { size: 0.3, bottom: -0.05, right: 0.05, colorKey: 'aurora4', dur: 10000, rangeX: 0.1, rangeY: 0.06, delay: 0.9, opacity: 0.36, tone: 'mint' },
+  { size: 0.7, top: -0.2, left: -0.15, colorKey: 'aurora1', dur: 9000, rangeX: 0.16, rangeY: 0.1, delay: 0, opacity: 0.5, tone: 'primary' },
+  { size: 0.5, top: 0.05, right: -0.1, colorKey: 'aurora2', dur: 11000, rangeX: 0.12, rangeY: 0.08, delay: 1.4, opacity: 0.42, tone: 'secondary' },
+  { size: 0.42, bottom: 0.12, left: 0.08, colorKey: 'aurora3', dur: 13000, rangeX: 0.14, rangeY: 0.09, delay: 2.8, opacity: 0.4, tone: 'primary' },
+  { size: 0.3, bottom: -0.05, right: 0.05, colorKey: 'aurora4', dur: 10000, rangeX: 0.1, rangeY: 0.06, delay: 0.9, opacity: 0.36, tone: 'accent' },
 ];
 
 const PARTICLE_COUNT = 15;
+
+function toneColor(tone, colors) {
+  if (tone === 'secondary') return colors.secondary;
+  if (tone === 'accent') return colors.accent;
+  return colors.primary;
+}
 
 function seededRandom(seed) {
   let s = seed;
@@ -52,14 +59,16 @@ function Particle({ particle, width, height }) {
   return <Animated.View style={style} />;
 }
 
-export default function AuroraBackground({ children, style }) {
+export default function AuroraBackground({ children, style, atmosphere }) {
   const { colors, isDark } = useTheme();
+  const amb = useAtmosphere(atmosphere);
   const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
 
   const particles = useMemo(() => {
     const r = seededRandom(99);
     const colorKeys = ['aurora1', 'aurora2', 'aurora3'];
-    return Array.from({ length: PARTICLE_COUNT }, (_, i) => ({
+    const count = Math.max(0, Math.round(PARTICLE_COUNT * amb.particleScale));
+    return Array.from({ length: count }, (_, i) => ({
       x: r() * SCREEN_WIDTH,
       y: r() * SCREEN_HEIGHT,
       size: 1.5 + r() * 2.5,
@@ -67,29 +76,29 @@ export default function AuroraBackground({ children, style }) {
       opacity: 0.3 + r() * 0.4,
       color: colors[colorKeys[i % 3]] || colors.primary + '60',
     }));
-  }, [SCREEN_WIDTH, SCREEN_HEIGHT]);
+  }, [SCREEN_WIDTH, SCREEN_HEIGHT, amb.particleScale, colors]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }, style]}>
-      <BreathingGlow width={SCREEN_WIDTH} height={SCREEN_HEIGHT} isDark={isDark} />
+      <BreathingGlow width={SCREEN_WIDTH} height={SCREEN_HEIGHT} isDark={isDark} glowScale={amb.glowScale} colors={colors} />
       {BLOBS.map((cfg, i) => (
-        <AuroraBlob key={i} cfg={cfg} colors={colors} screenWidth={SCREEN_WIDTH} screenHeight={SCREEN_HEIGHT} />
+        <AuroraBlob key={i} cfg={cfg} colors={colors} screenWidth={SCREEN_WIDTH} screenHeight={SCREEN_HEIGHT} blobScale={amb.blobScale} />
       ))}
       {particles.map((p, i) => (
         <Particle key={i} particle={p} width={SCREEN_WIDTH} height={SCREEN_HEIGHT} />
       ))}
-      {Platform.OS !== 'web' && (
+      {amb.blur && Platform.OS !== 'web' && (
         <BlurView intensity={80} style={[StyleSheet.absoluteFill, { pointerEvents: 'none' }]} tint={isDark ? 'dark' : 'light'} />
       )}
       <LinearGradient
         colors={isDark
-          ? ['transparent', 'rgba(4,11,22,0.92)']
+          ? ['transparent', `${colors.background}F2`]
           : ['transparent', colors.background]}
         style={[styles.fadeBottom, { height: SCREEN_HEIGHT * 0.3, pointerEvents: 'none' }]}
       />
       <LinearGradient
         colors={isDark
-          ? ['rgba(4,11,22,0.88)', 'transparent']
+          ? [`${colors.background}E0`, 'transparent']
           : [colors.background, 'transparent']}
         style={[styles.fadeTop, { height: SCREEN_HEIGHT * 0.16, pointerEvents: 'none' }]}
       />
@@ -100,7 +109,7 @@ export default function AuroraBackground({ children, style }) {
   );
 }
 
-function AuroraBlob({ cfg, colors, screenWidth, screenHeight }) {
+function AuroraBlob({ cfg, colors, screenWidth, screenHeight, blobScale }) {
   const progress = useSharedValue(0);
 
   useEffect(() => {
@@ -109,6 +118,8 @@ function AuroraBlob({ cfg, colors, screenWidth, screenHeight }) {
       -1, true
     );
   }, []);
+
+  const size = cfg.size * blobScale;
 
   const style = useAnimatedStyle(() => {
     const t = (progress.value + cfg.delay * 0.1) % 1;
@@ -124,9 +135,9 @@ function AuroraBlob({ cfg, colors, screenWidth, screenHeight }) {
     if (cfg.right !== undefined) posStyle.right = cfg.right * screenWidth;
 
     return {
-      width: cfg.size * screenWidth,
-      height: cfg.size * screenWidth,
-      borderRadius: (cfg.size * screenWidth) / 2,
+      width: size * screenWidth,
+      height: size * screenWidth,
+      borderRadius: (size * screenWidth) / 2,
       opacity: cfg.opacity * (0.75 + 0.25 * Math.sin(phase * 0.5)),
       ...posStyle,
       transform: [
@@ -137,11 +148,8 @@ function AuroraBlob({ cfg, colors, screenWidth, screenHeight }) {
     };
   });
 
-  const gradient = cfg.tone === 'teal'
-    ? ['rgba(0,212,189,0.16)', 'rgba(0,212,189,0.03)', 'transparent']
-    : cfg.tone === 'blue'
-      ? ['rgba(52,211,153,0.1)', 'rgba(0,212,189,0.03)', 'transparent']
-      : ['rgba(94,234,212,0.12)', 'rgba(0,212,189,0.03)', 'transparent'];
+  const tone = toneColor(cfg.tone, colors);
+  const gradient = [`${tone}29`, `${tone}08`, 'transparent'];
 
   return (
     <Animated.View style={[styles.blob, style]}>
@@ -157,7 +165,7 @@ function AuroraBlob({ cfg, colors, screenWidth, screenHeight }) {
   );
 }
 
-function BreathingGlow({ width, height, isDark }) {
+function BreathingGlow({ width, height, isDark, glowScale, colors }) {
   const breath = useSharedValue(1);
 
   useEffect(() => {
@@ -171,13 +179,12 @@ function BreathingGlow({ width, height, isDark }) {
   }, []);
 
   const style = useAnimatedStyle(() => ({
-    opacity: 0.5 + (breath.value - 1) * 3,
+    opacity: (0.5 + (breath.value - 1) * 3) * glowScale,
     transform: [{ scale: breath.value }],
   }));
 
-  const colorsSlice = isDark
-    ? ['rgba(0,212,189,0.14)', 'rgba(94,234,212,0.04)', 'transparent']
-    : ['rgba(0,168,150,0.16)', 'rgba(0,143,127,0.05)', 'transparent'];
+  const base = isDark ? colors.primary : colors.accent;
+  const colorsSlice = [`${base}24`, `${base}0A`, 'transparent'];
 
   return (
     <Animated.View pointerEvents="none" style={[styles.breathGlow, style, { width: width * 0.9, height: height * 0.9, borderRadius: height * 0.45 }]}>

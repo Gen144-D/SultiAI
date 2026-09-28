@@ -9,12 +9,44 @@ const DATABASE_URL = process.env.DATABASE_URL || '';
 let db: ReturnType<typeof drizzle>;
 let sqliteRaw: Database.Database | null = null;
 let pgPool: any = null;
-let mysqlPool: any = null;
 
 function getDialect() {
   if (DIALECT === 'postgresql' || DIALECT === 'postgres') return 'postgres';
-  if (DIALECT === 'mysql') return 'mysql';
   return 'sqlite';
+}
+
+function runLearningIntegrityMigrations(handle: Database.Database) {
+  handle.exec(
+    `UPDATE learning_progress SET completion_percent = 0 WHERE completion_percent IS NULL OR completion_percent < 0`
+  );
+  handle.exec(
+    `UPDATE learning_progress SET completion_percent = 100 WHERE completion_percent > 100`
+  );
+  handle.exec(`
+    DELETE FROM learning_progress
+    WHERE progress_id NOT IN (
+      SELECT MIN(progress_id) FROM learning_progress GROUP BY user_id, module_id
+    )
+  `);
+  handle.exec(`UPDATE learning_progress SET updated_at = datetime('now') WHERE updated_at IS NULL`);
+  handle.exec(
+    `CREATE UNIQUE INDEX IF NOT EXISTS idx_learning_progress_user_module ON learning_progress (user_id, module_id)`
+  );
+  handle.exec(
+    `CREATE UNIQUE INDEX IF NOT EXISTS idx_learning_modules_key ON learning_modules (module_key) WHERE module_key IS NOT NULL`
+  );
+  handle.exec(
+    `CREATE INDEX IF NOT EXISTS idx_lesson_items_module ON lesson_items (module_id, sort_order)`
+  );
+  handle.exec(
+    `CREATE UNIQUE INDEX IF NOT EXISTS idx_xp_logs_idempotency ON xp_logs (user_id, idempotency_key) WHERE idempotency_key IS NOT NULL`
+  );
+  handle.exec(
+    `CREATE UNIQUE INDEX IF NOT EXISTS idx_daily_activity_user_date ON daily_activity (user_id, activity_date)`
+  );
+  handle.exec(
+    `CREATE UNIQUE INDEX IF NOT EXISTS idx_completed_challenges_user_challenge_date ON completed_challenges (user_id, challenge_id, completed_date)`
+  );
 }
 
 function initDatabase() {
@@ -32,8 +64,9 @@ function initDatabase() {
     `CREATE TABLE IF NOT EXISTS speech_records (speech_id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, audio_path TEXT, recognized_text TEXT, language_detected TEXT, confidence REAL DEFAULT 0, created_at TEXT DEFAULT (datetime('now')), FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE)`,
     `CREATE TABLE IF NOT EXISTS translations (translation_id INTEGER PRIMARY KEY AUTOINCREMENT, speech_id INTEGER NOT NULL, source_language TEXT, target_language TEXT, translated_text TEXT, FOREIGN KEY (speech_id) REFERENCES speech_records(speech_id) ON DELETE CASCADE)`,
     `CREATE TABLE IF NOT EXISTS phrase_recommendations (recommendation_id INTEGER PRIMARY KEY AUTOINCREMENT, speech_id INTEGER NOT NULL, recommended_phrase TEXT, intent TEXT, confidence REAL DEFAULT 0, FOREIGN KEY (speech_id) REFERENCES speech_records(speech_id) ON DELETE CASCADE)`,
-    `CREATE TABLE IF NOT EXISTS learning_modules (module_id INTEGER PRIMARY KEY AUTOINCREMENT, module_title TEXT NOT NULL, difficulty TEXT DEFAULT 'beginner', language TEXT, created_at TEXT DEFAULT (datetime('now')))`,
-    `CREATE TABLE IF NOT EXISTS learning_progress (progress_id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, module_id INTEGER NOT NULL, completion_percent REAL DEFAULT 0, created_at TEXT DEFAULT (datetime('now')), FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE, FOREIGN KEY (module_id) REFERENCES learning_modules(module_id) ON DELETE CASCADE)`,
+    `CREATE TABLE IF NOT EXISTS learning_modules (module_id INTEGER PRIMARY KEY AUTOINCREMENT, module_title TEXT NOT NULL, module_key TEXT, sort_order INTEGER DEFAULT 0, difficulty TEXT DEFAULT 'beginner', language TEXT, created_at TEXT DEFAULT (datetime('now')))`,
+    `CREATE TABLE IF NOT EXISTS learning_progress (progress_id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, module_id INTEGER NOT NULL, completion_percent REAL DEFAULT 0 CHECK (completion_percent >= 0 AND completion_percent <= 100), created_at TEXT DEFAULT (datetime('now')), updated_at TEXT DEFAULT (datetime('now')), FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE, FOREIGN KEY (module_id) REFERENCES learning_modules(module_id) ON DELETE CASCADE)`,
+    `CREATE TABLE IF NOT EXISTS lesson_items (item_id INTEGER PRIMARY KEY AUTOINCREMENT, module_id INTEGER NOT NULL, section_title TEXT, native_text TEXT NOT NULL, english_text TEXT, note TEXT, sort_order INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime('now')), FOREIGN KEY (module_id) REFERENCES learning_modules(module_id) ON DELETE CASCADE)`,
     `CREATE TABLE IF NOT EXISTS community_posts (post_id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, title TEXT, content TEXT, phrase TEXT, translation TEXT, category TEXT, created_at TEXT DEFAULT (datetime('now')), FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE)`,
     `CREATE TABLE IF NOT EXISTS comments (comment_id INTEGER PRIMARY KEY AUTOINCREMENT, post_id INTEGER NOT NULL, user_id INTEGER NOT NULL, comment TEXT, created_at TEXT DEFAULT (datetime('now')), FOREIGN KEY (post_id) REFERENCES community_posts(post_id) ON DELETE CASCADE, FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE)`,
     `CREATE TABLE IF NOT EXISTS community_reports (report_id INTEGER PRIMARY KEY AUTOINCREMENT, post_id INTEGER NOT NULL, reporter_id INTEGER, reason TEXT, status TEXT DEFAULT 'open', created_at TEXT DEFAULT (datetime('now')), FOREIGN KEY (post_id) REFERENCES community_posts(post_id) ON DELETE CASCADE, FOREIGN KEY (reporter_id) REFERENCES users(user_id) ON DELETE SET NULL)`,
@@ -53,6 +86,8 @@ function initDatabase() {
     `CREATE TABLE IF NOT EXISTS bookmarks (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, post_id INTEGER NOT NULL, created_at TEXT DEFAULT (datetime('now')), FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE, FOREIGN KEY (post_id) REFERENCES community_posts(post_id) ON DELETE CASCADE, UNIQUE(user_id, post_id))`,
     `CREATE TABLE IF NOT EXISTS likes (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, post_id INTEGER NOT NULL, created_at TEXT DEFAULT (datetime('now')), FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE, FOREIGN KEY (post_id) REFERENCES community_posts(post_id) ON DELETE CASCADE, UNIQUE(user_id, post_id))`,
     `CREATE TABLE IF NOT EXISTS audit_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, action TEXT NOT NULL, resource_type TEXT, resource_id TEXT, details TEXT, ip_address TEXT, timestamp TEXT DEFAULT (datetime('now')))`,
+    `CREATE TABLE IF NOT EXISTS completed_challenges (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, challenge_id TEXT NOT NULL, type TEXT NOT NULL DEFAULT 'daily', completed_date TEXT NOT NULL DEFAULT (date('now')), completed_at TEXT DEFAULT (datetime('now')), FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE)`,
+    `CREATE TABLE IF NOT EXISTS learning_sessions (session_id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, module_id INTEGER, activity_type TEXT NOT NULL, started_at TEXT DEFAULT (datetime('now')), ended_at TEXT, duration_seconds INTEGER DEFAULT 0, xp_earned INTEGER DEFAULT 0, FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE, FOREIGN KEY (module_id) REFERENCES learning_modules(module_id) ON DELETE SET NULL)`,
     `CREATE TABLE IF NOT EXISTS roles (role_id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE, description TEXT, created_at TEXT DEFAULT (datetime('now')))`,
     `CREATE TABLE IF NOT EXISTS permissions (permission_id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE, resource TEXT NOT NULL, action TEXT NOT NULL, description TEXT)`,
     `CREATE TABLE IF NOT EXISTS role_permissions (role_id INTEGER NOT NULL, permission_id INTEGER NOT NULL, PRIMARY KEY (role_id, permission_id), FOREIGN KEY (role_id) REFERENCES roles(role_id) ON DELETE CASCADE, FOREIGN KEY (permission_id) REFERENCES permissions(permission_id) ON DELETE CASCADE)`,
@@ -139,6 +174,46 @@ function initDatabase() {
       column: 'role_id',
       sql: 'ALTER TABLE users ADD COLUMN role_id INTEGER',
     },
+    {
+      table: 'learning_modules',
+      column: 'module_key',
+      sql: 'ALTER TABLE learning_modules ADD COLUMN module_key TEXT',
+    },
+    {
+      table: 'learning_modules',
+      column: 'sort_order',
+      sql: 'ALTER TABLE learning_modules ADD COLUMN sort_order INTEGER DEFAULT 0',
+    },
+    {
+      table: 'learning_progress',
+      column: 'updated_at',
+      sql: 'ALTER TABLE learning_progress ADD COLUMN updated_at TEXT',
+    },
+    {
+      table: 'lesson_items',
+      column: 'section_title',
+      sql: 'ALTER TABLE lesson_items ADD COLUMN section_title TEXT',
+    },
+    {
+      table: 'xp_logs',
+      column: 'idempotency_key',
+      sql: 'ALTER TABLE xp_logs ADD COLUMN idempotency_key TEXT',
+    },
+    {
+      table: 'learning_progress',
+      column: 'mastery_score',
+      sql: 'ALTER TABLE learning_progress ADD COLUMN mastery_score REAL DEFAULT 0',
+    },
+    {
+      table: 'completed_challenges',
+      column: 'type',
+      sql: "ALTER TABLE completed_challenges ADD COLUMN type TEXT NOT NULL DEFAULT 'daily'",
+    },
+    {
+      table: 'completed_challenges',
+      column: 'completed_date',
+      sql: "ALTER TABLE completed_challenges ADD COLUMN completed_date TEXT NOT NULL DEFAULT (date('now'))",
+    },
   ];
   for (const m of addColumnMigrations) {
     const cols = sqliteRaw.prepare(`PRAGMA table_info(${m.table})`).all() as Array<{
@@ -148,6 +223,7 @@ function initDatabase() {
       sqliteRaw.exec(m.sql);
     }
   }
+  runLearningIntegrityMigrations(sqliteRaw);
   const avatarRow = sqliteRaw.prepare('SELECT 1 FROM avatars WHERE avatar_id = 1').get();
   if (!avatarRow) {
     sqliteRaw
@@ -290,58 +366,17 @@ function initDatabase() {
   console.log('Database tables initialized');
 }
 
-async function initDatabasePostgres(pool: any) {
-  const tables = [
-    `CREATE TABLE IF NOT EXISTS avatars (avatar_id SERIAL PRIMARY KEY, avatar_name VARCHAR(255) NOT NULL, avatar_image VARCHAR(500) NOT NULL)`,
-    `CREATE TABLE IF NOT EXISTS users (user_id SERIAL PRIMARY KEY, fullname VARCHAR(255) NOT NULL, username VARCHAR(100), email VARCHAR(255) NOT NULL UNIQUE, password_hash VARCHAR(255) NOT NULL, clerk_id VARCHAR(255), google_id VARCHAR(255), supabase_id VARCHAR(255), avatar_id INT DEFAULT 1, preferred_lang VARCHAR(50) DEFAULT 'English', learning_lang VARCHAR(50) DEFAULT 'Bisaya', country VARCHAR(100), role VARCHAR(20) NOT NULL DEFAULT 'user', role_id INT REFERENCES roles(role_id), status VARCHAR(20) NOT NULL DEFAULT 'approved', is_verified INT DEFAULT 0, is_native_speaker INT DEFAULT 0, bio TEXT, created_at TIMESTAMP DEFAULT NOW())`,
-    `CREATE TABLE IF NOT EXISTS user_settings (setting_id SERIAL PRIMARY KEY, user_id INT NOT NULL UNIQUE, dark_mode INT DEFAULT 0, speech_speed REAL DEFAULT 1.0, voice_gender VARCHAR(20) DEFAULT 'neutral', FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE)`,
-    `CREATE TABLE IF NOT EXISTS saved_phrases (phrase_id SERIAL PRIMARY KEY, user_id INT NOT NULL, phrase VARCHAR(500) NOT NULL, language VARCHAR(50), category VARCHAR(100), created_at TIMESTAMP DEFAULT NOW(), FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE)`,
-    `CREATE TABLE IF NOT EXISTS notifications (notify_id SERIAL PRIMARY KEY, user_id INT NOT NULL, title VARCHAR(255), message TEXT, is_read INT DEFAULT 0, created_at TIMESTAMP DEFAULT NOW(), FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE)`,
-    `CREATE TABLE IF NOT EXISTS feedback (feedback_id SERIAL PRIMARY KEY, user_id INT NOT NULL, functionality INT DEFAULT 0, usability INT DEFAULT 0, reliability INT DEFAULT 0, resolved INT DEFAULT 0, created_at TIMESTAMP DEFAULT NOW(), FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE)`,
-    `CREATE TABLE IF NOT EXISTS conversations (conversation_id SERIAL PRIMARY KEY, user_id INT NOT NULL, title VARCHAR(255), created_at TIMESTAMP DEFAULT NOW(), FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE)`,
-    `CREATE TABLE IF NOT EXISTS conversation_messages (message_id SERIAL PRIMARY KEY, conversation_id INT NOT NULL, sender VARCHAR(20) NOT NULL DEFAULT 'user', message TEXT, translated_message TEXT, created_at TIMESTAMP DEFAULT NOW(), FOREIGN KEY (conversation_id) REFERENCES conversations(conversation_id) ON DELETE CASCADE)`,
-    `CREATE TABLE IF NOT EXISTS speech_records (speech_id SERIAL PRIMARY KEY, user_id INT NOT NULL, audio_path VARCHAR(500), recognized_text TEXT, language_detected VARCHAR(50), confidence REAL DEFAULT 0, created_at TIMESTAMP DEFAULT NOW(), FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE)`,
-    `CREATE TABLE IF NOT EXISTS translations (translation_id SERIAL PRIMARY KEY, speech_id INT NOT NULL, source_language VARCHAR(50), target_language VARCHAR(50), translated_text TEXT, FOREIGN KEY (speech_id) REFERENCES speech_records(speech_id) ON DELETE CASCADE)`,
-    `CREATE TABLE IF NOT EXISTS phrase_recommendations (recommendation_id SERIAL PRIMARY KEY, speech_id INT NOT NULL, recommended_phrase TEXT, intent VARCHAR(100), confidence REAL DEFAULT 0, FOREIGN KEY (speech_id) REFERENCES speech_records(speech_id) ON DELETE CASCADE)`,
-    `CREATE TABLE IF NOT EXISTS learning_modules (module_id SERIAL PRIMARY KEY, module_title VARCHAR(255) NOT NULL, difficulty VARCHAR(50) DEFAULT 'beginner', language VARCHAR(50), created_at TIMESTAMP DEFAULT NOW())`,
-    `CREATE TABLE IF NOT EXISTS learning_progress (progress_id SERIAL PRIMARY KEY, user_id INT NOT NULL, module_id INT NOT NULL, completion_percent REAL DEFAULT 0, created_at TIMESTAMP DEFAULT NOW(), FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE, FOREIGN KEY (module_id) REFERENCES learning_modules(module_id) ON DELETE CASCADE)`,
-    `CREATE TABLE IF NOT EXISTS community_posts (post_id SERIAL PRIMARY KEY, user_id INT NOT NULL, title VARCHAR(255), content TEXT, phrase TEXT, translation TEXT, category VARCHAR(100), likes_count INT DEFAULT 0, bookmarks_count INT DEFAULT 0, is_featured INT DEFAULT 0, created_at TIMESTAMP DEFAULT NOW(), FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE)`,
-    `CREATE TABLE IF NOT EXISTS comments (comment_id SERIAL PRIMARY KEY, post_id INT NOT NULL, user_id INT NOT NULL, comment TEXT, created_at TIMESTAMP DEFAULT NOW(), FOREIGN KEY (post_id) REFERENCES community_posts(post_id) ON DELETE CASCADE, FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE)`,
-    `CREATE TABLE IF NOT EXISTS community_reports (report_id SERIAL PRIMARY KEY, post_id INT NOT NULL, reporter_id INT, reason VARCHAR(255), status VARCHAR(20) DEFAULT 'open', created_at TIMESTAMP DEFAULT NOW(), FOREIGN KEY (post_id) REFERENCES community_posts(post_id) ON DELETE CASCADE, FOREIGN KEY (reporter_id) REFERENCES users(user_id) ON DELETE SET NULL)`,
-    `CREATE TABLE IF NOT EXISTS learner_profiles (profile_id SERIAL PRIMARY KEY, user_id INT NOT NULL UNIQUE, level VARCHAR(50) DEFAULT 'beginner', strengths TEXT, weak_areas TEXT, common_mistakes TEXT, total_xp INT DEFAULT 0, coins INT DEFAULT 0, streak INT DEFAULT 0, daily_xp INT DEFAULT 0, daily_goal INT DEFAULT 50, total_sessions INT DEFAULT 0, last_active VARCHAR(50), FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE)`,
-    `CREATE TABLE IF NOT EXISTS preserved_words (word_id SERIAL PRIMARY KEY, word VARCHAR(255) NOT NULL, definition TEXT, part_of_speech VARCHAR(50), dialectal_region VARCHAR(100), bisaya_example TEXT, english_example TEXT, pronunciation_guide VARCHAR(255), submitted_by INT, source VARCHAR(50) DEFAULT 'learner', status VARCHAR(20) DEFAULT 'pending', verification_count INT DEFAULT 0, created_at TIMESTAMP DEFAULT NOW(), FOREIGN KEY (submitted_by) REFERENCES users(user_id) ON DELETE SET NULL)`,
-    `CREATE TABLE IF NOT EXISTS verification_requests (request_id SERIAL PRIMARY KEY, word_id INT, user_id INT NOT NULL, audio_path VARCHAR(500), recorded_text TEXT, verifier_id INT, score REAL, feedback TEXT, status VARCHAR(20) DEFAULT 'pending', created_at TIMESTAMP DEFAULT NOW(), verified_at TIMESTAMP, FOREIGN KEY (word_id) REFERENCES preserved_words(word_id) ON DELETE CASCADE, FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE, FOREIGN KEY (verifier_id) REFERENCES users(user_id) ON DELETE SET NULL)`,
-    `CREATE TABLE IF NOT EXISTS tutor_sessions (session_id SERIAL PRIMARY KEY, user_id INT NOT NULL, messages TEXT, summary TEXT, xp_earned INT DEFAULT 0, started_at TIMESTAMP DEFAULT NOW(), ended_at TIMESTAMP, FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE)`,
-    `CREATE TABLE IF NOT EXISTS pronunciation_attempts (id VARCHAR(255) PRIMARY KEY, user_id INT NOT NULL, word VARCHAR(255) NOT NULL, phonetic_expected VARCHAR(255) DEFAULT '', phonetic_heard VARCHAR(255) DEFAULT '', accuracy REAL DEFAULT 0, confidence REAL DEFAULT 0, mistakes TEXT DEFAULT '[]', lesson_context VARCHAR(255), timestamp VARCHAR(50), FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE)`,
-    `CREATE TABLE IF NOT EXISTS vocabulary_reviews (id VARCHAR(255) PRIMARY KEY, user_id INT NOT NULL, word VARCHAR(255) NOT NULL, translation VARCHAR(500) DEFAULT '', pronunciation VARCHAR(255) DEFAULT '', ipa VARCHAR(100), category VARCHAR(100) DEFAULT 'custom', difficulty INT DEFAULT 1, mastery REAL DEFAULT 0, review_count INT DEFAULT 0, ease_factor REAL DEFAULT 2.5, interval INT DEFAULT 1, next_review VARCHAR(50) NOT NULL, last_review VARCHAR(50), is_favorite INT DEFAULT 0, usage_frequency INT DEFAULT 0, created_at VARCHAR(50), updated_at VARCHAR(50), FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE)`,
-    `CREATE TABLE IF NOT EXISTS conversation_summaries (id VARCHAR(255) PRIMARY KEY, user_id INT NOT NULL, summary TEXT NOT NULL, topics TEXT DEFAULT '[]', vocabulary_learned TEXT DEFAULT '[]', duration INT DEFAULT 0, timestamp VARCHAR(50), FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE)`,
-    `CREATE TABLE IF NOT EXISTS xp_logs (id VARCHAR(255) PRIMARY KEY, user_id INT NOT NULL, amount INT NOT NULL, source VARCHAR(100) NOT NULL, description VARCHAR(500), timestamp VARCHAR(50), FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE)`,
-    `CREATE TABLE IF NOT EXISTS ai_recommendations (id VARCHAR(255) PRIMARY KEY, user_id INT NOT NULL, recommendation_type VARCHAR(100) NOT NULL, content TEXT NOT NULL, priority INT DEFAULT 0, is_applied INT DEFAULT 0, created_at VARCHAR(50), applied_at VARCHAR(50), FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE)`,
-    `CREATE TABLE IF NOT EXISTS user_sessions (id VARCHAR(255) PRIMARY KEY, user_id INT NOT NULL, refresh_token VARCHAR(500) NOT NULL, device_info VARCHAR(255), ip_address VARCHAR(50), expires_at VARCHAR(50) NOT NULL, created_at VARCHAR(50), FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE)`,
-    `CREATE TABLE IF NOT EXISTS notification_preferences (id SERIAL PRIMARY KEY, user_id INT NOT NULL UNIQUE, daily_reminder INT DEFAULT 1, daily_reminder_hour INT DEFAULT 9, daily_reminder_minute INT DEFAULT 0, streak_reminder INT DEFAULT 1, review_reminder INT DEFAULT 1, weekly_report INT DEFAULT 1, achievement_alerts INT DEFAULT 1, community_alerts INT DEFAULT 1, updated_at TIMESTAMP DEFAULT NOW(), FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE)`,
-    `CREATE TABLE IF NOT EXISTS learning_analytics (id SERIAL PRIMARY KEY, user_id INT NOT NULL UNIQUE, total_speaking_seconds INT DEFAULT 0, total_words_learned INT DEFAULT 0, total_pronunciation_attempts INT DEFAULT 0, avg_pronunciation_accuracy REAL DEFAULT 0, avg_session_duration REAL DEFAULT 0, favorite_category VARCHAR(100), weakest_category VARCHAR(100), weekly_xp TEXT DEFAULT '[]', last_calculated VARCHAR(50), FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE)`,
-    `CREATE TABLE IF NOT EXISTS bookmarks (id SERIAL PRIMARY KEY, user_id INT NOT NULL, post_id INT NOT NULL, created_at TIMESTAMP DEFAULT NOW(), FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE, FOREIGN KEY (post_id) REFERENCES community_posts(post_id) ON DELETE CASCADE, UNIQUE (user_id, post_id))`,
-    `CREATE TABLE IF NOT EXISTS likes (id SERIAL PRIMARY KEY, user_id INT NOT NULL, post_id INT NOT NULL, created_at TIMESTAMP DEFAULT NOW(), FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE, FOREIGN KEY (post_id) REFERENCES community_posts(post_id) ON DELETE CASCADE, UNIQUE (user_id, post_id))`,
-    `CREATE TABLE IF NOT EXISTS audit_logs (id SERIAL PRIMARY KEY, user_id INT, action VARCHAR(100) NOT NULL, resource_type VARCHAR(50), resource_id VARCHAR(50), details TEXT, ip_address VARCHAR(50), timestamp TIMESTAMP DEFAULT NOW())`,
-    `CREATE TABLE IF NOT EXISTS daily_activity (activity_id SERIAL PRIMARY KEY, user_id INT NOT NULL, activity_date VARCHAR(50) NOT NULL, xp_earned INT DEFAULT 0, FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE)`,
-    `CREATE TABLE IF NOT EXISTS user_achievements (user_achievement_id SERIAL PRIMARY KEY, user_id INT NOT NULL, achievement_id VARCHAR(100) NOT NULL, unlocked_at VARCHAR(50), FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE, UNIQUE (user_id, achievement_id))`,
-    `CREATE TABLE IF NOT EXISTS user_badges (user_badge_id SERIAL PRIMARY KEY, user_id INT NOT NULL, badge_id VARCHAR(100) NOT NULL, earned_at VARCHAR(50), FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE, UNIQUE (user_id, badge_id))`,
-    `CREATE TABLE IF NOT EXISTS completed_challenges (id SERIAL PRIMARY KEY, user_id INT NOT NULL, challenge_id VARCHAR(100) NOT NULL, completed_at TIMESTAMP DEFAULT NOW(), FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE)`,
-    `CREATE TABLE IF NOT EXISTS follows (id SERIAL PRIMARY KEY, follower_id INT NOT NULL, following_id INT NOT NULL, created_at TIMESTAMP DEFAULT NOW(), FOREIGN KEY (follower_id) REFERENCES users(user_id) ON DELETE CASCADE, FOREIGN KEY (following_id) REFERENCES users(user_id) ON DELETE CASCADE)`,
-    `CREATE TABLE IF NOT EXISTS verifications (id SERIAL PRIMARY KEY, user_id INT NOT NULL, verified_by INT, status VARCHAR(20) DEFAULT 'pending', created_at TIMESTAMP DEFAULT NOW(), FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE, FOREIGN KEY (verified_by) REFERENCES users(user_id) ON DELETE SET NULL)`,
-  ];
-
-  for (const sql of tables) {
-    try {
-      await pool.query(sql);
-    } catch (err: any) {
-      if (!err.message?.includes('already exists')) {
-        console.error(`PostgreSQL init error: ${err.message}`);
-      }
-    }
+async function initDatabasePostgresLean(pool: any) {
+  const { rows } = await pool.query(
+    `SELECT to_regclass('public.learning_modules') as t`
+  );
+  if (!rows[0]?.t) {
+    throw new Error(
+      'Supabase Postgres schema not found (learning_modules table missing). ' +
+        'Run the migrations in supabase/migrations/*.sql against this database first ' +
+        '(supabase db push, or the Supabase SQL editor), then restart the server.'
+    );
   }
-
-  // Seed default avatar
   try {
     const result = await pool.query('SELECT 1 FROM avatars WHERE avatar_id = 1');
     if (result.rows.length === 0) {
@@ -351,95 +386,7 @@ async function initDatabasePostgres(pool: any) {
       );
     }
   } catch {}
-
-  console.log('PostgreSQL tables initialized');
-}
-
-async function initDatabaseMySQL(pool: any) {
-  const tables = [
-    `CREATE TABLE IF NOT EXISTS avatars (avatar_id INT AUTO_INCREMENT PRIMARY KEY, avatar_name VARCHAR(255) NOT NULL, avatar_image VARCHAR(500) NOT NULL)`,
-    `CREATE TABLE IF NOT EXISTS users (user_id INT AUTO_INCREMENT PRIMARY KEY, fullname VARCHAR(255) NOT NULL, username VARCHAR(100), email VARCHAR(255) NOT NULL UNIQUE, password_hash VARCHAR(255) NOT NULL, clerk_id VARCHAR(255), google_id VARCHAR(255), supabase_id VARCHAR(255), avatar_id INT DEFAULT 1, preferred_lang VARCHAR(50) DEFAULT 'English', learning_lang VARCHAR(50) DEFAULT 'Bisaya', country VARCHAR(100), role VARCHAR(20) NOT NULL DEFAULT 'user', role_id INT REFERENCES roles(role_id), status VARCHAR(20) NOT NULL DEFAULT 'approved', is_verified INT DEFAULT 0, is_native_speaker INT DEFAULT 0, bio TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`,
-    `CREATE TABLE IF NOT EXISTS user_settings (setting_id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL UNIQUE, dark_mode INT DEFAULT 0, speech_speed FLOAT DEFAULT 1.0, voice_gender VARCHAR(20) DEFAULT 'neutral', FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE)`,
-    `CREATE TABLE IF NOT EXISTS saved_phrases (phrase_id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL, phrase VARCHAR(500) NOT NULL, language VARCHAR(50), category VARCHAR(100), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE)`,
-    `CREATE TABLE IF NOT EXISTS notifications (notify_id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL, title VARCHAR(255), message TEXT, is_read INT DEFAULT 0, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE)`,
-    `CREATE TABLE IF NOT EXISTS feedback (feedback_id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL, functionality INT DEFAULT 0, usability INT DEFAULT 0, reliability INT DEFAULT 0, resolved INT DEFAULT 0, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE)`,
-    `CREATE TABLE IF NOT EXISTS conversations (conversation_id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL, title VARCHAR(255), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE)`,
-    `CREATE TABLE IF NOT EXISTS conversation_messages (message_id INT AUTO_INCREMENT PRIMARY KEY, conversation_id INT NOT NULL, sender VARCHAR(20) NOT NULL DEFAULT 'user', message TEXT, translated_message TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (conversation_id) REFERENCES conversations(conversation_id) ON DELETE CASCADE)`,
-    `CREATE TABLE IF NOT EXISTS speech_records (speech_id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL, audio_path VARCHAR(500), recognized_text TEXT, language_detected VARCHAR(50), confidence FLOAT DEFAULT 0, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE)`,
-    `CREATE TABLE IF NOT EXISTS translations (translation_id INT AUTO_INCREMENT PRIMARY KEY, speech_id INT NOT NULL, source_language VARCHAR(50), target_language VARCHAR(50), translated_text TEXT, FOREIGN KEY (speech_id) REFERENCES speech_records(speech_id) ON DELETE CASCADE)`,
-    `CREATE TABLE IF NOT EXISTS phrase_recommendations (recommendation_id INT AUTO_INCREMENT PRIMARY KEY, speech_id INT NOT NULL, recommended_phrase TEXT, intent VARCHAR(100), confidence FLOAT DEFAULT 0, FOREIGN KEY (speech_id) REFERENCES speech_records(speech_id) ON DELETE CASCADE)`,
-    `CREATE TABLE IF NOT EXISTS learning_modules (module_id INT AUTO_INCREMENT PRIMARY KEY, module_title VARCHAR(255) NOT NULL, difficulty VARCHAR(50) DEFAULT 'beginner', language VARCHAR(50), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`,
-    `CREATE TABLE IF NOT EXISTS learning_progress (progress_id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL, module_id INT NOT NULL, completion_percent FLOAT DEFAULT 0, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE, FOREIGN KEY (module_id) REFERENCES learning_modules(module_id) ON DELETE CASCADE)`,
-    `CREATE TABLE IF NOT EXISTS community_posts (post_id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL, title VARCHAR(255), content TEXT, phrase TEXT, translation TEXT, category VARCHAR(100), likes_count INT DEFAULT 0, bookmarks_count INT DEFAULT 0, is_featured INT DEFAULT 0, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE)`,
-    `CREATE TABLE IF NOT EXISTS comments (comment_id INT AUTO_INCREMENT PRIMARY KEY, post_id INT NOT NULL, user_id INT NOT NULL, comment TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (post_id) REFERENCES community_posts(post_id) ON DELETE CASCADE, FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE)`,
-    `CREATE TABLE IF NOT EXISTS community_reports (report_id INT AUTO_INCREMENT PRIMARY KEY, post_id INT NOT NULL, reporter_id INT, reason VARCHAR(255), status VARCHAR(20) DEFAULT 'open', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (post_id) REFERENCES community_posts(post_id) ON DELETE CASCADE, FOREIGN KEY (reporter_id) REFERENCES users(user_id) ON DELETE SET NULL)`,
-    `CREATE TABLE IF NOT EXISTS learner_profiles (profile_id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL UNIQUE, level VARCHAR(50) DEFAULT 'beginner', strengths TEXT, weak_areas TEXT, common_mistakes TEXT, total_xp INT DEFAULT 0, coins INT DEFAULT 0, streak INT DEFAULT 0, daily_xp INT DEFAULT 0, daily_goal INT DEFAULT 50, total_sessions INT DEFAULT 0, last_active VARCHAR(50), FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE)`,
-    `CREATE TABLE IF NOT EXISTS preserved_words (word_id INT AUTO_INCREMENT PRIMARY KEY, word VARCHAR(255) NOT NULL, definition TEXT, part_of_speech VARCHAR(50), dialectal_region VARCHAR(100), bisaya_example TEXT, english_example TEXT, pronunciation_guide VARCHAR(255), submitted_by INT, source VARCHAR(50) DEFAULT 'learner', status VARCHAR(20) DEFAULT 'pending', verification_count INT DEFAULT 0, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (submitted_by) REFERENCES users(user_id) ON DELETE SET NULL)`,
-    `CREATE TABLE IF NOT EXISTS verification_requests (request_id INT AUTO_INCREMENT PRIMARY KEY, word_id INT, user_id INT NOT NULL, audio_path VARCHAR(500), recorded_text TEXT, verifier_id INT, score FLOAT, feedback TEXT, status VARCHAR(20) DEFAULT 'pending', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, verified_at TIMESTAMP NULL, FOREIGN KEY (word_id) REFERENCES preserved_words(word_id) ON DELETE CASCADE, FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE, FOREIGN KEY (verifier_id) REFERENCES users(user_id) ON DELETE SET NULL)`,
-    `CREATE TABLE IF NOT EXISTS tutor_sessions (session_id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL, messages TEXT, summary TEXT, xp_earned INT DEFAULT 0, started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, ended_at TIMESTAMP NULL, FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE)`,
-    `CREATE TABLE IF NOT EXISTS pronunciation_attempts (id VARCHAR(255) PRIMARY KEY, user_id INT NOT NULL, word VARCHAR(255) NOT NULL, phonetic_expected VARCHAR(255) DEFAULT '', phonetic_heard VARCHAR(255) DEFAULT '', accuracy FLOAT DEFAULT 0, confidence FLOAT DEFAULT 0, mistakes TEXT DEFAULT '[]', lesson_context VARCHAR(255), timestamp VARCHAR(50), FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE)`,
-    `CREATE TABLE IF NOT EXISTS vocabulary_reviews (id VARCHAR(255) PRIMARY KEY, user_id INT NOT NULL, word VARCHAR(255) NOT NULL, translation VARCHAR(500) DEFAULT '', pronunciation VARCHAR(255) DEFAULT '', ipa VARCHAR(100), category VARCHAR(100) DEFAULT 'custom', difficulty INT DEFAULT 1, mastery FLOAT DEFAULT 0, review_count INT DEFAULT 0, ease_factor FLOAT DEFAULT 2.5, \`interval\` INT DEFAULT 1, next_review VARCHAR(50) NOT NULL, last_review VARCHAR(50), is_favorite INT DEFAULT 0, usage_frequency INT DEFAULT 0, created_at VARCHAR(50), updated_at VARCHAR(50), FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE)`,
-    `CREATE TABLE IF NOT EXISTS conversation_summaries (id VARCHAR(255) PRIMARY KEY, user_id INT NOT NULL, summary TEXT NOT NULL, topics TEXT DEFAULT '[]', vocabulary_learned TEXT DEFAULT '[]', duration INT DEFAULT 0, timestamp VARCHAR(50), FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE)`,
-    `CREATE TABLE IF NOT EXISTS xp_logs (id VARCHAR(255) PRIMARY KEY, user_id INT NOT NULL, amount INT NOT NULL, source VARCHAR(100) NOT NULL, description VARCHAR(500), timestamp VARCHAR(50), FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE)`,
-    `CREATE TABLE IF NOT EXISTS ai_recommendations (id VARCHAR(255) PRIMARY KEY, user_id INT NOT NULL, recommendation_type VARCHAR(100) NOT NULL, content TEXT NOT NULL, priority INT DEFAULT 0, is_applied INT DEFAULT 0, created_at VARCHAR(50), applied_at VARCHAR(50), FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE)`,
-    `CREATE TABLE IF NOT EXISTS user_sessions (id VARCHAR(255) PRIMARY KEY, user_id INT NOT NULL, refresh_token VARCHAR(500) NOT NULL, device_info VARCHAR(255), ip_address VARCHAR(50), expires_at VARCHAR(50) NOT NULL, created_at VARCHAR(50), FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE)`,
-    `CREATE TABLE IF NOT EXISTS notification_preferences (id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL UNIQUE, daily_reminder INT DEFAULT 1, daily_reminder_hour INT DEFAULT 9, daily_reminder_minute INT DEFAULT 0, streak_reminder INT DEFAULT 1, review_reminder INT DEFAULT 1, weekly_report INT DEFAULT 1, achievement_alerts INT DEFAULT 1, community_alerts INT DEFAULT 1, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE)`,
-    `CREATE TABLE IF NOT EXISTS learning_analytics (id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL UNIQUE, total_speaking_seconds INT DEFAULT 0, total_words_learned INT DEFAULT 0, total_pronunciation_attempts INT DEFAULT 0, avg_pronunciation_accuracy FLOAT DEFAULT 0, avg_session_duration FLOAT DEFAULT 0, favorite_category VARCHAR(100), weakest_category VARCHAR(100), weekly_xp TEXT DEFAULT '[]', last_calculated VARCHAR(50), FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE)`,
-    `CREATE TABLE IF NOT EXISTS bookmarks (id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL, post_id INT NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE, FOREIGN KEY (post_id) REFERENCES community_posts(post_id) ON DELETE CASCADE, UNIQUE KEY unique_user_post (user_id, post_id))`,
-    `CREATE TABLE IF NOT EXISTS likes (id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL, post_id INT NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE, FOREIGN KEY (post_id) REFERENCES community_posts(post_id) ON DELETE CASCADE, UNIQUE KEY unique_user_post (user_id, post_id))`,
-    `CREATE TABLE IF NOT EXISTS audit_logs (id INT AUTO_INCREMENT PRIMARY KEY, user_id INT, action VARCHAR(100) NOT NULL, resource_type VARCHAR(50), resource_id VARCHAR(50), details TEXT, ip_address VARCHAR(50), timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`,
-    `CREATE TABLE IF NOT EXISTS daily_activity (activity_id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL, activity_date VARCHAR(50) NOT NULL, xp_earned INT DEFAULT 0, FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE)`,
-    `CREATE TABLE IF NOT EXISTS user_achievements (user_achievement_id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL, achievement_id VARCHAR(100) NOT NULL, unlocked_at VARCHAR(50), FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE, UNIQUE KEY unique_user_achievement (user_id, achievement_id))`,
-    `CREATE TABLE IF NOT EXISTS user_badges (user_badge_id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL, badge_id VARCHAR(100) NOT NULL, earned_at VARCHAR(50), FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE, UNIQUE KEY unique_user_badge (user_id, badge_id))`,
-    `CREATE TABLE IF NOT EXISTS completed_challenges (id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL, challenge_id VARCHAR(100) NOT NULL, completed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE)`,
-    `CREATE TABLE IF NOT EXISTS follows (id INT AUTO_INCREMENT PRIMARY KEY, follower_id INT NOT NULL, following_id INT NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (follower_id) REFERENCES users(user_id) ON DELETE CASCADE, FOREIGN KEY (following_id) REFERENCES users(user_id) ON DELETE CASCADE)`,
-    `CREATE TABLE IF NOT EXISTS verifications (id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL, verified_by INT, status VARCHAR(20) DEFAULT 'pending', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE, FOREIGN KEY (verified_by) REFERENCES users(user_id) ON DELETE SET NULL)`,
-  ];
-
-  for (const sql of tables) {
-    try {
-      await pool.query(sql);
-    } catch (err: any) {
-      if (err.code !== 'ER_DUP_FIELDNAME' && err.code !== 'ER_TABLE_EXISTS_ERROR') {
-        console.error(`MySQL init error: ${err.message}`);
-      }
-    }
-  }
-
-  const alterCols: string[] = [
-    `ALTER TABLE users ADD COLUMN clerk_id VARCHAR(255) AFTER password_hash`,
-    `ALTER TABLE users ADD COLUMN google_id VARCHAR(255) AFTER clerk_id`,
-    `ALTER TABLE users ADD COLUMN supabase_id VARCHAR(255) AFTER google_id`,
-    `ALTER TABLE users ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'approved' AFTER role`,
-    `ALTER TABLE users ADD COLUMN is_verified INT DEFAULT 0 AFTER role`,
-    `ALTER TABLE users ADD COLUMN is_native_speaker INT DEFAULT 0 AFTER is_verified`,
-    `ALTER TABLE users ADD COLUMN bio TEXT AFTER is_native_speaker`,
-    `ALTER TABLE users MODIFY COLUMN role VARCHAR(20) NOT NULL DEFAULT 'user'`,
-    `ALTER TABLE community_posts ADD COLUMN likes_count INT DEFAULT 0 AFTER category`,
-    `ALTER TABLE community_posts ADD COLUMN bookmarks_count INT DEFAULT 0 AFTER likes_count`,
-    `ALTER TABLE community_posts ADD COLUMN is_featured INT DEFAULT 0 AFTER bookmarks_count`,
-    `ALTER TABLE feedback ADD COLUMN resolved INT DEFAULT 0 AFTER reliability`,
-    `ALTER TABLE tutor_sessions ADD COLUMN xp_earned INT DEFAULT 0 AFTER summary`,
-  ];
-  for (const sql of alterCols) {
-    try {
-      await pool.query(sql);
-    } catch {
-      // Column already exists
-    }
-  }
-
-  try {
-    const [rows] = await pool.query('SELECT 1 FROM avatars WHERE avatar_id = 1');
-    if ((rows as any[]).length === 0) {
-      await pool.query(
-        'INSERT INTO avatars (avatar_id, avatar_name, avatar_image) VALUES (1, ?, ?)',
-        ['Default', 'https://api.dicebear.com/7.x/avataaars/svg?seed=default']
-      );
-    }
-  } catch {}
-
-  console.log('MySQL tables initialized');
+  console.log('PostgreSQL schema verified (source of truth: supabase/migrations)');
 }
 
 export async function connect() {
@@ -479,43 +426,9 @@ export async function connect() {
     await pgPool.query('SELECT NOW()');
     console.log(`PostgreSQL connected (dialect: ${DIALECT})`);
 
-    await initDatabasePostgres(pgPool);
+    await initDatabasePostgresLean(pgPool);
 
     db = drizzlePg(pgPool, { schema });
-    return db;
-  }
-
-  if (dialect === 'mysql') {
-    const mysql = require('mysql2/promise');
-    const { drizzle: drizzleMysql } = require('drizzle-orm/mysql2');
-    const schema = require('./schema-mysql');
-
-    let connectionConfig: any;
-    if (DATABASE_URL) {
-      connectionConfig = { uri: DATABASE_URL };
-    } else {
-      connectionConfig = {
-        host: process.env.MYSQL_HOST || 'localhost',
-        port: Number(process.env.MYSQL_PORT) || 3306,
-        user: process.env.MYSQL_USER || 'root',
-        password: process.env.MYSQL_PASSWORD || '',
-        database: process.env.MYSQL_DATABASE || 'sultiai',
-      };
-    }
-
-    mysqlPool = mysql.createPool({
-      ...connectionConfig,
-      waitForConnections: true,
-      connectionLimit: 10,
-      queueLimit: 0,
-    });
-
-    await mysqlPool.query('SELECT 1 AS ok');
-    console.log(`MySQL connected (dialect: ${DIALECT})`);
-
-    await initDatabaseMySQL(mysqlPool);
-
-    db = drizzleMysql(mysqlPool, { schema, mode: 'default' });
     return db;
   }
 
@@ -535,14 +448,23 @@ export function getDialectName() {
   return getDialect();
 }
 
+/**
+ * Resolves the drizzle schema for the *active* dialect. Callers must not
+ * hardcode a schema module: the same query has to run on SQLite (dev default),
+ * Postgres, and MySQL.
+ */
+export function getSchema() {
+  const dialect = getDialect();
+  if (dialect === 'sqlite') return require('./schema-sqlite');
+  if (dialect === 'postgres') return require('./schema-pg');
+  if (dialect === 'mysql') return require('./schema-mysql');
+  throw new Error(`Unknown dialect: ${dialect}`);
+}
+
 export async function closeAll() {
   if (sqliteRaw) sqliteRaw.close();
   if (pgPool) {
     await pgPool.end();
     console.log('PostgreSQL pool closed');
-  }
-  if (mysqlPool) {
-    await mysqlPool.end();
-    console.log('MySQL pool closed');
   }
 }

@@ -10,7 +10,9 @@ import {
   LoadingState,
   RoleBadge,
   StatusBadge,
+  ghostBtn,
   inputCls,
+  primaryBtn,
   selectCls,
 } from '@/components/ui';
 import { useAsync } from '@/hooks/useAsync';
@@ -172,7 +174,7 @@ export default function AdminUsersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-extrabold text-ink">Users</h1>
+          <h1 className="text-xl font-semibold tracking-tight text-ink">Users</h1>
           <p className="mt-1 text-sm text-ink-soft">
             {data?.total.toLocaleString() ?? '0'} accounts total
           </p>
@@ -199,28 +201,24 @@ export default function AdminUsersPage() {
                   `sultiai-users-${new Date().toISOString().split('T')[0]}.csv`
                 )
               }
-              className="rounded-xl border border-line bg-white px-4 py-2.5 text-sm font-semibold text-ink transition-colors hover:border-brand"
+              className={ghostBtn}
             >
               Export CSV
             </button>
           )}
-          <button
-            type="button"
-            onClick={() => setShowCreateModal(true)}
-            className="rounded-xl bg-gradient-to-r from-brand to-brand-dark px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
-          >
+          <button type="button" onClick={() => setShowCreateModal(true)} className={primaryBtn}>
             + Create User
           </button>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 rounded-xl border border-line bg-surface p-1">
+      <div className="inline-flex gap-0.5 rounded-lg border border-line bg-surface-2 p-0.5">
         <button
           type="button"
           onClick={() => setTab('all')}
-          className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors ${
-            tab === 'all' ? 'bg-white text-ink shadow-sm' : 'text-ink-soft hover:text-ink'
+          className={`rounded-md px-3.5 py-1.5 text-sm font-medium transition-colors ${
+            tab === 'all' ? 'bg-surface text-ink shadow-card' : 'text-ink-soft hover:text-ink'
           }`}
         >
           All Users
@@ -228,13 +226,13 @@ export default function AdminUsersPage() {
         <button
           type="button"
           onClick={() => setTab('pending')}
-          className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors ${
-            tab === 'pending' ? 'bg-white text-ink shadow-sm' : 'text-ink-soft hover:text-ink'
+          className={`inline-flex items-center rounded-md px-3.5 py-1.5 text-sm font-medium transition-colors ${
+            tab === 'pending' ? 'bg-surface text-ink shadow-card' : 'text-ink-soft hover:text-ink'
           }`}
         >
           Pending Approvals
           {pendingUsers.length > 0 && (
-            <span className="ml-2 rounded-full bg-warning px-2 py-0.5 text-xs text-white">
+            <span className="ml-1.5 rounded-full bg-warning-soft px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-warning">
               {pendingUsers.length}
             </span>
           )}
@@ -263,7 +261,7 @@ export default function AdminUsersPage() {
                     type="checkbox"
                     checked={selectedPending.size === pendingUsers.length}
                     onChange={toggleAllPending}
-                    className="h-4 w-4 rounded border-line"
+                    className="h-4 w-4 rounded border-line-strong"
                   />
                   <span className="text-ink-soft">
                     {selectedPending.size > 0
@@ -275,7 +273,7 @@ export default function AdminUsersPage() {
                   <button
                     type="button"
                     onClick={handleBulkApprove}
-                    className="rounded-lg bg-success px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
+                    className="rounded-lg bg-success px-4 py-2 text-sm font-semibold text-on-brand "
                   >
                     Approve Selected ({selectedPending.size})
                   </button>
@@ -284,7 +282,7 @@ export default function AdminUsersPage() {
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[600px] text-left text-sm">
                   <thead>
-                    <tr className="border-b border-line bg-surface text-xs uppercase tracking-wide text-ink-faint">
+                    <tr className="border-b border-line bg-surface-2 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
                       <th className="w-10 px-5 py-3.5"></th>
                       <th className="px-5 py-3.5 font-semibold">User</th>
                       <th className="px-5 py-3.5 font-semibold">Auth Provider</th>
@@ -296,14 +294,14 @@ export default function AdminUsersPage() {
                     {pendingUsers.map((u) => (
                       <tr
                         key={u.id}
-                        className="border-b border-line transition-colors last:border-0 hover:bg-surface/60"
+                        className="border-b border-line transition-colors last:border-0 hover:bg-surface-2/60"
                       >
                         <td className="px-5 py-3.5">
                           <input
                             type="checkbox"
                             checked={selectedPending.has(u.id)}
                             onChange={() => togglePendingSelection(u.id)}
-                            className="h-4 w-4 rounded border-line"
+                            className="h-4 w-4 rounded border-line-strong"
                           />
                         </td>
                         <td className="px-5 py-3.5">
@@ -320,7 +318,7 @@ export default function AdminUsersPage() {
                           </div>
                         </td>
                         <td className="px-5 py-3.5">
-                          <span className="rounded-full bg-surface px-2.5 py-1 text-xs font-medium text-ink-soft capitalize">
+                          <span className="rounded-md bg-surface-2 px-2 py-0.5 text-[11px] font-medium text-ink-soft capitalize">
                             {(u as any).authProvider || 'email'}
                           </span>
                         </td>
@@ -332,14 +330,14 @@ export default function AdminUsersPage() {
                             <button
                               type="button"
                               onClick={() => handleApprove(u)}
-                              className="rounded-lg bg-success/10 px-3 py-1.5 text-xs font-semibold text-success hover:bg-success hover:text-white"
+                              className="rounded-md bg-success-soft px-2.5 py-1.5 text-xs font-semibold text-success transition-colors hover:bg-success-fill hover:text-on-brand"
                             >
                               Approve
                             </button>
                             <button
                               type="button"
                               onClick={() => handleReject(u)}
-                              className="rounded-lg bg-danger/10 px-3 py-1.5 text-xs font-semibold text-danger hover:bg-danger hover:text-white"
+                              className="rounded-md bg-danger-soft px-2.5 py-1.5 text-xs font-semibold text-danger transition-colors hover:bg-danger-fill hover:text-on-brand"
                             >
                               Reject
                             </button>
@@ -421,7 +419,7 @@ export default function AdminUsersPage() {
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[760px] text-left text-sm">
                   <thead>
-                    <tr className="border-b border-line bg-surface text-xs uppercase tracking-wide text-ink-faint">
+                    <tr className="border-b border-line bg-surface-2 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
                       <th className="px-5 py-3.5 font-semibold">User</th>
                       <th className="px-5 py-3.5 font-semibold">Role</th>
                       <th className="px-5 py-3.5 font-semibold">Status</th>
@@ -436,7 +434,7 @@ export default function AdminUsersPage() {
                     {data.items.map((u) => (
                       <tr
                         key={u.id}
-                        className="border-b border-line transition-colors last:border-0 hover:bg-surface/60"
+                        className="border-b border-line transition-colors last:border-0 hover:bg-surface-2/60"
                       >
                         <td className="px-5 py-3.5">
                           <button
@@ -467,7 +465,7 @@ export default function AdminUsersPage() {
                         </td>
                         <td className="px-5 py-3.5">
                           {(u.streak ?? 0) > 0 && (
-                            <span className="font-semibold text-accent">🔥 {u.streak}d</span>
+                            <span className="font-semibold text-warning">🔥 {u.streak}d</span>
                           )}
                         </td>
                         <td className="px-5 py-3.5 tabular-nums text-ink-soft">{u.lessons ?? 0}</td>
@@ -476,7 +474,7 @@ export default function AdminUsersPage() {
                             <select
                               value={u.role}
                               onChange={(e) => handleRoleChange(u.id, e.target.value as UserRole)}
-                              className="rounded-lg border border-line px-2 py-1.5 text-xs text-ink"
+                              className="rounded-md border border-line bg-surface px-2 py-1.5 text-xs text-ink outline-none focus:border-brand"
                               title="Change role"
                             >
                               <option value="user">User</option>
@@ -488,8 +486,8 @@ export default function AdminUsersPage() {
                               onClick={() => setBanTarget(u)}
                               className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold ${
                                 u.status === 'banned'
-                                  ? 'bg-success/10 text-success hover:bg-success hover:text-white'
-                                  : 'bg-danger/10 text-danger hover:bg-danger hover:text-white'
+                                  ? 'bg-success-soft text-success hover:bg-success-fill hover:text-on-brand'
+                                  : 'bg-danger-soft text-danger hover:bg-danger-fill hover:text-on-brand'
                               }`}
                             >
                               {u.status === 'banned' ? 'Unban' : 'Ban'}
@@ -497,7 +495,7 @@ export default function AdminUsersPage() {
                             <button
                               type="button"
                               onClick={() => setDeleteTarget(u)}
-                              className="rounded-lg bg-danger/10 px-2.5 py-1.5 text-xs font-semibold text-danger hover:bg-danger hover:text-white"
+                              className="rounded-md bg-danger-soft px-2.5 py-1.5 text-xs font-semibold text-danger transition-colors hover:bg-danger-fill hover:text-on-brand"
                               title="Delete user permanently"
                             >
                               🗑
@@ -520,7 +518,7 @@ export default function AdminUsersPage() {
                     type="button"
                     disabled={page <= 1}
                     onClick={() => setPage((p) => p - 1)}
-                    className="rounded-lg border border-line px-3 py-1.5 text-xs font-semibold text-ink disabled:opacity-40"
+                    className="rounded-md border border-line px-2.5 py-1.5 text-xs font-semibold text-ink transition-colors hover:bg-surface-2 disabled:opacity-40"
                   >
                     Prev
                   </button>
@@ -531,7 +529,7 @@ export default function AdminUsersPage() {
                     type="button"
                     disabled={page >= totalPages}
                     onClick={() => setPage((p) => p + 1)}
-                    className="rounded-lg border border-line px-3 py-1.5 text-xs font-semibold text-ink disabled:opacity-40"
+                    className="rounded-md border border-line px-2.5 py-1.5 text-xs font-semibold text-ink transition-colors hover:bg-surface-2 disabled:opacity-40"
                   >
                     Next
                   </button>
@@ -618,9 +616,9 @@ function CreateUserModal({
   }
 
   return (
-    <div className="fixed inset-0 z-[80] bg-ink/40 backdrop-blur-sm" onClick={onClose}>
+    <div className="fixed inset-0 z-[80] bg-overlay" onClick={onClose}>
       <aside
-        className="absolute inset-y-0 right-0 flex w-full max-w-md flex-col overflow-y-auto bg-white shadow-2xl"
+        className="absolute inset-y-0 right-0 flex w-full max-w-md flex-col overflow-y-auto border-l border-line bg-surface"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between border-b border-line p-6">
@@ -650,7 +648,7 @@ function CreateUserModal({
 
         <form onSubmit={handleSubmit} className="space-y-5 p-6">
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wide text-ink-faint">
+            <label className="block text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
               Full name
             </label>
             <input
@@ -666,7 +664,7 @@ function CreateUserModal({
             {errors.fullname && <p className="mt-1 text-xs text-danger">{errors.fullname}</p>}
           </div>
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wide text-ink-faint">
+            <label className="block text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
               Email
             </label>
             <input
@@ -682,7 +680,7 @@ function CreateUserModal({
             {errors.email && <p className="mt-1 text-xs text-danger">{errors.email}</p>}
           </div>
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wide text-ink-faint">
+            <label className="block text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
               Password
             </label>
             <input
@@ -698,7 +696,7 @@ function CreateUserModal({
             {errors.password && <p className="mt-1 text-xs text-danger">{errors.password}</p>}
           </div>
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wide text-ink-faint">
+            <label className="block text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
               Role
             </label>
             <select
@@ -712,18 +710,10 @@ function CreateUserModal({
             </select>
           </div>
           <div className="flex gap-3 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 rounded-xl border border-line px-4 py-2.5 text-sm font-semibold text-ink"
-            >
+            <button type="button" onClick={onClose} className={ghostBtn}>
               Cancel
             </button>
-            <button
-              type="submit"
-              disabled={busy}
-              className="flex-1 rounded-xl bg-gradient-to-r from-brand to-brand-dark px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
-            >
+            <button type="submit" disabled={busy} className={primaryBtn}>
               {busy ? 'Creating...' : 'Create User'}
             </button>
           </div>
@@ -747,9 +737,9 @@ function UserDrawer({
   onVerify: (id: number, verified: boolean) => void;
 }) {
   return (
-    <div className="fixed inset-0 z-[80] bg-ink/40 backdrop-blur-sm" onClick={onClose}>
+    <div className="fixed inset-0 z-[80] bg-overlay" onClick={onClose}>
       <aside
-        className="absolute inset-y-0 right-0 flex w-full max-w-md flex-col overflow-y-auto bg-white shadow-2xl"
+        className="absolute inset-y-0 right-0 flex w-full max-w-md flex-col overflow-y-auto border-l border-line bg-surface"
         onClick={(e) => e.stopPropagation()}
       >
         {loading ? (
@@ -798,7 +788,7 @@ function UserDrawer({
                   { label: 'Coins', value: (user.totalCoins ?? 0).toLocaleString() },
                   { label: 'Daily goal', value: `${user.dailyGoal ?? 50} XP` },
                 ].map((s) => (
-                  <div key={s.label} className="rounded-2xl border border-line bg-surface p-4">
+                  <div key={s.label} className="rounded-lg bg-surface-2 p-3">
                     <p className="text-xs text-ink-faint">{s.label}</p>
                     <p className="mt-1 text-lg font-bold text-ink">{s.value}</p>
                   </div>
@@ -806,7 +796,9 @@ function UserDrawer({
               </div>
 
               <div>
-                <h3 className="text-xs font-bold uppercase tracking-wide text-ink-faint">Badges</h3>
+                <h3 className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
+                  Badges
+                </h3>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {(user.badges ?? []).length === 0 && (
                     <span className="text-xs text-ink-faint">No badges yet</span>
@@ -814,7 +806,7 @@ function UserDrawer({
                   {(user.badges ?? []).map((b) => (
                     <span
                       key={b}
-                      className="rounded-full bg-brand-light px-3 py-1 text-xs font-semibold text-brand-dark"
+                      className="rounded-md bg-brand-soft px-2 py-0.5 text-[11px] font-semibold text-brand"
                     >
                       {b}
                     </span>
@@ -823,7 +815,7 @@ function UserDrawer({
               </div>
 
               <div>
-                <h3 className="text-xs font-bold uppercase tracking-wide text-ink-faint">
+                <h3 className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
                   Weak areas
                 </h3>
                 <div className="mt-2 flex flex-wrap gap-2">
@@ -833,7 +825,7 @@ function UserDrawer({
                   {(user.weakAreas ?? []).map((w) => (
                     <span
                       key={w}
-                      className="rounded-full bg-accent-light px-3 py-1 text-xs font-semibold text-[#b45309]"
+                      className="rounded-md bg-warning-soft px-2 py-0.5 text-[11px] font-semibold text-warning"
                     >
                       {w}
                     </span>
@@ -841,7 +833,7 @@ function UserDrawer({
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-line p-4">
+              <div className="rounded-lg border border-line p-4">
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-semibold text-ink">Native speaker</p>
                   <span className={user.nativeSpeaker ? 'text-success' : 'text-ink-faint'}>
@@ -854,7 +846,7 @@ function UserDrawer({
                     type="button"
                     onClick={() => onVerify(user.id, !user.verified)}
                     className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${
-                      user.verified ? 'bg-danger/10 text-danger' : 'bg-success/10 text-success'
+                      user.verified ? 'bg-danger-soft text-danger' : 'bg-success-soft text-success'
                     }`}
                   >
                     {user.verified ? 'Remove verification' : 'Verify account'}
@@ -863,11 +855,13 @@ function UserDrawer({
               </div>
 
               <div>
-                <h3 className="text-xs font-bold uppercase tracking-wide text-ink-faint">Role</h3>
+                <h3 className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
+                  Role
+                </h3>
                 <select
                   value={user.role}
                   onChange={(e) => onRoleChange(user.id, e.target.value as UserRole)}
-                  className="mt-2 w-full rounded-xl border border-line px-3.5 py-2.5 text-sm text-ink"
+                  className={`${selectCls} mt-2 w-full`}
                 >
                   <option value="user">User</option>
                   <option value="moderator">Moderator</option>
@@ -875,7 +869,7 @@ function UserDrawer({
                 </select>
               </div>
 
-              <div className="rounded-2xl bg-surface p-4 text-xs text-ink-soft">
+              <div className="rounded-lg bg-surface-2 p-4 text-xs text-ink-soft">
                 <p>Joined: {new Date(user.joinedAt).toLocaleDateString()}</p>
                 <p className="mt-1">Last active: {new Date(user.lastActive).toLocaleString()}</p>
                 <p className="mt-1">Favorite category: {user.favoriteCategory ?? 'general'}</p>

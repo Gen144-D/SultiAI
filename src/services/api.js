@@ -6,26 +6,63 @@ function getBaseUrl() {
   if (envUrl && !envUrl.includes('localhost') && !envUrl.includes('127.0.0.1')) {
     return envUrl;
   }
-  // In web browser, use same-origin when behind a dev tunnel.
-  // The Metro proxy middleware (metro.config.js) forwards /api/* to the backend on port 3001.
+  // In web browser, infer the backend host from the page host.
+  // On a physical device (phone) served over the LAN/tunnel, `localhost` would
+  // point at the phone itself — so we must mirror the HOST the page was served
+  // from, not hardcode localhost. This fixes every phone-driven API + MP3 fetch.
   if (typeof window !== 'undefined' && window.location) {
-    const { hostname, protocol } = window.location;
-    if (hostname.includes('asse.devtunnels.ms')) {
-      // Use the same origin — the proxy server handles routing to the backend
+    const { protocol, hostname, port } = window.location;
+    // Same-origin proxy (Metro proxy/metro.config.js forwards /api and /audio)
+    if (window.__SULTI_USE_SAME_ORIGIN) {
       return `${protocol}//${window.location.host}`;
     }
+    if (
+      hostname &&
+      hostname !== 'localhost' &&
+      hostname !== '127.0.0.1' &&
+      hostname !== '0.0.0.0'
+    ) {
+      // Served over a real network host (LAN IP or dev tunnel) — target the backend
+      // on that same host. Keeps port 3001 when the page itself is the dev server.
+      const keepPagePort =
+        `${port}` === '8081' || `${port}` === '8082' ? 3001 : port ? Number(port) : 3001;
+      return `${protocol}//${hostname}:${keepPagePort}`;
+    }
   }
-  // Default: localhost for local development
+  // Default: localhost for local (single-machine) development
   return envUrl || 'http://localhost:3001';
 }
 
+// Allow web code to force same-origin when a proxy is in front (dev tunnels, etc.)
+if (typeof window !== 'undefined') {
+  Object.defineProperty(window, '__SULTI_USE_SAME_ORIGIN', {
+    configurable: true,
+    enumerable: false,
+    writable: true,
+    // Physical devices (real phones) can never reach a `localhost` backend — the
+    // page is served from a dev tunnel / LAN IP, so route ALL traffic (API + /audio
+    // MP3s) through that same origin and let Metro's proxy forward to :3001.
+    value: true,
+  });
+}
+
 export const BASE_URL = getBaseUrl();
+
+// Log the resolved API URL in non-production to help debug connectivity
+if (typeof window !== 'undefined' && typeof console !== 'undefined') {
+  console.log('[api] Resolved BASE_URL:', BASE_URL);
+  console.log('[api] Window location:', window.location?.href);
+  console.log('[api] Same-origin proxy:', !!window.__SULTI_USE_SAME_ORIGIN);
+}
+
 const SUPABASE_PUBLISHABLE_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
 
 async function getToken() {
   try {
     // Try Supabase session first
-    const { data: { session } } = await supabase.auth.getSession();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
     if (session?.access_token) return session.access_token;
   } catch (err) {
     console.warn('[api] Failed to get Supabase session:', err.message);
@@ -33,7 +70,7 @@ async function getToken() {
   return null;
 }
 
-async function request(method, path, body = null, timeoutMs = 15000) {
+async function request(method, path, body = null, timeoutMs = 15000, signal = null) {
   const token = await getToken();
   const headers = { 'Content-Type': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
@@ -45,7 +82,18 @@ async function request(method, path, body = null, timeoutMs = 15000) {
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-  opts.signal = controller.signal;
+
+  // Use provided signal if available, otherwise use the timeout controller
+  if (signal) {
+    // If external signal is provided, we need to handle both it and timeout
+    signal.addEventListener('abort', () => {
+      clearTimeout(timeoutId);
+      controller.abort();
+    });
+    opts.signal = signal;
+  } else {
+    opts.signal = controller.signal;
+  }
 
   let res;
   try {
@@ -56,7 +104,9 @@ async function request(method, path, body = null, timeoutMs = 15000) {
       throw new Error('Request timed out. Please check your connection and try again.');
     }
     if (err instanceof TypeError) {
-      throw new Error(`Cannot reach server (${BASE_URL}). Please check your connection and try again.`);
+      throw new Error(
+        `Cannot reach server (${BASE_URL}). Please check your connection and try again.`
+      );
     }
     throw new Error(err.message || 'Network request failed');
   }
@@ -69,7 +119,10 @@ async function request(method, path, body = null, timeoutMs = 15000) {
     throw new Error(`Request failed (${res.status})`);
   }
   if (!res.ok) {
-    const msg = (data && ((data.error && (data.error.message || data.error)) || data.detail || data.message)) || `Request failed (${res.status})`;
+    const msg =
+      (data &&
+        ((data.error && (data.error.message || data.error)) || data.detail || data.message)) ||
+      `Request failed (${res.status})`;
     throw new Error(msg);
   }
   return data && typeof data === 'object' && 'data' in data ? data.data : data;
@@ -78,9 +131,14 @@ async function request(method, path, body = null, timeoutMs = 15000) {
 export const api = {
   // Auth
   signUp: (email, password, name, native_language, target_language) =>
-    request('POST', '/api/auth/signup', { fullname: name, email, password, native_language, target_language }),
-  signIn: (email, password) =>
-    request('POST', '/api/auth/signin', { email, password }),
+    request('POST', '/api/auth/signup', {
+      fullname: name,
+      email,
+      password,
+      native_language,
+      target_language,
+    }),
+  signIn: (email, password) => request('POST', '/api/auth/signin', { email, password }),
   googleSignIn: (idToken, email, name, avatar) =>
     request('POST', '/api/auth/google', { idToken, email, name, avatar }),
 
@@ -90,16 +148,18 @@ export const api = {
 
   // Tutor
   tutorChat: (message, audio, sessionId) =>
-    request('POST', '/api/tutor/chat', { message, audio, session_id: sessionId }),
+    request('POST', '/api/tutor/chat', { message, audio, session_id: sessionId }, 30000),
   getTutorLevel: () => request('GET', '/api/tutor/level'),
   getMistakes: () => request('GET', '/api/tutor/mistakes'),
-  generateLesson: (situation) =>
-    request('POST', '/api/tutor/lesson', { situation }),
+  generateLesson: (situation) => request('POST', '/api/tutor/lesson', { situation }),
 
   // Conversation / History
   getConversations: () => request('GET', '/api/conversations'),
-  saveConversation: (messages, title) =>
-    request('POST', '/api/conversations', { messages, title }),
+  saveConversation: (messages, title) => request('POST', '/api/conversations', { messages, title }),
+  // Replaces the stored transcript for an existing conversation, so screens
+  // that hold the full thread don't append duplicates on every turn.
+  updateConversation: (id, messages, title) =>
+    request('PUT', `/api/conversations/${id}`, { messages, title }),
   getHistory: () => request('GET', '/api/history'),
   deleteHistory: (id) => request('DELETE', `/api/history/${id}`),
 
@@ -108,10 +168,8 @@ export const api = {
     request('POST', '/api/assistant/chat', { message, language, character }),
   groqChat: (messages, nativeLanguage) =>
     request('POST', '/api/groq', { messages, nativeLanguage }),
-  translate: (text, from, to) =>
-    request('POST', '/api/speech/translate', { text, from, to }),
-  transcribe: (audio, language) =>
-    request('POST', '/api/speech/transcribe', { audio, language }),
+  translate: (text, from, to) => request('POST', '/api/speech/translate', { text, from, to }),
+  transcribe: (audio, language) => request('POST', '/api/speech/transcribe', { audio, language }),
   ttsSynthesize: (text, voice, rate, pitch, language) =>
     request('POST', '/api/speech/synthesize', { text, voice, rate, pitch, language }),
   getVoices: () => request('GET', '/api/speech/voices'),
@@ -136,13 +194,13 @@ export const api = {
   // Notifications
   getNotifications: () => request('GET', '/api/notifications'),
   markNotificationRead: (id) => request('PUT', `/api/notifications/${id}`),
+  markAllNotificationsRead: () => request('PUT', '/api/notifications/read-all'),
 
   // Community
   getCommunityPosts: () => request('GET', '/api/community/posts'),
-  createCommunityPost: (title, content) =>
-    request('POST', '/api/community/posts', { title, content }),
-  getPostComments: (postId) =>
-    request('GET', `/api/community/posts/${postId}/comments`),
+  createCommunityPost: ({ type, title, content, phrase, translation }) =>
+    request('POST', '/api/community/posts', { type, title, content, phrase, translation }),
+  getPostComments: (postId) => request('GET', `/api/community/posts/${postId}/comments`),
   createPostComment: (postId, comment) =>
     request('POST', `/api/community/posts/${postId}/comments`, { comment }),
   getCommunityResources: () => request('GET', '/api/community/resources'),
@@ -151,9 +209,14 @@ export const api = {
 
   // Learning
   getLearningModules: () => request('GET', '/api/learning/modules'),
+  getLearningModuleLessons: (moduleKey) =>
+    request('GET', `/api/learning/modules/${encodeURIComponent(moduleKey)}/lessons`),
   getLearningProgress: () => request('GET', '/api/learning/progress'),
+  getLearningDashboard: () => request('GET', '/api/learning/dashboard'),
   updateLearningProgress: (module_id, completion_percent) =>
     request('POST', '/api/learning/progress', { module_id, completion_percent }),
+  updateLearningProgressByKey: (module_key, completion_percent) =>
+    request('POST', '/api/learning/progress', { module_key, completion_percent }),
 
   // Settings
   getUserSettings: () => request('GET', '/api/user/settings'),
@@ -170,8 +233,7 @@ export const api = {
   // Game / Gamification
   getGameStats: () => request('GET', '/api/game/stats'),
   updateGameStats: (data) => request('PUT', '/api/game/stats', data),
-  getLeaderboard: (period = 'weekly') =>
-    request('GET', `/api/game/leaderboard?period=${period}`),
+  getLeaderboard: (period = 'weekly') => request('GET', `/api/game/leaderboard?period=${period}`),
   claimDailyReward: () => request('POST', '/api/game/daily-reward'),
 
   // Achievements / Badges
@@ -180,7 +242,6 @@ export const api = {
   checkAchievements: (stats) => request('POST', '/api/achievements/check', stats),
 
   // Vocabulary / Spaced Repetition
-  getVocabularyReview: () => request('GET', '/api/vocabulary/review'),
   submitVocabReview: (phraseId, score) =>
     request('POST', '/api/vocabulary/review', { phrase_id: phraseId, score }),
   getDueForReview: () => request('GET', '/api/vocabulary/due'),
@@ -188,8 +249,7 @@ export const api = {
   // Challenges
   getDailyChallenge: () => request('GET', '/api/challenges/daily'),
   getWeeklyChallenge: () => request('GET', '/api/challenges/weekly'),
-  completeChallenge: (challengeId) =>
-    request('POST', `/api/challenges/${challengeId}/complete`),
+  completeChallenge: (challengeId) => request('POST', `/api/challenges/${challengeId}/complete`),
 
   // Community - Follows
   followUser: (userId) => request('POST', `/api/community/follow/${userId}`),
@@ -211,12 +271,9 @@ export const api = {
   getPronunciationStats: () => request('GET', '/api/v2/pronunciation/stats'),
 
   // Whisper AI (Philippine Dialects)
-  whisperChat: (message, language) =>
-    request('POST', '/api/whisper/chat', { message, language }),
-  whisperVoice: (audio, language) =>
-    request('POST', '/api/whisper/voice', { audio, language }),
-  whisperPhrases: (topic, language) =>
-    request('POST', '/api/whisper/phrases', { topic, language }),
+  whisperChat: (message, language) => request('POST', '/api/whisper/chat', { message, language }),
+  whisperVoice: (audio, language) => request('POST', '/api/whisper/voice', { audio, language }),
+  whisperPhrases: (topic, language) => request('POST', '/api/whisper/phrases', { topic, language }),
   whisperLanguages: () => request('GET', '/api/whisper/languages'),
 
   // AR Scenarios
@@ -235,7 +292,10 @@ export const api = {
   getLivingLexicon: () => request('GET', '/api/preservation/living'),
   getPreservationCount: () => request('GET', '/api/preservation/count'),
   getPreservedWords: (status, limit, offset) =>
-    request('GET', `/api/preservation/lexicon?status=${status || ''}&limit=${limit || 50}&offset=${offset || 0}`),
+    request(
+      'GET',
+      `/api/preservation/lexicon?status=${status || ''}&limit=${limit || 50}&offset=${offset || 0}`
+    ),
   getDialectalVariations: (word) =>
     request('GET', `/api/preservation/variations?word=${encodeURIComponent(word)}`),
   verifyPreservedWord: (wordId, status) =>
@@ -245,25 +305,19 @@ export const api = {
   agentStatus: () => request('GET', '/api/agent/status'),
   agentToken: () => request('POST', '/api/agent/token'),
 
-  // Voice Pipeline (OpenRouter TTS + Groq STT/LLM)
-  voiceChat: (message, audio, sessionId, useMetaVoice = false) =>
-    request('POST', '/api/voice/chat', { message, audio, session_id: sessionId, use_meta_voice: useMetaVoice }, 45000),
-  voiceStatus: () => request('GET', '/api/voice/status'),
-  
-  // Meta Voice (SeamlessM4T v2 + Spirit LM)
-  voiceSpeechToSpeech: (audio, sourceLang = 'auto', targetLang = 'en') =>
-    request('POST', '/api/voice/speech-to-speech', { audio, source_lang: sourceLang, target_lang: targetLang }, 60000),
-  voiceTranscribeTranslate: (audio, sourceLang = 'auto', targetLang = 'en') =>
-    request('POST', '/api/voice/transcribe-translate', { audio, source_lang: sourceLang, target_lang: targetLang }, 60000),
+  // Deepgram real-time voice agent (live streaming)
+  agentDeepgramToken: () => request('GET', '/api/agent/deepgram-token'),
 
-  // RoBERTa Tagalog Base (NLP for Filipino language learning)
-  robertaStatus: () => request('GET', '/api/speech/roberta/status'),
-  robertaFillMask: (text, topK = 5) =>
-    request('POST', '/api/speech/roberta/fill-mask', { text, top_k: topK }),
-  robertaVocabularyExercise: (difficulty = 'beginner', topic) =>
-    request('POST', '/api/speech/roberta/vocabulary-exercise', { difficulty, topic }),
-  robertaSentenceCompletion: (text, context) =>
-    request('POST', '/api/speech/roberta/sentence-completion', { text, context }),
+  // Voice Pipeline (Groq STT/LLM + msedge-tts / OpenRouter TTS)
+  voiceChat: (message, audio, sessionId, signal = null, voice = 'blessica') =>
+    request(
+      'POST',
+      '/api/voice/chat',
+      { message, audio, session_id: sessionId, voice },
+      45000,
+      signal
+    ),
+  voiceStatus: () => request('GET', '/api/voice/status'),
 
   // Voice Agent (xAI realtime speech-to-speech)
   // Generic methods for offline sync

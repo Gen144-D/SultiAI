@@ -1,6 +1,6 @@
 import { eq, desc } from 'drizzle-orm';
 import { getDb } from '../connection';
-import * as schema from '../schema-sqlite';
+import * as schema from '../schema-pg';
 
 export async function getSavedPhrases(userEmail: string): Promise<any[]> {
   const db = getDb();

@@ -88,7 +88,7 @@ export const sessionMock = {
 
     if (!loginRes.ok) {
       const err = await loginRes.json().catch(() => ({}));
-      throw new Error(err.error || 'Invalid email or password.');
+      throw new Error((err.error && err.error.message) || 'Invalid email or password.');
     }
 
     const signinData = await loginRes.json();

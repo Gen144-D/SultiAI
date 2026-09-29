@@ -326,10 +326,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     });
   }, [themeName, activeTheme, mounted]);
 
-  if (!mounted) {
-    return <>{children}</>;
-  }
-
   return (
     <ThemeContext.Provider
       value={{

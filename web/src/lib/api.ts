@@ -1,41 +1,36 @@
-import type { AppInfo, ContactSubmission, HealthReport, NewsletterSubscription } from '@/types';
-import { mockApi } from './mock';
+import type { ServiceHealth } from '@/types';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? '';
-const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK !== 'false';
 
-async function http<T>(method: string, path: string, body?: unknown): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
-    method,
-    headers: { 'Content-Type': 'application/json' },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  if (!res.ok) {
-    throw new Error(`Request failed (${res.status}): ${path}`);
-  }
-  return (await res.json()) as T;
-}
-
+/**
+ * Server-backed calls only — this module has no mock fallback. Build metadata
+ * (size, checksum, build date) comes from `lib/apk.ts` reading the real file.
+ */
 export const api = {
-  async getHealth(): Promise<HealthReport> {
-    if (USE_MOCK) return mockApi.getHealth();
-    return http<HealthReport>('GET', '/api/health');
-  },
+  /**
+   * Real service status. Returns null instead of throwing when the API is down,
+   * so a status pill can render "unreachable" rather than breaking the page.
+   */
+  async getHealth(): Promise<ServiceHealth | null> {
+    if (!API_BASE) return null;
 
-  async getAppInfo(): Promise<AppInfo> {
-    if (USE_MOCK) return mockApi.getAppInfo();
-    return http<AppInfo>('GET', '/api/public/app-info');
-  },
+    try {
+      const res = await fetch(`${API_BASE}/api/health`, { cache: 'no-store' });
+      if (!res.ok) return null;
 
-  async submitContact(
-    submission: ContactSubmission
-  ): Promise<{ received: boolean; ticketId: string }> {
-    if (USE_MOCK) return mockApi.submitContact(submission);
-    return http<{ received: boolean; ticketId: string }>('POST', '/api/public/contact', submission);
-  },
+      const json = await res.json();
+      const d = json?.data ?? json;
 
-  async subscribeNewsletter(sub: NewsletterSubscription): Promise<{ subscribed: boolean }> {
-    if (USE_MOCK) return mockApi.subscribeNewsletter(sub);
-    return http<{ subscribed: boolean }>('POST', '/api/public/newsletter', sub);
+      return {
+        status: d?.status === 'ok' ? 'ok' : 'degraded',
+        timestamp: d?.timestamp ?? new Date().toISOString(),
+        uptimeSeconds: Number(d?.uptime) || 0,
+        aiProvider: d?.groq ?? 'not_set',
+        cache: d?.redis ?? 'not_set',
+        database: d?.database ?? null,
+      };
+    } catch {
+      return null;
+    }
   },
 };

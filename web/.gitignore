@@ -30,8 +30,9 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# env files — the real secrets stay out of git, but keep the template
 .env*
+!.env.example
 
 # vercel
 .vercel
@@ -39,4 +40,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-.clerk/
+
+# published APK builds (large binaries — the README in here is tracked)
+/downloads/*.apk

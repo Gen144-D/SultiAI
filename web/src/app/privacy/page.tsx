@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 import PageHero from '@/components/PageHero';
+import { APP } from '@/lib/site';
+import { Container, Prose, Section } from '@/components/ui';
 
 export const metadata: Metadata = {
   title: 'Privacy Policy',
@@ -25,7 +27,7 @@ const sections = [
   },
   {
     title: '5. Your choices',
-    body: "You can access, correct, or delete your account data at any time from the app's settings. You may also request data deletion by contacting hello@sultiai.com.",
+    body: `You can access, correct, or delete your account data at any time from the app's settings. You may also request data deletion by contacting ${APP.contactEmail}.`,
   },
   {
     title: "6. Children's privacy",
@@ -37,7 +39,7 @@ const sections = [
   },
   {
     title: '8. Contact',
-    body: 'Questions about this policy? Reach us at hello@sultiai.com.',
+    body: `Questions about this policy? Reach us at ${APP.contactEmail}.`,
   },
 ];
 
@@ -45,20 +47,24 @@ export default function Privacy() {
   return (
     <>
       <PageHero eyebrow="Legal" title="Privacy Policy" description="Last updated: August 2026" />
-      <section className="mx-auto max-w-3xl px-4 pb-16 sm:px-6">
-        <div className="space-y-8 rounded-3xl border border-line bg-white p-8 sm:p-10">
-          {sections.map((s) => (
-            <div key={s.title}>
-              <h2 className="text-lg font-bold text-ink">{s.title}</h2>
-              <p className="mt-2 text-sm leading-relaxed text-ink-soft">{s.body}</p>
-            </div>
-          ))}
-          <p className="border-t border-line pt-6 text-xs text-ink-faint">
-            This is a placeholder privacy policy for the SultiAI capstone project and will be
-            finalized before public launch.
-          </p>
-        </div>
-      </section>
+
+      <Section>
+        <Container width="narrow">
+          <Prose>
+            {sections.map((s) => (
+              <section key={s.title}>
+                <h2 className="text-lg font-semibold tracking-[-0.02em] text-ink">{s.title}</h2>
+                <p className="mt-2.5 text-sm leading-relaxed text-ink-soft">{s.body}</p>
+              </section>
+            ))}
+
+            <p className="border-t border-line/70 pt-6 text-xs leading-relaxed text-ink-faint">
+              This is a placeholder privacy policy for the SultiAI capstone project and will be
+              finalized before public launch.
+            </p>
+          </Prose>
+        </Container>
+      </Section>
     </>
   );
 }

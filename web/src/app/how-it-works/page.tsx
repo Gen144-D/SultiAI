@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import PageHero from '@/components/PageHero';
 import CTASection from '@/components/CTASection';
+import Reveal from '@/components/Reveal';
+import { Container, GlassCard, Pill, Section } from '@/components/ui';
 
 export const metadata: Metadata = {
   title: 'How it Works',
@@ -51,36 +53,39 @@ export default function HowItWorks() {
         description="SultiAI is designed around one idea: you learn a language by actually using it."
       />
 
-      <section className="mx-auto max-w-4xl px-4 py-16 sm:px-6">
-        <ol className="space-y-10">
-          {phases.map((p, i) => (
-            <li key={p.step} className="relative rounded-3xl border border-line bg-white p-8">
-              <div className="flex flex-col gap-6 sm:flex-row">
-                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-brand to-brand-dark text-lg font-bold text-white">
-                  {p.step}
-                </div>
-                <div className="flex-1">
-                  <h2 className="text-xl font-bold text-ink">{p.title}</h2>
-                  <p className="mt-2 text-sm leading-relaxed text-ink-soft">{p.body}</p>
-                  <ul className="mt-4 flex flex-wrap gap-2">
-                    {p.points.map((pt) => (
-                      <li
-                        key={pt}
-                        className="rounded-full border border-brand/20 bg-brand-light px-3.5 py-1.5 text-xs font-semibold text-brand-dark"
-                      >
-                        {pt}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-              {i < phases.length - 1 && (
-                <span className="absolute -bottom-6 left-1/2 hidden h-6 w-px -translate-x-1/2 bg-line sm:block" />
-              )}
-            </li>
-          ))}
-        </ol>
-      </section>
+      <Section>
+        <Container width="narrow">
+          <ol className="space-y-5">
+            {phases.map((p, i) => (
+              <Reveal key={p.step} delay={i * 0.07}>
+                <GlassCard as="li" level={2} interactive className="p-6 sm:p-8">
+                  <div className="flex flex-col gap-5 sm:flex-row sm:gap-7">
+                    {/* The numeral is the step, and it doubles as the progress
+                        cue — no separate timeline needed. */}
+                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[0.9rem] border border-brand/25 bg-brand-light font-mono text-sm font-bold text-brand">
+                      {p.step}
+                    </span>
+
+                    <div className="flex-1">
+                      <h2 className="text-xl font-semibold tracking-[-0.02em] text-ink">
+                        {p.title}
+                      </h2>
+                      <p className="mt-2.5 text-sm leading-relaxed text-ink-soft">{p.body}</p>
+                      <ul className="mt-5 flex flex-wrap gap-2">
+                        {p.points.map((pt) => (
+                          <li key={pt}>
+                            <Pill tone="brand">{pt}</Pill>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                </GlassCard>
+              </Reveal>
+            ))}
+          </ol>
+        </Container>
+      </Section>
 
       <CTASection />
     </>

@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import PageHero from '@/components/PageHero';
 import FAQAccordion from '@/components/FAQAccordion';
 import CTASection from '@/components/CTASection';
+import { Container, Section } from '@/components/ui';
 
 export const metadata: Metadata = {
   title: 'FAQ',
@@ -55,9 +56,11 @@ export default function FAQ() {
         description="Everything you need to know before you start your Bisaya journey."
       />
 
-      <section className="mx-auto max-w-6xl px-4 pb-16 sm:px-6">
-        <FAQAccordion items={faqs} />
-      </section>
+      <Section>
+        <Container>
+          <FAQAccordion items={faqs} />
+        </Container>
+      </Section>
 
       <CTASection />
     </>

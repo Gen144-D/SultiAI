@@ -1,6 +1,9 @@
 import type { Metadata } from 'next';
 import PageHero from '@/components/PageHero';
 import CTASection from '@/components/CTASection';
+import Icon from '@/components/Icon';
+import Reveal from '@/components/Reveal';
+import { Container, GlassCard, Section, SectionHeading } from '@/components/ui';
 
 export const metadata: Metadata = {
   title: 'About',
@@ -9,22 +12,22 @@ export const metadata: Metadata = {
 
 const values = [
   {
-    icon: '🗣',
+    icon: 'chatbubbles' as const,
     title: 'Language is identity',
     body: 'We believe speaking your language is a form of belonging — and Bisaya deserves to flourish.',
   },
   {
-    icon: '🎓',
+    icon: 'school' as const,
     title: 'Learning by doing',
     body: 'Real conversations beat rote memorization. Our AI makes practice feel natural.',
   },
   {
-    icon: '🤝',
+    icon: 'people' as const,
     title: 'Community-first',
     body: 'Technology preserves what people speak. We build with — not just for — the community.',
   },
   {
-    icon: '🌱',
+    icon: 'heart' as const,
     title: 'Accessible to all',
     body: 'A free tier and phone-first design mean anyone can start learning, anywhere.',
   },
@@ -39,46 +42,50 @@ export default function About() {
         description="SultiAI is a capstone project turned mission: to make learning Cebuano as easy, joyful, and social as possible."
       />
 
-      <section className="mx-auto max-w-4xl px-4 py-14 sm:px-6">
-        <div className="rounded-3xl border border-line bg-white p-8 sm:p-10">
-          <h2 className="text-2xl font-bold text-ink">Our story</h2>
-          <div className="mt-4 space-y-4 text-sm leading-relaxed text-ink-soft sm:text-base">
-            <p>
-              Cebuano (Bisaya) is one of the most widely spoken languages in the Philippines — yet
-              language-learning tools for it remain scarce. We saw a gap: learners had Duolingo for
-              Spanish and French, but nothing built specifically for the languages of the Visayas.
-            </p>
-            <p>
-              So we built SultiAI. It combines an adaptive AI tutor, speech-driven practice, and a
-              community of native speakers into one experience — designed from the ground up for
-              Bisaya and the culture that surrounds it.
-            </p>
-            <p>
-              Along the way we realized the app could do more than teach. It could help preserve the
-              language itself — through the Living Lexicon, dialectal variations, and native-speaker
-              verification. Every learner becomes a participant in that mission.
-            </p>
-          </div>
-        </div>
-      </section>
+      <Section spacing="tight">
+        <Container width="narrow">
+          <GlassCard level={2} sheen className="p-7 sm:p-10">
+            <h2 className="text-2xl font-semibold tracking-[-0.02em] text-ink">Our story</h2>
+            <div className="mt-5 space-y-4 text-sm leading-relaxed text-ink-soft sm:text-base">
+              <p>
+                Cebuano (Bisaya) is one of the most widely spoken languages in the Philippines — yet
+                language-learning tools for it remain scarce. We saw a gap: learners had Duolingo
+                for Spanish and French, but nothing built specifically for the languages of the
+                Visayas.
+              </p>
+              <p>
+                So we built SultiAI. It combines an adaptive AI tutor, speech-driven practice, and a
+                community of native speakers into one experience — designed from the ground up for
+                Bisaya and the culture that surrounds it.
+              </p>
+              <p>
+                Along the way we realized the app could do more than teach. It could help preserve
+                the language itself — through the Living Lexicon, dialectal variations, and
+                native-speaker verification. Every learner becomes a participant in that mission.
+              </p>
+            </div>
+          </GlassCard>
+        </Container>
+      </Section>
 
-      <section className="bg-surface">
-        <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
-          <h2 className="text-center text-2xl font-bold text-ink">What we believe</h2>
-          <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {values.map((v) => (
-              <div
-                key={v.title}
-                className="rounded-3xl border border-line bg-white p-6 text-center"
-              >
-                <span className="text-3xl">{v.icon}</span>
-                <h3 className="mt-3 text-base font-bold text-ink">{v.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-ink-soft">{v.body}</p>
-              </div>
+      <Section>
+        <Container width="wide">
+          <SectionHeading eyebrow="Principles" title="What we believe" />
+          <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            {values.map((v, i) => (
+              <Reveal key={v.title} delay={i * 0.07}>
+                <GlassCard interactive className="h-full p-6 text-center">
+                  <span className="mx-auto flex h-11 w-11 items-center justify-center rounded-[0.85rem] border border-brand/20 bg-brand-light text-brand">
+                    <Icon name={v.icon} className="h-5 w-5" />
+                  </span>
+                  <h3 className="mt-4 text-base font-semibold text-ink">{v.title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-ink-soft">{v.body}</p>
+                </GlassCard>
+              </Reveal>
             ))}
           </div>
-        </div>
-      </section>
+        </Container>
+      </Section>
 
       <CTASection />
     </>

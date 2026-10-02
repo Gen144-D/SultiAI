@@ -1,6 +1,7 @@
 # Multi-stage build for Next.js web app
+# Next.js 16 requires Node >= 20.9.0 (see next/package.json "engines").
 # Stage 1: Dependencies
-FROM node:18-alpine AS deps
+FROM node:22-alpine AS deps
 
 WORKDIR /app
 
@@ -8,7 +9,7 @@ COPY package*.json ./
 RUN npm ci
 
 # Stage 2: Build
-FROM node:18-alpine AS builder
+FROM node:22-alpine AS builder
 
 WORKDIR /app
 
@@ -21,7 +22,7 @@ ENV NODE_ENV=production
 RUN npm run build
 
 # Stage 3: Production
-FROM node:18-alpine AS runner
+FROM node:22-alpine AS runner
 
 WORKDIR /app
 
@@ -34,6 +35,13 @@ RUN addgroup -g 1001 -S nodejs && \
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+# The APK release is served by the /api/apk/latest route, which reads from
+# process.cwd()/downloads at request time. This directory is deliberately NOT
+# under public/ (a public .apk would bypass the checksum + download headers),
+# so it must be copied in explicitly or the route 404s in production.
+# .dockerignore does not exclude *.apk, so `COPY . .` above picks up the build.
+COPY --from=builder --chown=nextjs:nodejs /app/downloads ./downloads
 
 USER nextjs
 

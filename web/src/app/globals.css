@@ -1,38 +1,140 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
-@theme {
-  --color-brand: #1e6f9f;
-  --color-brand-dark: #155a7e;
-  --color-brand-light: #e8f4f8;
-  --color-accent: #ffb347;
-  --color-accent-light: #fff3e0;
-  --color-ink: #1a1a2e;
-  --color-ink-soft: #6b7280;
-  --color-ink-faint: #9ca3af;
-  --color-line: #e5e7eb;
-  --color-surface: #f7f9fb;
-  --color-success: #10b981;
-  --color-danger: #ef4444;
+/* ==========================================================================
+   SultiAI design system — "Cosmic Liquid Glass"
+   --------------------------------------------------------------------------
+   The site is dark-only by design: a single deep-space identity reads as one
+   product everywhere, and a theme switcher on a marketing page is a gimmick
+   that costs accessibility (contrast surprises) for no user benefit.
+
+   Colour values live here and nowhere else. Every component consumes semantic
+   tokens (`bg-surface`, `text-ink-soft`, `border-line`) so a palette change is
+   a one-file edit. The token *names* are kept compatible with what the site
+   already used, which is why `brand-light` is a dark translucent tint rather
+   than a pale background: it is only ever used as an icon chip background.
+   ========================================================================== */
+
+@theme inline {
+  --color-brand: var(--brand);
+  --color-brand-solid: var(--brand-solid);
+  --color-brand-deep: var(--brand-deep);
+  --color-brand-light: var(--brand-light);
+  --color-brand-dark: var(--brand-dark);
+  --color-accent: var(--accent);
+  --color-accent-light: var(--accent-light);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-faint: var(--ink-faint);
+  --color-bg: var(--bg);
+  --color-bg-deep: var(--bg-deep);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-success: var(--success);
+  --color-danger: var(--danger);
+  --color-warning: var(--warning);
+  --color-overlay: var(--overlay);
+
+  --radius-control: 0.75rem;
+  --radius-card: 1.25rem;
+  --radius-hero: 2rem;
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 }
 
 :root {
-  --background: #ffffff;
-  --foreground: var(--color-ink);
+  /* Surfaces — the page is the darkest layer, cards lift off it. The three
+     specified cosmic values are used in order: page, panel, raised panel. */
+  --bg: #050814;
+  --surface: #07111f;
+  --surface-2: #081c24;
+  --bg-deep: #03060f;
+
+  /* Ink — three steps is enough; more invites inconsistent hierarchy. */
+  --ink: #f8fafc;
+  --ink-soft: #a7b0c0;
+  --ink-faint: #667085;
+
+  /* Hairlines. Translucent so they pick up whatever sits behind the glass. */
+  --line: rgb(255 255 255 / 0.08);
+  --line-strong: rgb(255 255 255 / 0.12);
+
+  /* Brand — the mint signature. Mint and teal are for AI actions and active
+     states only; violet/indigo/blue below are atmosphere, never a CTA. */
+  --brand: #63f5d0;
+  --brand-solid: #22d3c5;
+  --brand-deep: #0f766e;
+  --brand-dark: #8ffce2;
+  --brand-light: rgb(34 211 197 / 0.14);
+  --brand-glow: rgb(99 245 208 / 0.35);
+
+  /* Accent — warm amber, used sparingly so it still means something. */
+  --accent: #ffb454;
+  --accent-dark: #ffc880;
+  --accent-light: rgb(255 180 84 / 0.14);
+
+  /* Atmospheric support. These tint the background and glass rims; using them
+     for text or buttons would break the mint-as-AI hierarchy. */
+  --cosmic-blue: #2563eb;
+  --cosmic-indigo: #6366f1;
+  --cosmic-violet: #8b5cf6;
+
+  --success: #4ade80;
+  --danger: #fb7185;
+  --warning: #fbbf24;
+  --overlay: rgb(3 6 15 / 0.72);
+
+  /* Nebula tints — the atmosphere that makes the background feel lit.
+     Deliberately very low alpha: the interface must win over the backdrop. */
+  --nebula-1: rgb(34 211 197 / 0.16);
+  --nebula-2: rgb(99 102 241 / 0.16);
+  --nebula-3: rgb(139 92 246 / 0.1);
+  --nebula-blue: rgb(37 99 235 / 0.12);
+
+  /* The single easing curve. Everything that moves uses this so the whole site
+     settles at the same rate. */
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ---------------------------------------------------------------- Base ---- */
+
+* {
+  border-color: var(--line);
+}
+
+html {
+  scroll-behavior: smooth;
+  /* Anchored sections must clear the sticky glass nav. */
+  scroll-padding-top: 6rem;
+  color-scheme: dark;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  background-color: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  /* The background is fixed, so prevent the overscroll flash of raw white. */
+  overscroll-behavior-y: none;
 }
 
 ::selection {
-  background: var(--color-brand-light);
-  color: var(--color-brand-dark);
+  background: var(--brand-glow);
+  color: #04202a;
 }
 
-/* Fix browser autofill styling */
+/* Visible focus ring for keyboard users only — pointer clicks stay clean. */
+:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+  border-radius: 0.375rem;
+}
+
+/* Autofill repaints the field background in the UA's own colours, which on a
+   dark site means a white slab. Force the field back to the surface token. */
 input:-webkit-autofill,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:focus,
@@ -40,32 +142,813 @@ textarea:-webkit-autofill,
 textarea:-webkit-autofill:hover,
 textarea:-webkit-autofill:focus,
 select:-webkit-autofill,
-select:-webkit-autofill:hover,
 select:-webkit-autofill:focus {
-  -webkit-text-fill-color: #1a1a2e;
-  -webkit-box-shadow: 0 0 0px 1000px #ffffff inset;
-  transition: background-color 5000s ease-in-out 0s;
+  -webkit-text-fill-color: var(--ink);
+  -webkit-box-shadow: 0 0 0px 1000px var(--surface-2) inset;
+  caret-color: var(--ink);
 }
 
-/* Fix dropdown z-index issues */
-.cl-internal-k3d6k4,
-.cl-internal-1x9b9h0,
-.cl-internal-1l8k9h0 {
-  z-index: 9999 !important;
+/* Thin dark scrollbar; the default light one cuts a bright line through the
+   page on Windows. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--line-strong);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: rgb(255 255 255 / 0.28);
+  background-clip: content-box;
 }
 
-/* Ensure dropdowns render above other elements */
-[class*="cl-"] [role="listbox"],
-[class*="cl-"] [role="combobox"] {
-  z-index: 9999 !important;
-  position: relative !important;
+/* ======================================================= Liquid glass ====== */
+/* Three levels, mapped to how much the surface must recede. The brief's 70/20/10
+   split lives here: level 2 cards cover most of the page and stay near-neutral,
+   level 1 is for large panes, level 3 is reserved for the few surfaces that
+   should read as Sulti's own space (hero, pricing, API, download release).
+
+   Level 3 is tinted teal-deep rather than white because it is the AI surface. */
+
+.glass-1 {
+  background: linear-gradient(
+    180deg,
+    rgb(255 255 255 / 0.055),
+    rgb(255 255 255 / 0.025) 55%,
+    rgb(255 255 255 / 0.035)
+  );
+  border: 1px solid rgb(255 255 255 / 0.12);
+  backdrop-filter: blur(24px) saturate(140%);
+  -webkit-backdrop-filter: blur(24px) saturate(140%);
 }
 
-/* Fix label spacing */
-[class*="cl-"] .cl-formFieldLabel {
-  margin-bottom: 8px !important;
+.glass-2 {
+  background: linear-gradient(
+    180deg,
+    rgb(255 255 255 / 0.045),
+    rgb(255 255 255 / 0.022) 60%,
+    rgb(255 255 255 / 0.03)
+  );
+  border: 1px solid rgb(255 255 255 / 0.08);
+  backdrop-filter: blur(18px) saturate(135%);
+  -webkit-backdrop-filter: blur(18px) saturate(135%);
 }
 
-[class*="cl-"] .cl-formFieldAction {
-  margin-top: 16px !important;
+.glass-3 {
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 0.04), rgb(255 255 255 / 0.015) 60%),
+    rgb(8 20 28 / 0.45);
+  border: 1px solid rgb(99 245 208 / 0.18);
+  backdrop-filter: blur(30px) saturate(150%);
+  -webkit-backdrop-filter: blur(30px) saturate(150%);
+}
+
+/* A single raking highlight along the top edge. This is what actually sells
+   the material — the blur alone just looks like translucency. */
+.glass-sheen::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    160deg,
+    rgb(255 255 255 / 0.5),
+    rgb(255 255 255 / 0.05) 32%,
+    transparent 60%
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+.glass-shadow {
+  box-shadow:
+    0 1px 0 0 rgb(255 255 255 / 0.04) inset,
+    0 18px 40px -24px rgb(0 0 0 / 0.8),
+    0 4px 12px -8px rgb(0 0 0 / 0.5);
+}
+
+/* ================================================= Cosmic background ====== */
+
+.cosmic-base {
+  background:
+    radial-gradient(1100px 620px at 12% -8%, var(--nebula-1), transparent 62%),
+    radial-gradient(900px 560px at 92% 4%, var(--nebula-2), transparent 60%),
+    radial-gradient(1000px 700px at 50% 108%, var(--nebula-3), transparent 65%),
+    linear-gradient(180deg, var(--bg) 0%, var(--bg-deep) 100%);
+}
+
+/* Two offset dot fields at different sizes read as depth without a texture
+   request. Deliberately cheap: the layer is fixed and never repaints. */
+.cosmic-stars {
+  background-image:
+    radial-gradient(1.4px 1.4px at 18px 26px, rgb(255 255 255 / 0.55), transparent),
+    radial-gradient(1.2px 1.2px at 92px 68px, rgb(255 255 255 / 0.38), transparent),
+    radial-gradient(1.6px 1.6px at 142px 18px, rgb(199 245 233 / 0.5), transparent),
+    radial-gradient(1.1px 1.1px at 54px 118px, rgb(255 255 255 / 0.3), transparent),
+    radial-gradient(1.3px 1.3px at 178px 142px, rgb(255 255 255 / 0.28), transparent);
+  background-size: 220px 220px;
+}
+
+/* Sparser and larger than the star field, tinted violet so the two layers never
+   read as one texture. Inset position keeps it from tiling visibly. */
+.cosmic-particles {
+  background-image:
+    radial-gradient(2.2px 2.2px at 96px 140px, rgb(196 181 253 / 0.5), transparent),
+    radial-gradient(1.8px 1.8px at 210px 42px, rgb(165 243 252 / 0.38), transparent),
+    radial-gradient(2.6px 2.6px at 34px 216px, rgb(255 255 255 / 0.22), transparent);
+  background-size: 300px 300px;
+}
+
+.cosmic-vignette {
+  background: radial-gradient(
+    120% 90% at 50% 0%,
+    transparent 40%,
+    rgb(3 6 15 / 0.55) 100%
+  );
+}
+
+/* ======================================================= Components ====== */
+
+/* Primary action: a mint surface with a soft bloom. The glow is the only
+   saturated light source on the page, so it always reads as the next step.
+   Lift on hover is a scale, not a nudge — a physical press rather than a jump. */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.625rem;
+  border-radius: var(--radius-control);
+  background: linear-gradient(135deg, var(--brand) 0%, var(--brand-solid) 100%);
+  color: #04202a;
+  font-size: 0.875rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  padding: 0.75rem 1.375rem;
+  box-shadow: 0 8px 24px -10px var(--brand-glow);
+  transition:
+    transform 0.18s var(--ease),
+    box-shadow 0.18s var(--ease),
+    filter 0.18s ease;
+}
+.btn-primary:hover {
+  filter: brightness(1.07);
+  box-shadow: 0 12px 32px -10px var(--brand-glow);
+  transform: scale(1.02);
+}
+.btn-primary:active {
+  transform: scale(0.97);
+}
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.625rem;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--line-strong);
+  background: rgb(255 255 255 / 0.04);
+  color: var(--ink);
+  font-size: 0.875rem;
+  font-weight: 600;
+  padding: 0.75rem 1.375rem;
+  transition:
+    background-color 0.18s var(--ease),
+    border-color 0.18s var(--ease),
+    transform 0.18s var(--ease);
+}
+.btn-ghost:hover {
+  background: rgb(255 255 255 / 0.08);
+  border-color: rgb(255 255 255 / 0.28);
+  transform: scale(1.02);
+}
+.btn-ghost:active {
+  transform: scale(0.97);
+}
+
+/* Inline text link. Underline is always drawn, so colour is not the only cue. */
+.link-brand {
+  color: var(--brand);
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: rgb(99 245 208 / 0.35);
+  text-underline-offset: 3px;
+  transition: text-decoration-color 0.15s ease;
+}
+.link-brand:hover {
+  text-decoration-color: var(--brand);
+}
+
+/* Icon chip — the small rounded square that fronts most feature lists. */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  flex-shrink: 0;
+  border-radius: 0.875rem;
+  background: var(--brand-light);
+  border: 1px solid rgb(99 245 208 / 0.18);
+  color: var(--brand);
+}
+
+.press {
+  transition: transform 0.15s var(--ease);
+}
+.press:active {
+  transform: scale(0.97);
+}
+
+/* Hover affordance shared by every interactive glass card. A 3px lift plus a
+   hairline of mint: enough to feel alive, not enough to bounce. */
+.card-lift {
+  transition:
+    transform 0.3s var(--ease),
+    border-color 0.3s var(--ease),
+    box-shadow 0.3s var(--ease);
+}
+.card-lift:hover {
+  transform: translateY(-3px) scale(1.01);
+  border-color: rgb(99 245 208 / 0.4);
+  box-shadow: 0 20px 44px -26px var(--brand-glow);
+}
+
+/* Hero headline gradient. The bright mint stop at the end keeps the phrase
+   readable against the dark end of the ramp. */
+.text-gradient {
+  background: linear-gradient(100deg, var(--brand) 0%, #a5f3fc 45%, var(--brand-solid) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Inline code, used across the API and legal pages. */
+.code-inline {
+  border-radius: 0.375rem;
+  background: rgb(255 255 255 / 0.06);
+  border: 1px solid var(--line);
+  padding: 0.125rem 0.375rem;
+  font-family: var(--font-mono);
+  font-size: 0.8125em;
+  color: var(--brand);
+}
+
+/* Long hashes and URLs must wrap rather than force a horizontal scrollbar. */
+.break-anywhere {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* ============================================================ Motion ====== */
+/* One easing curve and one short duration for everything. The curve is the
+   brief's: fast out of the gate, long settle. Staggered delays come from the
+   `delay` prop on Reveal rather than bespoke keyframes per component. */
+
+@keyframes sulti-enter {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes sulti-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Very slow, very large, very low amplitude. Long enough that a visitor
+   scrolling does not notice it moving, which is the point. */
+@keyframes sulti-drift {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  33% {
+    transform: translate3d(2%, -2%, 0) scale(1.06);
+  }
+  66% {
+    transform: translate3d(-2%, 1%, 0) scale(1.02);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes sulti-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.65;
+    transform: scale(0.88);
+  }
+}
+
+.anim-enter {
+  animation: sulti-enter 0.6s var(--ease) both;
+}
+.anim-pop {
+  animation: sulti-pop 0.35s var(--ease) both;
+}
+.anim-drift {
+  animation: sulti-drift 34s ease-in-out infinite;
+}
+.anim-pulse {
+  animation: sulti-pulse 2.4s ease-in-out infinite;
+}
+
+/* Entrance reveals are driven by an IntersectionObserver toggling this class.
+   The `has-js` gate is the important part: without JavaScript nothing is ever
+   added to <html>, so the content stays visible to crawlers and to anyone whose
+   script fails. Hiding by default would make the page unreadable in that case. */
+.has-js .reveal {
+  opacity: 0;
+}
+.has-js .reveal.is-visible {
+  animation: sulti-enter 0.7s var(--ease) forwards;
+}
+
+/* ============================================================ SULTI ======== */
+/* Motion for SultiOrb. Each state has a distinct, low-amplitude movement so the
+   presence reads as alive without competing with the copy. */
+
+@keyframes sulti-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scale(1.035);
+    opacity: 0.85;
+  }
+}
+
+@keyframes sulti-ring-out {
+  0% {
+    transform: scale(0.86);
+    opacity: 0.55;
+  }
+  100% {
+    transform: scale(1.22);
+    opacity: 0;
+  }
+}
+
+@keyframes sulti-orbit {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes sulti-pulse-ring {
+  0%,
+  100% {
+    transform: scale(1);
+    border-color: rgb(99 245 208 / 0.35);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.06);
+    border-color: rgb(99 245 208 / 0.75);
+    opacity: 1;
+  }
+}
+
+.sulti-breathe {
+  border: 1px solid rgb(99 245 208 / 0.22);
+  animation: sulti-breathe 5s ease-in-out infinite;
+}
+
+/* Two offset rings so the listening state looks like a wavefront rather than a
+   single repeating ring. */
+.sulti-ring {
+  border: 1px solid rgb(99 245 208 / 0.5);
+  animation: sulti-ring-out 2.4s var(--ease) infinite;
+}
+.sulti-ring-2 {
+  animation-delay: 1.2s;
+}
+
+.sulti-orbit {
+  border: 1px solid transparent;
+  border-top-color: var(--brand);
+  border-right-color: rgb(99 245 208 / 0.25);
+  animation: sulti-orbit 2.8s linear infinite;
+}
+
+.sulti-pulse-ring {
+  border: 1px solid rgb(99 245 208 / 0.4);
+  animation: sulti-pulse-ring 1.6s ease-in-out infinite;
+}
+
+.sulti-bloom {
+  background: radial-gradient(closest-side, var(--brand-glow), transparent 72%);
+  opacity: 0.5;
+}
+
+[data-state='thinking'] .sulti-bloom,
+[data-state='speaking'] .sulti-bloom,
+[data-state='listening'] .sulti-bloom {
+  opacity: 0.85;
+}
+
+[data-state='offline'] .sulti-bloom {
+  opacity: 0.15;
+}
+
+/* ================================================ Shattered-glass entry ==== */
+/* Used exactly once on the site: the moment a Sulti session begins. The brief
+   is explicit that this is a *transition*, not a texture — cracked glass on
+   every card would read as noise, while a single shard-converge on session
+   start makes the moment of "entering AI space" feel deliberate.
+
+   Sequence: a glass sheet fades in over the panel, then its crystalline
+   fragments converge inward and vanish, revealing the active session. Eight
+   clip-path shards tile the panel; each carries its own vector (--tx/--ty),
+   rotation (--rot) and delay (--d) so the convergence reads as irregular
+   fragments rather than a uniform collapse. Transform + opacity only —
+   compositor work, no repaint. */
+
+@keyframes shard-converge {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
+  }
+  14% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--tx), var(--ty), 0) rotate(var(--rot)) scale(0.7);
+  }
+}
+
+.shatter {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.shard {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    140deg,
+    rgb(255 255 255 / 0.14),
+    rgb(99 245 208 / 0.07) 55%,
+    rgb(255 255 255 / 0.05)
+  );
+  backdrop-filter: blur(5px) saturate(140%);
+  -webkit-backdrop-filter: blur(5px) saturate(140%);
+  /* drop-shadow draws a hairline along the clip path, so each fragment reads
+     as a sliver of glass rather than a flat tint. */
+  filter: drop-shadow(0 0 1px rgb(255 255 255 / 0.55));
+  animation: shard-converge 0.8s var(--ease) both;
+  animation-delay: var(--d, 0s);
+}
+
+/* The tiling. Irregular polygons on purpose: a regular grid converging would
+   read as a wipe, not a shatter. */
+.shard-1 {
+  clip-path: polygon(0 0, 45% 0, 30% 32%, 0 40%);
+  --tx: 26%;
+  --ty: 23%;
+  --rot: 7deg;
+}
+.shard-2 {
+  clip-path: polygon(45% 0, 78% 0, 70% 26%, 30% 32%);
+  --tx: -3%;
+  --ty: 27%;
+  --rot: -5deg;
+  --d: 0.05s;
+}
+.shard-3 {
+  clip-path: polygon(78% 0, 100% 0, 100% 34%, 70% 26%);
+  --tx: -25%;
+  --ty: 24%;
+  --rot: 6deg;
+  --d: 0.02s;
+}
+.shard-4 {
+  clip-path: polygon(0 40%, 30% 32%, 42% 58%, 8% 70%, 0 66%);
+  --tx: 27%;
+  --ty: 0%;
+  --rot: -8deg;
+  --d: 0.08s;
+}
+.shard-5 {
+  clip-path: polygon(30% 32%, 70% 26%, 76% 55%, 42% 58%);
+  --tx: -4%;
+  --ty: 7%;
+  --rot: 4deg;
+  --d: 0.03s;
+}
+.shard-6 {
+  clip-path: polygon(70% 26%, 100% 34%, 100% 62%, 76% 55%);
+  --tx: -27%;
+  --ty: 5%;
+  --rot: 7deg;
+  --d: 0.06s;
+}
+.shard-7 {
+  clip-path: polygon(0 66%, 8% 70%, 42% 58%, 50% 100%, 0 100%);
+  --tx: 23%;
+  --ty: -20%;
+  --rot: -6deg;
+  --d: 0.04s;
+}
+.shard-8 {
+  clip-path: polygon(42% 58%, 76% 55%, 100% 62%, 100% 100%, 50% 100%);
+  --tx: -13%;
+  --ty: -22%;
+  --rot: 5deg;
+  --d: 0.09s;
+}
+
+/* ============================================ Landing motion system ==== */
+/* Hero phone float — slow and shallow so it feels premium, not bouncy. */
+@keyframes phone-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+.phone-float {
+  animation: phone-float 7s ease-in-out infinite;
+}
+
+/* Voice waveform bars — staggered scaleY creates the speaking effect. */
+@keyframes wave-bar {
+  0%,
+  100% {
+    transform: scaleY(0.45);
+    opacity: 0.6;
+  }
+  50% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+.wave-bar {
+  transform-origin: center;
+  animation: wave-bar 1.4s ease-in-out infinite;
+}
+
+/* Floating badges around the phone — offset phases so they drift apart. */
+@keyframes badge-drift-1 {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+@keyframes badge-drift-2 {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(8px);
+  }
+}
+.badge-float-1 {
+  animation: badge-drift-1 5.5s ease-in-out infinite;
+}
+.badge-float-2 {
+  animation: badge-drift-2 6.5s ease-in-out infinite;
+}
+
+/* AI pipeline connector — a slow mint pulse travelling the line. */
+.pipeline-flow {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgb(99 245 208 / 0.5) 30%,
+    rgb(99 245 208 / 0.5) 70%,
+    transparent
+  );
+  background-size: 200% 100%;
+  animation: pipeline-sweep 3.5s linear infinite;
+}
+@keyframes pipeline-sweep {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+
+/* Tech cards — icon glow on hover, border illumination. */
+.tech-card:hover .tech-icon {
+  box-shadow: 0 0 24px -6px var(--brand-glow);
+  border-color: rgb(99 245 208 / 0.5);
+}
+.tech-icon {
+  transition:
+    box-shadow 0.3s var(--ease),
+    border-color 0.3s var(--ease);
+}
+
+/* ============================================ Header & footer ====== */
+/* Floating glass header. Values are the product spec: deep dark surface,
+   strong blur, hairline border, soft shadow, 20px radius. */
+.site-header {
+  background: rgb(8 15 24 / 0.72);
+  border: 1px solid rgb(255 255 255 / 0.08);
+  border-radius: 1.25rem;
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  box-shadow:
+    0 1px 0 0 rgb(255 255 255 / 0.04) inset,
+    0 18px 40px -24px rgb(0 0 0 / 0.8),
+    0 4px 12px -8px rgb(0 0 0 / 0.5);
+}
+.site-header-scrolled {
+  background: rgb(8 15 24 / 0.9);
+  box-shadow:
+    0 1px 0 0 rgb(255 255 255 / 0.05) inset,
+    0 24px 48px -24px rgb(0 0 0 / 0.9),
+    0 0 32px -12px var(--brand-glow);
+}
+
+/* Logo hover glow — the only animation on the lockup. */
+.logo-lockup {
+  transition: filter 0.25s var(--ease);
+}
+.logo-lockup:hover {
+  filter: drop-shadow(0 0 12px var(--brand-glow));
+}
+
+/* Nav underline sweep. The bar is a shape change, not just a colour change,
+   so the active state never relies on colour alone. */
+.nav-link:hover {
+  text-shadow: 0 0 16px var(--brand-glow);
+}
+
+/* Primary CTA breathing glow. Slow and shallow — premium, not arcade. */
+@keyframes cta-breathe {
+  0%,
+  100% {
+    box-shadow: 0 8px 24px -10px var(--brand-glow);
+  }
+  50% {
+    box-shadow:
+      0 8px 32px -8px var(--brand-glow),
+      0 0 20px -6px var(--brand-glow);
+  }
+}
+.btn-cta {
+  animation: cta-breathe 4s ease-in-out infinite;
+}
+.btn-cta:hover {
+  animation-play-state: paused;
+}
+
+/* Mobile drawer entrance: backdrop fades, panel slides from the top. */
+@keyframes drawer-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes drawer-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-14px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes drawer-item-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.drawer-backdrop {
+  animation: drawer-fade 0.25s var(--ease) both;
+}
+.drawer-panel {
+  animation: drawer-drop 0.32s var(--ease) both;
+  box-shadow:
+    0 1px 0 0 rgb(255 255 255 / 0.04) inset,
+    0 32px 64px -24px rgb(0 0 0 / 0.85);
+}
+.drawer-item {
+  animation: drawer-item-in 0.4s var(--ease) both;
+}
+
+/* Footer links get the same underline cue as header nav on hover. */
+.footer-link {
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 4px;
+  transition:
+    color 0.18s var(--ease),
+    text-decoration-color 0.18s var(--ease);
+}
+.footer-link:hover {
+  text-decoration-color: rgb(99 245 208 / 0.5);
+}
+
+/* ====================================================== Reduced motion ==== */
+/* Collapse movement to a plain fade rather than nothing at all: state changes
+   still need to be perceptible, they just should not travel. */@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .anim-drift,
+  .anim-pulse,
+  .btn-cta,
+  .drawer-backdrop,
+  .drawer-panel,
+  .drawer-item,
+  .phone-float,
+  .wave-bar,
+  .badge-float-1,
+  .badge-float-2,
+  .pipeline-flow,
+  .sulti-breathe,
+  .sulti-ring,
+  .sulti-orbit,
+  .sulti-pulse-ring {
+    animation: none !important;
+  }
+  /* The shatter is pure decoration; the state label carries the meaning, so
+     the fragments simply do not render. */
+  .shatter {
+    display: none !important;
+  }
+  /* Rings stay drawn, just still — the label is what carries the state. */
+  .sulti-breathe,
+  .sulti-pulse-ring {
+    opacity: 0.7;
+  }
+  .has-js .reveal,
+  .has-js .reveal.is-visible {
+    opacity: 1;
+    animation: none;
+  }
+  .btn-primary:hover,
+  .btn-ghost:hover,
+  .btn-primary:active,
+  .btn-ghost:active,
+  .press:active,
+  .card-lift:hover {
+    transform: none;
+  }
 }

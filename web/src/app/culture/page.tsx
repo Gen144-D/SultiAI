@@ -1,6 +1,9 @@
 import type { Metadata } from 'next';
 import PageHero from '@/components/PageHero';
 import CTASection from '@/components/CTASection';
+import Icon from '@/components/Icon';
+import Reveal from '@/components/Reveal';
+import { Container, GlassCard, Section } from '@/components/ui';
 
 export const metadata: Metadata = {
   title: 'Culture',
@@ -9,25 +12,31 @@ export const metadata: Metadata = {
 
 const facets = [
   {
-    icon: '🏝',
+    icon: 'globe' as const,
     title: 'The Visayas',
     body: "Bisaya is the lingua franca of the Visayas and much of Mindanao — tens of millions of speakers, and one of the world's great island cultures.",
   },
   {
-    icon: '📜',
+    icon: 'book' as const,
     title: 'Heritage words',
     body: 'Every language carries history. Our Living Lexicon captures dialectal variations and words that are slowly disappearing from daily use.',
   },
   {
-    icon: '🍲',
+    icon: 'chatbubbles' as const,
     title: 'Ways of speaking',
     body: "Politeness levels, honorifics, and context-shifting greetings — Bisaya is a language where the way you speak reflects who you are and who you're with.",
   },
   {
-    icon: '🎶',
+    icon: 'wave' as const,
     title: 'Language & song',
     body: 'From folk songs to modern Bisrock, music keeps the language alive. We surface these cultural touchpoints inside your lessons.',
   },
+];
+
+const WORDS = [
+  { word: 'Inipit', meaning: 'A soft, sweet cake — and a term of endearment' },
+  { word: 'Padayon', meaning: 'Keep going; press on' },
+  { word: 'Kinaraan', meaning: 'Something traditional or time-honored' },
 ];
 
 export default function Culture() {
@@ -39,38 +48,61 @@ export default function Culture() {
         description="SultiAI isn't just vocabulary lists — it's an invitation into the world behind the words."
       />
 
-      <section className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
-        <div className="grid gap-6 sm:grid-cols-2">
-          {facets.map((f) => (
-            <div key={f.title} className="rounded-3xl border border-line bg-white p-7">
-              <span className="text-3xl">{f.icon}</span>
-              <h2 className="mt-4 text-lg font-bold text-ink">{f.title}</h2>
-              <p className="mt-2 text-sm leading-relaxed text-ink-soft">{f.body}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-4xl px-4 pb-16 sm:px-6">
-        <div className="rounded-3xl bg-gradient-to-br from-brand to-brand-dark p-8 text-white sm:p-12">
-          <h2 className="text-2xl font-bold">A few words we love</h2>
-          <div className="mt-8 grid gap-6 sm:grid-cols-3">
-            {[
-              { word: 'Inipit', meaning: 'A soft, sweet cake — and a term of endearment' },
-              { word: 'Padayon', meaning: 'Keep going; press on' },
-              { word: 'Kinaraan', meaning: 'Something traditional or time-honored' },
-            ].map((w) => (
-              <div key={w.word} className="rounded-2xl bg-white/10 p-5">
-                <p className="text-xl font-bold text-accent">{w.word}</p>
-                <p className="mt-2 text-sm text-white/85">{w.meaning}</p>
-              </div>
+      <Section spacing="tight">
+        <Container width="wide">
+          <div className="grid gap-5 sm:grid-cols-2">
+            {facets.map((f, i) => (
+              <Reveal key={f.title} delay={Math.min(i, 3) * 0.07}>
+                <GlassCard interactive className="h-full p-7">
+                  <span className="flex h-11 w-11 items-center justify-center rounded-[0.85rem] border border-brand/20 bg-brand-light text-brand">
+                    <Icon name={f.icon} className="h-5 w-5" />
+                  </span>
+                  <h2 className="mt-5 text-lg font-semibold tracking-[-0.02em] text-ink">
+                    {f.title}
+                  </h2>
+                  <p className="mt-2.5 text-sm leading-relaxed text-ink-soft">{f.body}</p>
+                </GlassCard>
+              </Reveal>
             ))}
           </div>
-          <p className="mt-8 text-sm text-white/75">
-            Learn these and hundreds more — preserved and taught by the SultiAI community.
-          </p>
-        </div>
-      </section>
+        </Container>
+      </Section>
+
+      <Section spacing="tight">
+        <Container width="narrow">
+          <GlassCard level={3} sheen className="overflow-hidden p-7 sm:p-10">
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-x-0 top-0 h-48 opacity-60"
+              style={{
+                backgroundImage:
+                  'radial-gradient(420px 180px at 30% -20%, var(--brand-glow), transparent 70%)',
+              }}
+            />
+
+            <div className="relative">
+              <h2 className="text-2xl font-semibold tracking-[-0.02em] text-ink">
+                A few words we love
+              </h2>
+
+              <dl className="mt-8 grid gap-4 sm:grid-cols-3">
+                {WORDS.map((w) => (
+                  <div key={w.word} className="glass-1 rounded-control p-5">
+                    <dt className="text-xl font-semibold tracking-[-0.02em] text-brand">
+                      {w.word}
+                    </dt>
+                    <dd className="mt-2 text-sm leading-relaxed text-ink-soft">{w.meaning}</dd>
+                  </div>
+                ))}
+              </dl>
+
+              <p className="mt-8 text-sm leading-relaxed text-ink-soft">
+                Learn these and hundreds more — preserved and taught by the SultiAI community.
+              </p>
+            </div>
+          </GlassCard>
+        </Container>
+      </Section>
 
       <CTASection />
     </>

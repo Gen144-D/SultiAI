@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 import PageHero from '@/components/PageHero';
+import { APP } from '@/lib/site';
+import { Container, Prose, Section } from '@/components/ui';
 
 export const metadata: Metadata = {
   title: 'Terms of Service',
@@ -29,7 +31,7 @@ const sections = [
   },
   {
     title: '6. Subscriptions & payments',
-    body: 'Premium features may require a paid subscription. Subscriptions renew automatically unless cancelled before the renewal date. Refunds are handled in accordance with the Google Play refund policy.',
+    body: 'Premium features may require a paid subscription. Subscriptions renew automatically unless cancelled before the renewal date. The app is distributed as a direct APK rather than through the Play Store, so any purchase is made inside the app and is handled under the refund terms shown at the point of purchase.',
   },
   {
     title: '7. Intellectual property',
@@ -45,7 +47,7 @@ const sections = [
   },
   {
     title: '10. Changes & contact',
-    body: 'We may update these terms. Continued use after changes constitutes acceptance. Questions? Contact hello@sultiai.com.',
+    body: `We may update these terms. Continued use after changes constitutes acceptance. Questions? Contact ${APP.contactEmail}.`,
   },
 ];
 
@@ -53,20 +55,24 @@ export default function Terms() {
   return (
     <>
       <PageHero eyebrow="Legal" title="Terms of Service" description="Last updated: August 2026" />
-      <section className="mx-auto max-w-3xl px-4 pb-16 sm:px-6">
-        <div className="space-y-8 rounded-3xl border border-line bg-white p-8 sm:p-10">
-          {sections.map((s) => (
-            <div key={s.title}>
-              <h2 className="text-lg font-bold text-ink">{s.title}</h2>
-              <p className="mt-2 text-sm leading-relaxed text-ink-soft">{s.body}</p>
-            </div>
-          ))}
-          <p className="border-t border-line pt-6 text-xs text-ink-faint">
-            This is a placeholder terms page for the SultiAI capstone project and will be finalized
-            before public launch.
-          </p>
-        </div>
-      </section>
+
+      <Section>
+        <Container width="narrow">
+          <Prose>
+            {sections.map((s) => (
+              <section key={s.title}>
+                <h2 className="text-lg font-semibold tracking-[-0.02em] text-ink">{s.title}</h2>
+                <p className="mt-2.5 text-sm leading-relaxed text-ink-soft">{s.body}</p>
+              </section>
+            ))}
+
+            <p className="border-t border-line/70 pt-6 text-xs leading-relaxed text-ink-faint">
+              This is a placeholder terms page for the SultiAI capstone project and will be
+              finalized before public launch.
+            </p>
+          </Prose>
+        </Container>
+      </Section>
     </>
   );
 }

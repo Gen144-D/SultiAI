@@ -2,11 +2,11 @@ import path from 'node:path';
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  // Vercel builds and runs Next.js through its own adapter and does not need
-  // the standalone server; on 16.3 keeping `standalone` enabled there fails the
-  // build with "ENOENT: .next/next-server.js.nft.json" (nextjs/next#96646).
-  // The Dockerfile still needs standalone, and Vercel sets VERCEL=1 for us.
-  output: process.env.VERCEL ? undefined : 'standalone',
+  // Configured for Netlify static export ('export'), Vercel (undefined), or Docker/Server ('standalone')
+  output: process.env.NETLIFY ? 'export' : (process.env.VERCEL ? undefined : 'standalone'),
+  images: {
+    unoptimized: true, // Required by Next.js when outputting static export for Netlify
+  },
   turbopack: {
     root: path.join(__dirname),
   },

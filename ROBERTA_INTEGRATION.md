@@ -1,5 +1,18 @@
 # RoBERTa Tagalog Base Integration Guide
 
+> **Historical document — the code it describes no longer exists.**
+> This guide documented a RoBERTa integration inside `ai-service/`, the Python
+> FastAPI microservice that has since been removed. Its endpoints
+> (`/roberta/fill-mask`, `/roberta/vocabulary-exercise`,
+> `/roberta/sentence-completion`) are not served by any component today.
+>
+> Pronunciation scoring — the other thing `ai-service/` did — now runs
+> in-process in the Node server; see the "Pronunciation Analysis" section of
+> `README.md`.
+>
+> The notes below are kept for reference in case the RoBERTa capability is
+> revived on a different (non-Python-service) footing.
+
 ## Overview
 
 Successfully integrated RoBERTa Tagalog Base (`jcblaise/roberta-tagalog-base`) into SultiAI for enhanced Filipino language learning capabilities. This model provides fill-mask predictions for vocabulary exercises and sentence completion tasks.

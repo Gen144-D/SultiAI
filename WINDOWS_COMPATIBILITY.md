@@ -135,20 +135,18 @@ Continue using the current setup - server runs but without AI features.
 
 ### Test Server Health:
 ```powershell
-curl -UseBasicParsing http://localhost:8000/health
+curl -UseBasicParsing http://localhost:3001/api/health
 ```
 
-Expected response (demo mode):
+Expected response:
 ```json
 {
-  "status": "healthy",
-  "seamless_loaded": false,
-  "seamless_available": false,
-  "spiritlm_enabled": false,
-  "device": "none",
-  "demo_mode": true
+  "status": "healthy"
 }
 ```
+
+There is no second AI/voice service to start. Pronunciation scoring runs inside
+this server, so if the health check above passes, acoustic analysis is available.
 
 ### Test Backend Connection:
 ```powershell
@@ -202,20 +200,22 @@ When Meta Voice is unavailable (current demo mode):
 
 ### Server Won't Start:
 ```powershell
-# Check if port 8000 is available
-netstat -ano | findstr :8000
+# Check if port 3001 is available
+netstat -ano | findstr :3001
 
 # Kill process if needed
 taskkill /PID <PID> /F
 ```
 
-### Backend Can't Connect:
-```powershell
-# Test connection from backend
-curl -UseBasicParsing http://localhost:8000/health
+### Pronunciation Scoring Fails:
+The analysis decodes recordings with the `ffmpeg-static` binary from
+`node_modules`. If the binary is missing (for example after a partial install),
+reinstall dependencies:
 
-# Check firewall settings
-# Allow Python through Windows Firewall
+```powershell
+cd server
+npm install
+node -e "console.log(require('ffmpeg-static'))"
 ```
 
 ### Seamless Communication Installation Fails:

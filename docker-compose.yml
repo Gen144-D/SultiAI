@@ -1,27 +1,9 @@
 version: '3.8'
 
 services:
-  # Python acoustic pronunciation scoring service (librosa MFCC + Parselmouth
-  # pitch/formant analysis). Internal-only — no published host port; reachable
-  # by the `server` container at http://ai-service:8000.
-  ai-service:
-    build:
-      context: ./ai-service
-      dockerfile: Dockerfile
-    container_name: sultiai-ai-service
-    restart: unless-stopped
-    expose:
-      - "8000"
-    networks:
-      - sultiai-network
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
-      interval: 30s
-      timeout: 3s
-      retries: 3
-      start_period: 10s
-
-  # Node.js Backend API (Groq STT/LLM + msedge-tts/OpenRouter TTS + Deepgram)
+  # Node.js Backend API. Also runs the acoustic pronunciation analysis in
+  # process (MFCC, pitch, formants) via ffmpeg-static, so there is no separate
+  # AI/scoring service to build or run.
   server:
     build:
       context: ./server
@@ -30,22 +12,25 @@ services:
     container_name: sultiai-server
     restart: unless-stopped
     ports:
-      - "3001:3001"
+      - '3001:3001'
     environment:
       - NODE_ENV=production
       - PORT=3001
       - JWT_SECRET=${JWT_SECRET}
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
-      - AI_SERVICE_URL=http://ai-service:8000
     volumes:
       - server-uploads:/app/uploads
     networks:
       - sultiai-network
-    depends_on:
-      - ai-service
     healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "require('http').get('http://localhost:3001/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})",
+        ]
       interval: 30s
       timeout: 3s
       retries: 3
@@ -59,7 +44,7 @@ services:
     container_name: sultiai-web
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - '3000:3000'
     environment:
       - NEXT_PUBLIC_API_URL=http://server:3001
       - NEXT_PUBLIC_SUPABASE_URL=${SUPABASE_URL}
@@ -77,7 +62,7 @@ services:
     container_name: sultiai-admin
     restart: unless-stopped
     ports:
-      - "3002:3002"
+      - '3002:3002'
     environment:
       - NEXT_PUBLIC_API_URL=http://server:3001
       - NEXT_PUBLIC_SUPABASE_URL=${SUPABASE_URL}

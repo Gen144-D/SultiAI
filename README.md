@@ -354,18 +354,20 @@ Use XP, challenges, achievements, and progress tracking to encourage continued p
 
 ---
 
-# 🧠 AI Services
+# 🧠 AI & Audio Analysis
 
-| Component          | Technology               | Version | Purpose                           |
-| ------------------ | ------------------------ | ------: | --------------------------------- |
-| Framework          | FastAPI                  |  0.104+ | Python AI API                     |
-| Speech Recognition | OpenAI Whisper           |  Latest | Speech-to-text                    |
-| NLP                | BERT / Hugging Face      |  Latest | Intent and context classification |
-| Translation        | Google Cloud Translation |  Latest | Translation                       |
-| Deep Learning      | PyTorch                  |    2.0+ | Model execution                   |
-| Audio Processing   | librosa                  |   0.10+ | Audio processing                  |
-| Environment        | Conda                    |  Latest | Python dependency management      |
-| Container          | Docker                   |  Latest | AI service isolation              |
+All of this runs in-process in the Node server.
+
+| Component             | Technology        | Version | Purpose                                       |
+| --------------------- | ----------------- | ------: | --------------------------------------------- |
+| Speech Recognition    | Groq (Whisper)    |  Latest | Speech-to-text                                |
+| LLM Chat              | Groq              |  Latest | Tutor and intent handling                     |
+| Text-to-Speech        | msedge-tts        |  Latest | Speech synthesis                              |
+| Audio Decoding        | ffmpeg-static     |   5.3+  | Decodes m4a/AAC/webm recordings to PCM        |
+| Acoustic Analysis     | TypeScript (own)  |    —    | MFCC, pitch (NSDF), formants (LPC)            |
+| Grapheme-to-Phoneme   | TypeScript (own)  |    —    | Bisaya/Tagalog/English phoneme conversion     |
+
+There is no Python service, no model download, and no second container to run.
 
 ---
 
@@ -427,14 +429,14 @@ Use XP, challenges, achievements, and progress tracking to encourage continued p
               ┌──────────────────┼──────────────────┐
               │                  │                  │
               ▼                  ▼                  ▼
-       ┌─────────────┐   ┌─────────────┐   ┌─────────────┐
-       │ AI SERVICE  │   │ APPLICATION │   │ BACKGROUND  │
-       │   FastAPI   │   │   SERVICE   │   │    JOBS     │
-       │             │   │             │   │   BullMQ    │
-       │ Whisper     │   │ Users       │   │   Redis     │
-       │ BERT        │   │ Conversations│  │             │
-       │ PyTorch     │   │ Learning    │   │             │
-       └──────┬──────┘   └──────┬──────┘   └──────┬──────┘
+        ┌─────────────┐   ┌─────────────┐   ┌─────────────┐
+        │     AI      │   │ APPLICATION │   │ BACKGROUND  │
+        │  (in-proc)  │   │   SERVICE   │   │    JOBS     │
+        │             │   │             │   │   BullMQ    │
+        │ Groq Whisper│   │ Users       │   │   Redis     │
+        │ Groq LLM    │   │ Conversations│  │             │
+        │ ffmpeg + DSP│   │ Learning    │   │             │
+        └──────┬──────┘   └──────┬──────┘   └──────┬──────┘
               │                 │                 │
               └─────────────────┼─────────────────┘
                                 ▼
@@ -557,17 +559,6 @@ sultiai/
 │   ├── .env.example
 │   ├── Dockerfile
 │   └── package.json
-│
-├── ai-service/
-│   ├── src/
-│   │   ├── whisper/
-│   │   ├── bert/
-│   │   ├── translate/
-│   │   └── main.py
-│   ├── models/
-│   ├── data/
-│   ├── requirements.txt
-│   └── Dockerfile
 │
 ├── docker-compose.yml
 ├── package.json
@@ -846,7 +837,7 @@ External AI services are optional depending on the deployment configuration.
 | File Storage       | Firebase Storage   | MinIO / AWS S3                 |
 | Authentication     | Firebase Auth      | JWT + RBAC                     |
 | Validation         | Manual             | Zod                            |
-| AI Services        | Python scripts     | FastAPI microservice           |
+| AI Services        | Python scripts     | Groq + in-process TS DSP       |
 | Speech Recognition | Whisper            | Whisper                        |
 | NLP                | Python NLP         | BERT / Hugging Face            |
 | Deployment         | Render / Manual    | Docker + Docker Compose        |
@@ -905,9 +896,9 @@ Recommended areas:
 * PostgreSQL
 * Prisma ORM
 * Redis
-* Whisper speech recognition
-* BERT
-* FastAPI
+* Whisper speech recognition (via Groq)
+* ffmpeg-static for audio decoding
+* In-process TypeScript DSP (MFCC, pitch, formants)
 * Docker
 * AI-assisted language learning
 
@@ -926,9 +917,7 @@ Web / Mobile / Admin
         ↓
 Node.js + Express API
         ↓
-Python FastAPI AI Service
-        ↓
-Whisper + BERT
+Groq (Whisper + LLM) + ffmpeg + in-process DSP
         ↓
 Context + Recommendation
         ↓
@@ -947,7 +936,7 @@ Recommended summary table:
 | State              | Zustand                                 |
 | Data Fetching      | TanStack Query                          |
 | Backend            | Node.js, Express, TypeScript            |
-| AI/ML              | Python, FastAPI, Whisper, BERT, PyTorch |
+| AI/ML              | Groq (Whisper, LLM), ffmpeg, TS DSP     |
 | Database           | PostgreSQL, Prisma                      |
 | Cache              | Redis                                   |
 | Storage            | MinIO                                   |
@@ -1008,7 +997,6 @@ Update the deployment strategy to include:
 * PostgreSQL
 * Redis
 * MinIO
-* FastAPI
 * Node.js
 * React
 * React Native
@@ -1026,9 +1014,9 @@ Backend
 ├── Supertest
 └── Postman
 
-AI Service
-├── Pytest
-└── FastAPI TestClient
+Audio / Pronunciation
+├── test:dsp     (tsx: FFT, MFCC, pitch, formants, G2P, decode)
+└── test:routes  (tsx: Supertest against the pronunciation endpoints)
 
 System
 └── Integration Testing
@@ -1040,7 +1028,7 @@ System
 
 Potential future recommendations:
 
-1. Deploy AI services to GPU-enabled cloud infrastructure to reduce inference latency.
+1. Add a caching layer for pronunciation scoring results.
 2. Expand custom RBAC with additional administrative roles.
 3. Improve local model performance through quantization and optimization.
 4. Expand regional language and dialect datasets.
@@ -1186,38 +1174,38 @@ pnpm prisma studio
 
 ---
 
-# 🧠 AI Service Setup
+# 🧠 Pronunciation Analysis
 
-Navigate to:
+Pronunciation scoring runs **inside the Node server** — there is no separate AI
+service to install or run. The acoustic analysis (MFCC, pitch, formants) is
+implemented in TypeScript under `server/src/utils/dsp/`, and audio is decoded
+with the `ffmpeg-static` binary that ships as an npm dependency.
 
-```bash
-cd ai-service
-```
-
-Create a Conda environment:
-
-```bash
-conda create -n sultiai python=3.10
-conda activate sultiai
-```
-
-Install dependencies:
+Nothing to set up: start the server as usual.
 
 ```bash
-pip install -r requirements.txt
+cd server
+npm install
+npm run dev
 ```
 
-Start FastAPI:
+Two endpoints are exposed, replacing the retired Python service:
+
+| Endpoint | Purpose |
+| --- | --- |
+| `POST /api/speech/pronunciation/score` | Score a recording. Accepts a multipart `audio` file or an `audio_base64` field, plus `expected_text` and `language`. |
+| `POST /api/speech/pronunciation/phonemes` | Convert text to its phoneme sequence. Takes `{ text, language }`. |
+
+To check the analysis:
 
 ```bash
-uvicorn src.main:app --reload --port 8000
+npm run test:dsp     # DSP + decoding + G2P regression suite
+npm run test:routes  # exercises both endpoints over HTTP
 ```
 
-Open API documentation:
-
-```text
-http://localhost:8000/docs
-```
+> Note: the server Docker image is intentionally Debian-based, not Alpine.
+> `ffmpeg-static` ships a glibc-linked binary, which would fail at runtime on
+> musl.
 
 ---
 

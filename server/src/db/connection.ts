@@ -67,7 +67,7 @@ function initDatabase() {
     `CREATE TABLE IF NOT EXISTS learning_modules (module_id INTEGER PRIMARY KEY AUTOINCREMENT, module_title TEXT NOT NULL, module_key TEXT, sort_order INTEGER DEFAULT 0, difficulty TEXT DEFAULT 'beginner', language TEXT, created_at TEXT DEFAULT (datetime('now')))`,
     `CREATE TABLE IF NOT EXISTS learning_progress (progress_id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, module_id INTEGER NOT NULL, completion_percent REAL DEFAULT 0 CHECK (completion_percent >= 0 AND completion_percent <= 100), created_at TEXT DEFAULT (datetime('now')), updated_at TEXT DEFAULT (datetime('now')), FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE, FOREIGN KEY (module_id) REFERENCES learning_modules(module_id) ON DELETE CASCADE)`,
     `CREATE TABLE IF NOT EXISTS lesson_items (item_id INTEGER PRIMARY KEY AUTOINCREMENT, module_id INTEGER NOT NULL, section_title TEXT, native_text TEXT NOT NULL, english_text TEXT, note TEXT, sort_order INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime('now')), FOREIGN KEY (module_id) REFERENCES learning_modules(module_id) ON DELETE CASCADE)`,
-    `CREATE TABLE IF NOT EXISTS community_posts (post_id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, title TEXT, content TEXT, phrase TEXT, translation TEXT, category TEXT, created_at TEXT DEFAULT (datetime('now')), FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE)`,
+    `CREATE TABLE IF NOT EXISTS community_posts (post_id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, title TEXT, content TEXT, phrase TEXT, translation TEXT, category TEXT, is_hidden INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime('now')), FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE)`,
     `CREATE TABLE IF NOT EXISTS comments (comment_id INTEGER PRIMARY KEY AUTOINCREMENT, post_id INTEGER NOT NULL, user_id INTEGER NOT NULL, comment TEXT, created_at TEXT DEFAULT (datetime('now')), FOREIGN KEY (post_id) REFERENCES community_posts(post_id) ON DELETE CASCADE, FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE)`,
     `CREATE TABLE IF NOT EXISTS community_reports (report_id INTEGER PRIMARY KEY AUTOINCREMENT, post_id INTEGER NOT NULL, reporter_id INTEGER, reason TEXT, status TEXT DEFAULT 'open', created_at TEXT DEFAULT (datetime('now')), FOREIGN KEY (post_id) REFERENCES community_posts(post_id) ON DELETE CASCADE, FOREIGN KEY (reporter_id) REFERENCES users(user_id) ON DELETE SET NULL)`,
     `CREATE TABLE IF NOT EXISTS learner_profiles (profile_id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL UNIQUE, level TEXT DEFAULT 'beginner', strengths TEXT, weak_areas TEXT, common_mistakes TEXT, total_xp INTEGER DEFAULT 0, coins INTEGER DEFAULT 0, streak INTEGER DEFAULT 0, daily_xp INTEGER DEFAULT 0, daily_goal INTEGER DEFAULT 50, total_sessions INTEGER DEFAULT 0, last_active TEXT, FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE)`,
@@ -88,6 +88,11 @@ function initDatabase() {
     `CREATE TABLE IF NOT EXISTS audit_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, action TEXT NOT NULL, resource_type TEXT, resource_id TEXT, details TEXT, ip_address TEXT, timestamp TEXT DEFAULT (datetime('now')))`,
     `CREATE TABLE IF NOT EXISTS completed_challenges (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, challenge_id TEXT NOT NULL, type TEXT NOT NULL DEFAULT 'daily', completed_date TEXT NOT NULL DEFAULT (date('now')), completed_at TEXT DEFAULT (datetime('now')), FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE)`,
     `CREATE TABLE IF NOT EXISTS learning_sessions (session_id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, module_id INTEGER, activity_type TEXT NOT NULL, started_at TEXT DEFAULT (datetime('now')), ended_at TEXT, duration_seconds INTEGER DEFAULT 0, xp_earned INTEGER DEFAULT 0, FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE, FOREIGN KEY (module_id) REFERENCES learning_modules(module_id) ON DELETE SET NULL)`,
+    `CREATE TABLE IF NOT EXISTS preserved_words (word_id INTEGER PRIMARY KEY AUTOINCREMENT, word TEXT NOT NULL, definition TEXT, part_of_speech TEXT, dialectal_region TEXT, bisaya_example TEXT, english_example TEXT, pronunciation_guide TEXT, submitted_by INTEGER, source TEXT DEFAULT 'learner', status TEXT DEFAULT 'pending', verification_count INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime('now')), FOREIGN KEY (submitted_by) REFERENCES users(user_id) ON DELETE SET NULL)`,
+    `CREATE TABLE IF NOT EXISTS verification_requests (request_id INTEGER PRIMARY KEY AUTOINCREMENT, word_id INTEGER, requester_id INTEGER, status TEXT DEFAULT 'pending', notes TEXT, created_at TEXT DEFAULT (datetime('now')))`,
+    `CREATE TABLE IF NOT EXISTS follows (id INTEGER PRIMARY KEY AUTOINCREMENT, follower_id INTEGER NOT NULL, following_id INTEGER NOT NULL, created_at TEXT DEFAULT (datetime('now')), FOREIGN KEY (follower_id) REFERENCES users(user_id) ON DELETE CASCADE, FOREIGN KEY (following_id) REFERENCES users(user_id) ON DELETE CASCADE, UNIQUE(follower_id, following_id))`,
+    `CREATE TABLE IF NOT EXISTS verifications (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, verified_by INTEGER, status TEXT DEFAULT 'pending', created_at TEXT DEFAULT (datetime('now')), FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE, FOREIGN KEY (verified_by) REFERENCES users(user_id) ON DELETE SET NULL)`,
+    `CREATE TABLE IF NOT EXISTS api_keys (key_id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, lookup_prefix TEXT NOT NULL, key_hash TEXT NOT NULL, scopes TEXT NOT NULL DEFAULT 'lexicon:read,g2p:read,pronunciation:write', rate_limit_per_minute INTEGER NOT NULL DEFAULT 60, status TEXT NOT NULL DEFAULT 'active', owner_user_id INTEGER, last_used_at TEXT, expires_at TEXT, revoked_at TEXT, request_count INTEGER NOT NULL DEFAULT 0, created_at TEXT DEFAULT (datetime('now')), FOREIGN KEY (owner_user_id) REFERENCES users(user_id) ON DELETE SET NULL)`,
     `CREATE TABLE IF NOT EXISTS roles (role_id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE, description TEXT, created_at TEXT DEFAULT (datetime('now')))`,
     `CREATE TABLE IF NOT EXISTS permissions (permission_id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE, resource TEXT NOT NULL, action TEXT NOT NULL, description TEXT)`,
     `CREATE TABLE IF NOT EXISTS role_permissions (role_id INTEGER NOT NULL, permission_id INTEGER NOT NULL, PRIMARY KEY (role_id, permission_id), FOREIGN KEY (role_id) REFERENCES roles(role_id) ON DELETE CASCADE, FOREIGN KEY (permission_id) REFERENCES permissions(permission_id) ON DELETE CASCADE)`,
@@ -95,6 +100,10 @@ function initDatabase() {
   for (const sql of tables) {
     sqliteRaw.exec(sql);
   }
+  // API key lookups hit this index on every authenticated public request.
+  sqliteRaw.exec(
+    'CREATE UNIQUE INDEX IF NOT EXISTS idx_api_keys_lookup_prefix ON api_keys(lookup_prefix)'
+  );
   const addColumnMigrations: Array<{ table: string; column: string; sql: string }> = [
     {
       table: 'learner_profiles',
@@ -157,6 +166,11 @@ function initDatabase() {
       table: 'community_posts',
       column: 'is_featured',
       sql: 'ALTER TABLE community_posts ADD COLUMN is_featured INTEGER DEFAULT 0',
+    },
+    {
+      table: 'community_posts',
+      column: 'is_hidden',
+      sql: 'ALTER TABLE community_posts ADD COLUMN is_hidden INTEGER DEFAULT 0',
     },
     {
       table: 'feedback',
@@ -352,24 +366,25 @@ function initDatabase() {
   if (!userCols.some((c) => c.name === 'role_id')) {
     // SQLite doesn't support REFERENCES in ALTER TABLE ADD COLUMN
     sqliteRaw.exec('ALTER TABLE users ADD COLUMN role_id INTEGER');
-    // Link existing users by role name
-    const defaultRole = sqliteRaw
-      .prepare('SELECT role_id FROM roles WHERE name = ?')
-      .get('user') as any;
-    if (defaultRole) {
-      sqliteRaw
-        .prepare('UPDATE users SET role_id = ? WHERE role_id IS NULL')
-        .run(defaultRole.role_id);
-    }
   }
+
+  // Keep users.role_id in sync with the users.role text column. The two drift
+  // easily: `role` is what getUserRoleInfo reports, while `role_id` drives the
+  // role_permissions join, so a mismatch silently downgrades an admin to the
+  // user permission set. `IS NOT` is SQLite's null-safe inequality.
+  sqliteRaw
+    .prepare(
+      `UPDATE users
+          SET role_id = (SELECT role_id FROM roles WHERE roles.name = users.role)
+        WHERE role_id IS NOT (SELECT role_id FROM roles WHERE roles.name = users.role)`
+    )
+    .run();
 
   console.log('Database tables initialized');
 }
 
 async function initDatabasePostgresLean(pool: any) {
-  const { rows } = await pool.query(
-    `SELECT to_regclass('public.learning_modules') as t`
-  );
+  const { rows } = await pool.query(`SELECT to_regclass('public.learning_modules') as t`);
   if (!rows[0]?.t) {
     throw new Error(
       'Supabase Postgres schema not found (learning_modules table missing). ' +

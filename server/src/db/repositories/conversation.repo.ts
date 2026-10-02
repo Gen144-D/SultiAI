@@ -1,6 +1,7 @@
 import { eq, desc, and, asc } from 'drizzle-orm';
-import { getDb } from '../connection';
-import * as schema from '../schema-pg';
+import { getDb, getSchema } from '../connection';
+
+const schema = getSchema();
 
 const VALID_SENDERS = new Set(['user', 'assistant', 'user_voice', 'system', 'lesson']);
 

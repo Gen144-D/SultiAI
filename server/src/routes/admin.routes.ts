@@ -37,6 +37,11 @@ import {
   listPermissions,
   updateRolePermissions,
   getAuditLogs,
+  listApiKeys,
+  createApiKey,
+  revokeApiKey,
+  reactivateApiKey,
+  deleteApiKey,
 } from '../controllers/admin.controller';
 
 const router = Router();
@@ -69,6 +74,7 @@ router.delete('/lessons/:id', deleteLesson);
 // Community
 router.get('/community/posts', listPosts);
 router.patch('/community/posts/:id', toggleFeatured);
+router.patch('/community/posts/:id/visibility', setPostHidden);
 router.delete('/community/posts/:id', deletePost);
 router.get('/community/reports', listReports);
 router.patch('/community/reports/:id', updateReportStatus);
@@ -98,6 +104,13 @@ router.put('/roles/:id/permissions', updateRolePermissions);
 
 // Audit Logs
 router.get('/audit-logs', getAuditLogs);
+
+// Public API keys
+router.get('/api-keys', listApiKeys);
+router.post('/api-keys', createApiKey);
+router.post('/api-keys/:id/revoke', revokeApiKey);
+router.post('/api-keys/:id/reactivate', reactivateApiKey);
+router.delete('/api-keys/:id', deleteApiKey);
 
 // Cache Management
 router.post('/cache/invalidate', async (req, res) => {

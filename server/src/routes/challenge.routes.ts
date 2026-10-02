@@ -1,13 +1,14 @@
 import { Router, Request, Response } from 'express';
 import { and, eq, gte } from 'drizzle-orm';
 import { authMiddleware } from '../middleware/auth';
-import { getDb } from '../db/connection';
-import * as schema from '../db/schema-pg';
+import { getDb, getSchema } from '../db/connection';
 import { addXp, addCoins } from '../db/repositories/learner.repo';
+
+const schema = getSchema();
 
 const router = Router();
 
-interface AuthRequest extends Request {
+interface AuthRequest extends Omit<Request, 'user'> {
   user?: { id: number; email: string };
 }
 
@@ -139,7 +140,11 @@ router.get('/weekly', authMiddleware, async (req: AuthRequest, res: Response) =>
  * trusting the client's completion claim (still deduped — see below) — a
  * known gap to close as a fast-follow, not a blocker for this cutover.
  */
-async function verifyCompletion(challengeId: string, userId: number, today: string): Promise<boolean> {
+async function verifyCompletion(
+  challengeId: string,
+  userId: number,
+  today: string
+): Promise<boolean> {
   const db = getDb();
   if (challengeId === 'daily_2') {
     // "Record 3 pronunciation attempts"
@@ -184,7 +189,11 @@ router.post('/:id/complete', authMiddleware, async (req: AuthRequest, res: Respo
       return;
     }
 
-    const verified = await verifyCompletion(challengeId, userId, type === 'weekly' ? getWeekStart() : today);
+    const verified = await verifyCompletion(
+      challengeId,
+      userId,
+      type === 'weekly' ? getWeekStart() : today
+    );
     if (!verified) {
       res.status(400).json({ error: 'Challenge criteria not met' });
       return;

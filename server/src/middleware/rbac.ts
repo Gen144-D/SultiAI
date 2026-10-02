@@ -1,11 +1,12 @@
 import { Request, Response, NextFunction } from 'express';
 import { verifyToken, JwtPayload } from '../utils/jwt';
-import { getDb } from '../db/connection';
-import * as schema from '../db/schema-pg';
+import { getDb, getSchema } from '../db/connection';
 import { eq } from 'drizzle-orm';
 import { verifyCredentials } from '@supabase/server/core';
 import { errors } from '../utils/apiResponse';
 import { getUserRoleInfo, UserRoleInfo } from '../utils/rbac';
+
+const schema = getSchema();
 
 const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY || '';
 

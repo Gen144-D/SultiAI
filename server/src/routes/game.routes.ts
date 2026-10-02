@@ -4,7 +4,7 @@ import { getLearnerRepo } from '../db/repositories/learner.repo';
 
 const router = Router();
 
-interface AuthRequest extends Request {
+interface AuthRequest extends Omit<Request, 'user'> {
   user?: { id: number; email: string };
 }
 

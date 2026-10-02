@@ -1,10 +1,20 @@
 import { Request, Response } from 'express';
 import { eq, desc, sql, and, like, count, or, inArray } from 'drizzle-orm';
-import { getDb } from '../db/connection';
-import * as schema from '../db/schema-pg';
+import { getDb, getSchema, getDialectName } from '../db/connection';
 import { success, errors } from '../utils/apiResponse';
 import { invalidateSettingsCache } from '../utils/platformSettings';
 import logger from '../utils/logger';
+import {
+  API_KEY_SCOPES,
+  isValidScope,
+  listApiKeys as listApiKeysRepo,
+  createApiKey as createApiKeyRepo,
+  revokeApiKey as revokeApiKeyRepo,
+  reactivateApiKey as reactivateApiKeyRepo,
+  deleteApiKey as deleteApiKeyRepo,
+} from '../db/repositories/apiKey.repo';
+
+const schema = getSchema();
 
 // ── Helpers ────────────────────────────────────────────────────────
 
@@ -16,6 +26,18 @@ function daysAgo(n: number): string {
   const d = new Date();
   d.setDate(d.getDate() - n);
   return d.toISOString().split('T')[0];
+}
+
+/**
+ * Dialect-portable "is this timestamp column on this calendar day?" predicate.
+ * `::date` is Postgres-only and is a syntax error on SQLite, so it cannot be
+ * inlined directly in a shared query.
+ */
+function dayEquals(column: unknown, dayStr: string) {
+  if (getDialectName() === 'postgres') {
+    return sql`${column}::date = ${dayStr}::date`;
+  }
+  return sql`date(${column}) = ${dayStr}`;
 }
 
 /** Convert level string or XP to a numeric level for the admin UI */
@@ -123,7 +145,7 @@ export async function getOverview(_req: Request, res: Response): Promise<void> {
       const [row] = await (db as any)
         .select({ c: count() })
         .from(schema.learningProgress)
-        .where(sql`${schema.learningProgress.createdAt}::date = ${dayStr}::date`);
+        .where(dayEquals(schema.learningProgress.createdAt, dayStr));
       lessonsTrend.push({ label: dayLabel, value: num(row?.c) });
     }
 
@@ -138,7 +160,7 @@ export async function getOverview(_req: Request, res: Response): Promise<void> {
         .where(
           and(
             eq(schema.xpLogs.source, 'voice_practice'),
-            sql`date(${schema.xpLogs.timestamp}) = ${dayStr}`
+            dayEquals(schema.xpLogs.timestamp, dayStr)
           )
         );
       aiTrend.push({ label: dayLabel, value: num(row?.c) });
@@ -826,25 +848,43 @@ export async function listPosts(_req: Request, res: Response): Promise<void> {
         createdAt: schema.communityPosts.createdAt,
         userId: schema.communityPosts.userId,
         userFullname: schema.users.fullname,
+        isFeatured: schema.communityPosts.isFeatured,
+        isHidden: schema.communityPosts.isHidden,
+        likesCount: schema.communityPosts.likesCount,
       })
       .from(schema.communityPosts)
       .leftJoin(schema.users, eq(schema.communityPosts.userId, schema.users.userId))
       .orderBy(desc(schema.communityPosts.createdAt))
       .limit(50);
 
-    const posts = rows.map((r: any) => ({
-      id: r.postId,
-      author: { id: r.userId, name: r.userFullname || 'Unknown' },
-      title: r.title || 'Untitled',
-      content: r.content || '',
-      category: r.category || 'general',
-      likes: 0,
-      comments: 0,
-      reports: 0,
-      featured: false,
-      hidden: false,
-      createdAt: r.createdAt || new Date().toISOString(),
-    }));
+    const posts = await Promise.all(
+      rows.map(async (r: any) => {
+        const [commentRows, reportRows] = await Promise.all([
+          (db as any)
+            .select({ n: sql`count(*)` })
+            .from(schema.comments)
+            .where(eq(schema.comments.postId, r.postId)),
+          (db as any)
+            .select({ n: sql`count(*)` })
+            .from(schema.communityReports)
+            .where(eq(schema.communityReports.postId, r.postId)),
+        ]);
+
+        return {
+          id: r.postId,
+          author: { id: r.userId, name: r.userFullname || 'Unknown' },
+          title: r.title || 'Untitled',
+          content: r.content || '',
+          category: r.category || 'general',
+          likes: Number(r.likesCount || 0),
+          comments: Number(commentRows[0]?.n || 0),
+          reports: Number(reportRows[0]?.n || 0),
+          featured: !!r.isFeatured,
+          hidden: !!r.isHidden,
+          createdAt: r.createdAt || new Date().toISOString(),
+        };
+      })
+    );
 
     success(res, posts, 'Posts loaded');
   } catch (err) {
@@ -857,18 +897,31 @@ export async function toggleFeatured(req: Request, res: Response): Promise<void>
   try {
     const db = getDb();
     const postId = Number(req.params.id);
-    const { featured } = req.body;
+    // Client sends { toggleFeatured: boolean }; also accept { featured } explicitly.
+    const body = req.body ?? {};
+    const requested = body.toggleFeatured ?? body.featured;
+
+    let next: boolean;
+    if (typeof requested === 'boolean') {
+      next = requested;
+    } else {
+      const [current] = await (db as any)
+        .select({ isFeatured: schema.communityPosts.isFeatured })
+        .from(schema.communityPosts)
+        .where(eq(schema.communityPosts.postId, postId));
+      if (!current) {
+        errors.notFound(res, 'Post not found');
+        return;
+      }
+      next = !current.isFeatured;
+    }
 
     await (db as any)
       .update(schema.communityPosts)
-      .set({ isFeatured: featured ? 1 : 0 })
+      .set({ isFeatured: next ? 1 : 0 })
       .where(eq(schema.communityPosts.postId, postId));
 
-    success(
-      res,
-      { id: postId, featured: !!featured },
-      featured ? 'Post featured' : 'Post unfeatured'
-    );
+    success(res, { id: postId, featured: next }, next ? 'Post featured' : 'Post unfeatured');
   } catch (err) {
     logger.error('Admin toggle featured error', { error: (err as Error).message });
     errors.internal(res, 'Failed to update post');
@@ -879,10 +932,13 @@ export async function setPostHidden(req: Request, res: Response): Promise<void> 
   try {
     const db = getDb();
     const postId = Number(req.params.id);
-    const { hidden } = req.body;
+    const { hidden } = req.body ?? {};
 
-    // hidden status is tracked via is_featured inverse or audit log
-    // For now, log the action and return the state
+    await (db as any)
+      .update(schema.communityPosts)
+      .set({ isHidden: hidden ? 1 : 0 })
+      .where(eq(schema.communityPosts.postId, postId));
+
     await (db as any).insert(schema.auditLogs).values({
       userId: req.user?.userId,
       action: hidden ? 'hide_post' : 'unhide_post',
@@ -1452,5 +1508,156 @@ export async function getAuditLogs(req: Request, res: Response): Promise<void> {
   } catch (err) {
     logger.error('Admin audit logs error', { error: (err as Error).message });
     errors.internal(res, 'Failed to get audit logs');
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Public API keys
+// ---------------------------------------------------------------------------
+
+export async function listApiKeys(req: Request, res: Response): Promise<void> {
+  try {
+    success(res, { keys: await listApiKeysRepo() });
+  } catch (err) {
+    logger.error('Admin list api keys error', { error: (err as Error).message });
+    errors.internal(res, 'Failed to load API keys');
+  }
+}
+
+/**
+ * Mint a key. The plaintext key is returned exactly once in this response -
+ * it is not stored anywhere and cannot be retrieved again, so the admin UI
+ * must surface it immediately.
+ */
+export async function createApiKey(req: Request, res: Response): Promise<void> {
+  try {
+    const { name, scopes, rateLimitPerMinute, expiresAt } = req.body ?? {};
+
+    if (typeof name !== 'string' || !name.trim()) {
+      errors.validation(res, 'Field "name" is required');
+      return;
+    }
+    if (scopes !== undefined && !Array.isArray(scopes)) {
+      errors.validation(res, 'Field "scopes" must be an array of scope strings');
+      return;
+    }
+    if (scopes?.length) {
+      const unknown = scopes.filter((s: string) => !isValidScope(s));
+      if (unknown.length) {
+        errors.validation(res, `Unknown scope(s): ${unknown.join(', ')}`, {
+          valid: API_KEY_SCOPES,
+        });
+        return;
+      }
+    }
+
+    const limit = Number(rateLimitPerMinute);
+    if (
+      rateLimitPerMinute !== undefined &&
+      (!Number.isFinite(limit) || limit < 1 || limit > 10000)
+    ) {
+      errors.validation(res, 'Field "rateLimitPerMinute" must be between 1 and 10000');
+      return;
+    }
+
+    const { record, plaintextKey } = await createApiKeyRepo({
+      name: name.trim(),
+      scopes,
+      rateLimitPerMinute: Number.isFinite(limit) ? limit : 60,
+      ownerUserId: req.user?.userId ?? null,
+      expiresAt: typeof expiresAt === 'string' && expiresAt ? expiresAt : null,
+    });
+
+    await (getDb() as any).insert(schema.auditLogs).values({
+      userId: req.user?.userId,
+      action: 'create_api_key',
+      resourceType: 'api_key',
+      resourceId: String(record.keyId),
+      details: JSON.stringify({ name: record.name, scopes: record.scopes }),
+    });
+
+    success(
+      res,
+      {
+        key: { ...record, keyHash: undefined, maskedKey: `${record.lookupPrefix}${'*'.repeat(8)}` },
+        // Shown once. Losing it means revoking and reissuing.
+        plaintextKey,
+        warning: 'Store this key now. It cannot be retrieved again.',
+      },
+      'API key created',
+      201
+    );
+  } catch (err) {
+    logger.error('Admin create api key error', { error: (err as Error).message });
+    errors.internal(res, 'Failed to create API key');
+  }
+}
+
+export async function revokeApiKey(req: Request, res: Response): Promise<void> {
+  try {
+    const id = Number(req.params.id);
+    const changed = await revokeApiKeyRepo(id);
+    if (!changed) {
+      errors.notFound(res, 'No active API key with that id');
+      return;
+    }
+
+    await (getDb() as any).insert(schema.auditLogs).values({
+      userId: req.user?.userId,
+      action: 'revoke_api_key',
+      resourceType: 'api_key',
+      resourceId: String(id),
+    });
+
+    success(res, { id, status: 'revoked' }, 'API key revoked');
+  } catch (err) {
+    logger.error('Admin revoke api key error', { error: (err as Error).message });
+    errors.internal(res, 'Failed to revoke API key');
+  }
+}
+
+export async function reactivateApiKey(req: Request, res: Response): Promise<void> {
+  try {
+    const id = Number(req.params.id);
+    const changed = await reactivateApiKeyRepo(id);
+    if (!changed) {
+      errors.notFound(res, 'No revoked API key with that id');
+      return;
+    }
+
+    await (getDb() as any).insert(schema.auditLogs).values({
+      userId: req.user?.userId,
+      action: 'reactivate_api_key',
+      resourceType: 'api_key',
+      resourceId: String(id),
+    });
+
+    success(res, { id, status: 'active' }, 'API key reactivated');
+  } catch (err) {
+    logger.error('Admin reactivate api key error', { error: (err as Error).message });
+    errors.internal(res, 'Failed to reactivate API key');
+  }
+}
+
+export async function deleteApiKey(req: Request, res: Response): Promise<void> {
+  try {
+    const id = Number(req.params.id);
+    const changed = await deleteApiKeyRepo(id);
+    if (!changed) {
+      errors.notFound(res, 'No API key with that id');
+      return;
+    }
+
+    await (getDb() as any).insert(schema.auditLogs).values({
+      userId: req.user?.userId,
+      action: 'delete_api_key',
+      resourceType: 'api_key',
+      resourceId: String(id),
+    });
+
+    success(res, null, 'API key deleted');
+  } catch (err) {
+    logger.error('Admin delete api key error', { error: (err as Error).message });
+    errors.internal(res, 'Failed to delete API key');
   }
 }

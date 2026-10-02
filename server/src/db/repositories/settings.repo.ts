@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm';
-import { getDb } from '../connection';
-import * as schema from '../schema-pg';
+import { getDb, getSchema } from '../connection';
+
+const schema = getSchema();
 
 export async function getSettings(userEmail: string): Promise<any> {
   const db = getDb();

@@ -197,6 +197,7 @@ export const communityPosts = sqliteTable('community_posts', {
   likesCount: integer('likes_count').default(0),
   bookmarksCount: integer('bookmarks_count').default(0),
   isFeatured: integer('is_featured').default(0),
+  isHidden: integer('is_hidden').default(0),
   createdAt: text('created_at').default(`datetime('now')`),
 });
 
@@ -533,5 +534,27 @@ export const verifications = sqliteTable('verifications', {
     .references(() => users.userId, { onDelete: 'cascade' }),
   verifiedBy: integer('verified_by').references(() => users.userId, { onDelete: 'set null' }),
   status: text('status').default('pending'),
+  createdAt: text('created_at').default(`datetime('now')`),
+});
+
+/**
+ * Public API keys for third-party developers and AI agents.
+ *
+ * The plaintext key is never stored - only a short lookup prefix and a scrypt
+ * hash - so a database leak cannot be replayed as a working credential.
+ */
+export const apiKeys = sqliteTable('api_keys', {
+  keyId: integer('key_id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull(),
+  lookupPrefix: text('lookup_prefix').notNull(),
+  keyHash: text('key_hash').notNull(),
+  scopes: text('scopes').notNull().default('lexicon:read,g2p:read,pronunciation:write'),
+  rateLimitPerMinute: integer('rate_limit_per_minute').notNull().default(60),
+  status: text('status').notNull().default('active'),
+  ownerUserId: integer('owner_user_id').references(() => users.userId, { onDelete: 'set null' }),
+  lastUsedAt: text('last_used_at'),
+  expiresAt: text('expires_at'),
+  revokedAt: text('revoked_at'),
+  requestCount: integer('request_count').notNull().default(0),
   createdAt: text('created_at').default(`datetime('now')`),
 });

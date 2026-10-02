@@ -14,11 +14,19 @@ const inWorkspace = (file) => {
   return !relative.startsWith('..') && /^(web|admin)[\\/]/.test(relative);
 };
 
+// server/ has no ESLint config of its own and the root Expo config reports
+// ~170 false positives on its Express/jest code (missing jest globals,
+// expo/no-dynamic-env-var), so server files are only prettier'd here.
+const inServer = (file) => {
+  const relative = path.relative(rootDir, path.resolve(file));
+  return !relative.startsWith('..') && /^server[\\/]/.test(relative);
+};
+
 const lintIn = (dir) => (files) =>
   `node scripts/lint-workspace.mjs ${dir} ${files.map(quote).join(' ')}`;
 
 const lintRoot = (files) => {
-  const rootFiles = files.filter((file) => !inWorkspace(file));
+  const rootFiles = files.filter((file) => !inWorkspace(file) && !inServer(file));
   return rootFiles.length ? [`eslint --fix ${rootFiles.map(quote).join(' ')}`] : [];
 };
 

@@ -1,6 +1,7 @@
 import { desc, eq } from 'drizzle-orm';
-import { getDb } from '../db/connection';
-import * as schema from '../db/schema-pg';
+import { getDb, getSchema } from '../db/connection';
+
+const schema = getSchema();
 
 export interface PlatformSettings {
   maintenanceMode: boolean;
@@ -52,7 +53,7 @@ export async function getPlatformSettings(): Promise<PlatformSettings> {
   }
 
   cacheExpiry = now + CACHE_TTL_MS;
-  return cachedSettings;
+  return cachedSettings ?? { ...DEFAULT_SETTINGS };
 }
 
 export function invalidateSettingsCache(): void {

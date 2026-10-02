@@ -1,6 +1,13 @@
 # Multi-stage build for Node.js server
+#
+# NOTE: this must be a glibc (Debian) image, not Alpine. Pronunciation scoring
+# decodes audio with the ffmpeg-static package, which ships a single
+# glibc-linked ffmpeg-linux-x64 binary. On musl/Alpine its install script still
+# "succeeds" (it only downloads and chmods, it never runs the binary), so the
+# breakage would not show up until an m4a/AAC upload failed at runtime.
+#
 # Stage 1: Build
-FROM node:18-alpine AS builder
+FROM node:18-slim AS builder
 
 WORKDIR /app
 
@@ -19,16 +26,18 @@ COPY server/ ./server/
 RUN cd server && npm run build
 
 # Stage 2: Production
-FROM node:18-alpine AS production
+FROM node:18-slim AS production
 
 WORKDIR /app
 
 # Install dumb-init for proper signal handling
-RUN apk add --no-cache dumb-init
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends dumb-init && \
+    rm -rf /var/lib/apt/lists/*
 
 # Create non-root user
-RUN addgroup -g 1001 -S appgroup && \
-    adduser -S appuser -u 1001 -G appgroup
+RUN groupadd --system --gid 1001 appgroup && \
+    useradd --system --uid 1001 --gid 1001 --no-create-home appuser
 
 # Copy package files
 COPY server/package*.json ./
@@ -36,6 +45,10 @@ COPY server/package*.json ./
 # Install production dependencies only
 RUN npm ci --omit=dev && \
     npm cache clean --force
+
+# Fail the build now rather than on the first real recording if the ffmpeg
+# binary is missing, wrong, or unrunnable in this image.
+RUN node -e "const p=require('ffmpeg-static');const{execFileSync}=require('child_process');execFileSync(p,['-version'],{stdio:'ignore'});console.log('ffmpeg-static OK:',p)"
 
 # Copy built application
 COPY --from=builder /app/server/dist ./dist

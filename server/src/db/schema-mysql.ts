@@ -173,6 +173,7 @@ export const communityPosts = mysqlTable('community_posts', {
   likesCount: int('likes_count').default(0),
   bookmarksCount: int('bookmarks_count').default(0),
   isFeatured: int('is_featured').default(0),
+  isHidden: int('is_hidden').default(0),
   createdAt: timestamp('created_at').defaultNow(),
 });
 
@@ -469,5 +470,29 @@ export const verifications = mysqlTable('verifications', {
     .references(() => users.userId, { onDelete: 'cascade' }),
   verifiedBy: int('verified_by').references(() => users.userId, { onDelete: 'set null' }),
   status: varchar('status', { length: 20 }).default('pending'),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+/**
+ * Public API keys for third-party developers and AI agents.
+ *
+ * The plaintext key is never stored - only a short lookup prefix and a scrypt
+ * hash - so a database leak cannot be replayed as a working credential.
+ */
+export const apiKeys = mysqlTable('api_keys', {
+  keyId: int('key_id').primaryKey().autoincrement(),
+  name: varchar('name', { length: 255 }).notNull(),
+  lookupPrefix: varchar('lookup_prefix', { length: 32 }).notNull(),
+  keyHash: varchar('key_hash', { length: 255 }).notNull(),
+  scopes: varchar('scopes', { length: 500 })
+    .notNull()
+    .default('lexicon:read,g2p:read,pronunciation:write'),
+  rateLimitPerMinute: int('rate_limit_per_minute').notNull().default(60),
+  status: varchar('status', { length: 20 }).notNull().default('active'),
+  ownerUserId: int('owner_user_id').references(() => users.userId, { onDelete: 'set null' }),
+  lastUsedAt: timestamp('last_used_at'),
+  expiresAt: timestamp('expires_at'),
+  revokedAt: timestamp('revoked_at'),
+  requestCount: int('request_count').notNull().default(0),
   createdAt: timestamp('created_at').defaultNow(),
 });

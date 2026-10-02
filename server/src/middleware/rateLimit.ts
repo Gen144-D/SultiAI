@@ -196,6 +196,50 @@ export function communityRateLimit(req: Request, res: Response, next: NextFuncti
 }
 
 /**
+ * Rate limit a public API request against the *key* rather than the caller's IP,
+ * so one noisy integration cannot exhaust a shared NAT's quota and one key
+ * cannot be masked by a different client. Runs after `apiKeyAuth`, which is
+ * what populates `req.apiKey`.
+ */
+export function apiKeyRateLimit(max: number) {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    const keyId = req.apiKey?.keyId;
+    if (keyId === undefined) {
+      next();
+      return;
+    }
+
+    const now = Date.now();
+    const storeKey = `apikey:${keyId}`;
+
+    let entry = stores.get(storeKey);
+    if (!entry || now >= entry.resetTime) {
+      entry = { count: 0, resetTime: now + RATE_LIMITS.SPEECH.windowMs };
+      stores.set(storeKey, entry);
+    }
+    entry.count++;
+
+    res.setHeader('X-RateLimit-Limit', String(max));
+    res.setHeader('X-RateLimit-Remaining', String(Math.max(0, max - entry.count)));
+    res.setHeader('X-RateLimit-Reset', String(Math.ceil(entry.resetTime / 1000)));
+
+    if (entry.count > max) {
+      const retryAfter = Math.max(1, Math.ceil((entry.resetTime - now) / 1000));
+      res.setHeader('Retry-After', String(retryAfter));
+      logger.warn('API key rate limit exceeded', {
+        keyId,
+        path: req.path,
+        limit: max,
+      });
+      errors.rateLimited(res, `API key rate limit exceeded. Retry in ${retryAfter} seconds.`);
+      return;
+    }
+
+    next();
+  };
+}
+
+/**
  * Role-based rate limit: admins and moderators get higher limits.
  * Usage: roleBasedRateLimit(req, res, next, 'ai', { user: 50, moderator: 100, admin: 500 })
  */

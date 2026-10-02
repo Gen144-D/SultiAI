@@ -1,9 +1,10 @@
 import { Request, Response } from 'express';
 import { eq } from 'drizzle-orm';
-import { getDb } from '../db/connection';
-import * as schema from '../db/schema-sqlite';
+import { getDb, getSchema } from '../db/connection';
 import { success, errors } from '../utils/apiResponse';
 import logger from '../utils/logger';
+
+const schema = getSchema();
 
 export async function getPreferences(req: Request, res: Response): Promise<void> {
   try {

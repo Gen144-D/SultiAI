@@ -1,6 +1,7 @@
 import { and, eq, sql, asc } from 'drizzle-orm';
-import { getDb } from '../connection';
-import * as schema from '../schema-sqlite';
+import { getDb, getSchema } from '../connection';
+
+const schema = getSchema();
 
 const PRACTICE_MODULE_KEYS = [
   'voice_practice',
@@ -10,14 +11,16 @@ const PRACTICE_MODULE_KEYS = [
   'vocabulary_notebook',
 ] as const;
 
-const PRACTICE_TARGETS: Record<string, { table: any; aggregate: 'count' | 'sumReviews'; target: number }> =
-  {
-    voice_practice: { table: schema.speechRecords, aggregate: 'count', target: 10 },
-    phrasebook: { table: schema.savedPhrases, aggregate: 'count', target: 20 },
-    flashcards: { table: schema.vocabularyReviews, aggregate: 'sumReviews', target: 40 },
-    pronunciation_lab: { table: schema.pronunciationAttempts, aggregate: 'count', target: 20 },
-    vocabulary_notebook: { table: schema.vocabularyReviews, aggregate: 'count', target: 20 },
-  };
+const PRACTICE_TARGETS: Record<
+  string,
+  { table: any; aggregate: 'count' | 'sumReviews'; target: number }
+> = {
+  voice_practice: { table: schema.speechRecords, aggregate: 'count', target: 10 },
+  phrasebook: { table: schema.savedPhrases, aggregate: 'count', target: 20 },
+  flashcards: { table: schema.vocabularyReviews, aggregate: 'sumReviews', target: 40 },
+  pronunciation_lab: { table: schema.pronunciationAttempts, aggregate: 'count', target: 20 },
+  vocabulary_notebook: { table: schema.vocabularyReviews, aggregate: 'count', target: 20 },
+};
 
 function clampPercent(value: unknown): number {
   const num = Number(value);
@@ -77,7 +80,9 @@ async function getUserId(userEmail: string): Promise<number | undefined> {
  * the activity screens already write to. Keeps the practice modules honest:
  * progress reflects work actually done, not a number the client invented.
  */
-async function getPracticeCounts(userId: number): Promise<Record<string, { count: number; target: number }>> {
+async function getPracticeCounts(
+  userId: number
+): Promise<Record<string, { count: number; target: number }>> {
   const db = getDb();
   const result: Record<string, { count: number; target: number }> = {};
 
@@ -138,7 +143,8 @@ export async function getProgress(userEmail: string): Promise<any[]> {
 
   return modules.map((m) => {
     const key = m.moduleKey ?? null;
-    const practiceStats = key && PRACTICE_MODULE_KEYS.includes(key as any) ? practice[key] : undefined;
+    const practiceStats =
+      key && PRACTICE_MODULE_KEYS.includes(key as any) ? practice[key] : undefined;
 
     if (practiceStats) {
       const derived = Math.min(
@@ -189,7 +195,10 @@ export async function upsertProgress(
     .select()
     .from(schema.learningProgress)
     .where(
-      and(eq(schema.learningProgress.userId, userId), eq(schema.learningProgress.moduleId, moduleId))
+      and(
+        eq(schema.learningProgress.userId, userId),
+        eq(schema.learningProgress.moduleId, moduleId)
+      )
     )
     .limit(1);
 

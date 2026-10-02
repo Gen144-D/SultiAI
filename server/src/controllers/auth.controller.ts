@@ -2,14 +2,15 @@ import crypto from 'crypto';
 import { Request, Response } from 'express';
 import { eq, and, or } from 'drizzle-orm';
 import axios from 'axios';
-import { getDb } from '../db/connection';
-import * as schema from '../db/schema-pg';
+import { getDb, getSchema } from '../db/connection';
 import { hashPassword, verifyPassword } from '../utils/crypto';
 import { generateTokenPair, verifyRefreshToken } from '../utils/jwt';
 import { success, errors, created } from '../utils/apiResponse';
 import { getPlatformSettings } from '../utils/platformSettings';
 import { getUserRoleInfo } from '../utils/rbac';
 import logger from '../utils/logger';
+
+const schema = getSchema();
 
 /** Check if user status allows login */
 function checkUserStatus(status: string | null): { allowed: boolean; message?: string } {

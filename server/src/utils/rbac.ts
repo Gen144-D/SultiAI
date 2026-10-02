@@ -1,6 +1,7 @@
-import { getDb } from '../db/connection';
-import * as schema from '../db/schema-pg';
+import { getDb, getSchema } from '../db/connection';
 import { eq } from 'drizzle-orm';
+
+const schema = getSchema();
 
 export interface UserRoleInfo {
   role: string;

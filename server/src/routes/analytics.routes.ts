@@ -4,7 +4,7 @@ import { authMiddleware } from '../middleware/auth';
 
 const router = Router();
 
-interface AuthRequest extends Request {
+interface AuthRequest extends Omit<Request, 'user'> {
   user?: { id: number; email: string };
 }
 
@@ -22,7 +22,9 @@ router.get('/learning', authMiddleware, async (req: AuthRequest, res: Response) 
       FROM learning_progress lp
       WHERE lp.user_id = ${userId}
     `);
-    res.json(rows[0] ?? { total_progress: 0, modules_started: 0, avg_completion: 0, modules_completed: 0 });
+    res.json(
+      rows[0] ?? { total_progress: 0, modules_started: 0, avg_completion: 0, modules_completed: 0 }
+    );
   } catch (err) {
     res.status(500).json({ error: 'Failed to load analytics' });
   }

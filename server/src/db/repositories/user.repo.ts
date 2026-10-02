@@ -1,6 +1,7 @@
 import { and, eq } from 'drizzle-orm';
-import { getDb } from '../connection';
-import * as schema from '../schema-pg';
+import { getDb, getSchema } from '../connection';
+
+const schema = getSchema();
 
 export interface UserRow {
   userId: number;
@@ -91,8 +92,10 @@ export async function ensureUserByEmail(
   }
 
   const fullname =
-    email.split('@')[0]?.replace(/[._-]+/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()) ||
-    'Learner';
+    email
+      .split('@')[0]
+      ?.replace(/[._-]+/g, ' ')
+      .replace(/\b\w/g, (c: string) => c.toUpperCase()) || 'Learner';
   try {
     const result = await (db as any)
       .insert(schema.users)

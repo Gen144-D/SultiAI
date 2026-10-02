@@ -1,8 +1,9 @@
 import { eq, gte, desc, sql } from 'drizzle-orm';
-import { getDb } from '../connection';
-import * as schema from '../schema-pg';
+import { getDb, getSchema } from '../connection';
 import { isMongoConnected } from '../mongodb/connection';
 import { LearnerProfile } from '../mongodb/learnerProfile.model';
+
+const schema = getSchema();
 
 function randomId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
@@ -248,7 +249,10 @@ export async function addDailyReward(
 
   if (!inserted.length) return { claimed: false }; // already claimed today
 
-  await addXp(userId, reward.xp, { source: 'daily_reward', idempotencyKey: `daily_reward:${userId}:${today}` });
+  await addXp(userId, reward.xp, {
+    source: 'daily_reward',
+    idempotencyKey: `daily_reward:${userId}:${today}`,
+  });
   await addCoins(userId, reward.coins);
   return { claimed: true };
 }

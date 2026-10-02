@@ -1,9 +1,10 @@
 import { Router, Request, Response } from 'express';
 import { eq } from 'drizzle-orm';
 import { authMiddleware } from '../middleware/auth';
-import { getDb } from '../db/connection';
-import * as schema from '../db/schema-pg';
+import { getDb, getSchema } from '../db/connection';
 import { addXp, addCoins } from '../db/repositories/learner.repo';
+
+const schema = getSchema();
 
 const router = Router();
 

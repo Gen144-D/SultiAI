@@ -1,8 +1,9 @@
 import { eq, desc } from 'drizzle-orm';
-import { getDb } from '../connection';
-import * as schema from '../schema-pg';
+import { getDb, getSchema } from '../connection';
 import { isMongoConnected } from '../mongodb/connection';
 import { TutorSession } from '../mongodb/tutorSession.model';
+
+const schema = getSchema();
 
 export async function getSession(sessionId: number, userEmail: string): Promise<any> {
   const db = getDb();

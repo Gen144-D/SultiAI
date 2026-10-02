@@ -34,6 +34,7 @@ import vocabularyRoutes from './routes/vocabulary.routes';
 import challengeRoutes from './routes/challenge.routes';
 import analyticsRoutes from './routes/analytics.routes';
 import preservationRoutes from './routes/preservation.routes';
+import publicApiRoutes from './routes/publicApi.routes';
 import arRoutes from './routes/ar.routes';
 import whisperRoutes from './routes/whisper.routes';
 import agentRoutes from './routes/agent.routes';
@@ -57,7 +58,7 @@ app.use(
   cors({
     origin: configureCors,
     allowedHeaders: ['Content-Type', 'Authorization', 'apikey', 'X-Request-Id'],
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   })
 );
 app.use(express.json({ limit: env.MAX_REQUEST_SIZE }));
@@ -142,6 +143,11 @@ app.use(
   cacheMiddleware({ ttl: 120, keyPrefix: 'preservation' }),
   preservationRoutes
 );
+
+// Public, key-authenticated developer surface for the app's distinctive
+// capabilities. Auth and per-key rate limiting are enforced per route so a
+// missing key fails closed rather than falling through to the user JWT path.
+app.use('/api', publicApiRoutes);
 app.use('/api/ar', arRoutes);
 app.use('/api/whisper', whisperRoutes);
 app.use('/api/agent', agentRoutes);
@@ -237,9 +243,7 @@ async function start() {
 
     app.listen(env.PORT, '0.0.0.0', () => {
       logger.info(`Server running on http://localhost:${env.PORT}`);
-      logger.info(
-        `Mode: ${isGroqConfigured() ? 'API (Groq)' : 'No LLM available'}`
-      );
+      logger.info(`Mode: ${isGroqConfigured() ? 'API (Groq)' : 'No LLM available'}`);
       logger.info(`Environment: ${env.NODE_ENV}`);
     });
   } catch (err) {

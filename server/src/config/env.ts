@@ -32,12 +32,6 @@ export const env = {
   JWT_REFRESH_EXPIRY: getEnv('JWT_REFRESH_EXPIRY', '7d'),
   GROQ_API_KEY: getEnv('GROQ_API_KEY'),
   GROQ_MODEL: getEnv('GROQ_MODEL', 'openai/gpt-oss-120b'),
-  // Base URL of the Python acoustic pronunciation-scoring microservice
-  // (ai-service/, librosa MFCC + Parselmouth pitch/formant analysis).
-  // Defaults to the docker-compose internal hostname. If the service is
-  // unreachable or this is left empty, pronunciation scoring falls back to
-  // a degraded Groq-LLM text-guess heuristic.
-  AI_SERVICE_URL: getEnv('AI_SERVICE_URL', 'http://ai-service:8000'),
   XAI_API_KEY: getEnv('XAI_API_KEY'),
   DEEPGRAM_API_KEY: getEnv('DEEPGRAM_API_KEY'),
   DEEPGRAM_AGENT_URL: getEnv('DEEPGRAM_AGENT_URL', 'wss://agent.deepgram.com/v1/agent/converse'),
@@ -48,6 +42,8 @@ export const env = {
   DATABASE_URL: getEnv('DATABASE_URL'),
   MONGODB_URI: getEnv('MONGODB_URI'),
   CORS_ORIGINS: getEnv('CORS_ORIGINS', '*'),
+  /** Public API key auth is opt-in: unset means the /api/v1 surface is closed. */
+  API_KEYS_ENABLED: getEnv('API_KEYS_ENABLED', 'false'),
   LOG_LEVEL: getEnv('LOG_LEVEL', 'info'),
   AUDIO_CACHE_DIR: getEnv('AUDIO_CACHE_DIR', './audio-cache'),
   MAX_REQUEST_SIZE: getEnv('MAX_REQUEST_SIZE', '10mb'),

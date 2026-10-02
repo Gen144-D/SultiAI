@@ -1,21 +1,42 @@
-import type { MetadataRoute } from 'next';
-import { APP } from '@/lib/site';
+import path from 'node:path';
+import type { NextConfig } from 'next';
 
-export default function manifest(): MetadataRoute.Manifest {
-  return {
-    name: `${APP.name} — ${APP.tagline}`,
-    short_name: APP.name,
-    description:
-      'AI-powered Bisaya (Cebuano) learning: an AI tutor, voice practice, AR cultural discovery, and a community keeping the language alive.',
-    start_url: '/',
-    display: 'standalone',
-    orientation: 'portrait',
-    background_color: '#ffffff',
-    theme_color: '#1e6f9f',
-    categories: ['education', 'productivity'],
-    icons: [
-      { src: '/app-icon.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
-      { src: '/app-icon.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
-    ],
-  };
-}
+const isExport = process.env.NETLIFY === 'true';
+
+const nextConfig: NextConfig = {
+  output: process.env.NETLIFY ? 'export' : (process.env.VERCEL ? undefined : 'standalone'),
+  images: {
+    unoptimized: true,
+  },
+  turbopack: {
+    root: path.join(__dirname),
+  },
+  // Skip custom headers during static export to prevent build warnings
+  headers: isExport ? undefined : async () => [
+    {
+      source: '/api/:path*',
+      headers: [
+        { key: 'Cache-Control', value: 'no-store, no-cache, must-revalidate' },
+        { key: 'Pragma', value: 'no-cache' },
+      ],
+    },
+    {
+      source: '/_next/static/:path*',
+      headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }],
+    },
+    {
+      source: '/images/:path*',
+      headers: [
+        { key: 'Cache-Control', value: 'public, max-age=86400, stale-while-revalidate=604800' },
+      ],
+    },
+    {
+      source: '/:all*(svg|jpg|jpeg|png|gif|ico|webp)',
+      headers: [
+        { key: 'Cache-Control', value: 'public, max-age=86400, stale-while-revalidate=604800' },
+      ],
+    },
+  ],
+};
+
+export default nextConfig;

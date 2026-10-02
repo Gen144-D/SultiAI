@@ -3,12 +3,14 @@
 import { useState } from 'react';
 import type { CommunityPost, CommunityReport } from '@/types';
 import { ConfirmModal } from '@/components/ConfirmModal';
+import { PageHeader } from '@/components/PageHeader';
 import { useToast } from '@/components/Toast';
 import { useAsync } from '@/hooks/useAsync';
 import { api } from '@/lib/api';
 import {
   Avatar,
   Card,
+  CountPill,
   EmptyState,
   ErrorState,
   LoadingState,
@@ -17,6 +19,8 @@ import {
   ghostBtn,
   softBtn,
   successSoftBtn,
+  tabStrip,
+  tabStripBtn,
 } from '@/components/ui';
 import { downloadCsv } from '@/lib/export';
 
@@ -29,6 +33,8 @@ export default function AdminCommunityPage() {
 
   const posts = useAsync(() => api.listPosts(), []);
   const reports = useAsync(() => api.listReports(), []);
+
+  const openReports = (reports.data ?? []).filter((r) => r.status === 'open').length;
 
   async function handleFeature(p: CommunityPost) {
     const updated = await api.toggleFeatured(p.id);
@@ -62,53 +68,56 @@ export default function AdminCommunityPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight text-ink">Community</h1>
-          <p className="mt-1 text-sm text-ink-soft">Moderate posts, comments, and user reports.</p>
-        </div>
-        {posts.data && posts.data.length > 0 && (
-          <button
-            type="button"
-            onClick={() =>
-              downloadCsv(
-                posts.data!.map((p) => ({
-                  id: p.id,
-                  title: p.title,
-                  author: p.author.name,
-                  category: p.category,
-                  likes: p.likes,
-                  comments: p.comments,
-                  reports: p.reports,
-                  featured: p.featured,
-                  hidden: p.hidden,
-                  createdAt: p.createdAt,
-                })),
-                `sultiai-community-posts-${new Date().toISOString().split('T')[0]}.csv`
-              )
-            }
-            className={ghostBtn}
-          >
-            Export Posts
-          </button>
-        )}
-      </div>
+      <PageHeader
+        eyebrow="Moderation"
+        title="Community"
+        description="Keep the practice space useful, safe, and worth returning to."
+        actions={
+          posts.data &&
+          posts.data.length > 0 && (
+            <button
+              type="button"
+              onClick={() =>
+                downloadCsv(
+                  posts.data!.map((p) => ({
+                    id: p.id,
+                    title: p.title,
+                    author: p.author.name,
+                    category: p.category,
+                    likes: p.likes,
+                    comments: p.comments,
+                    reports: p.reports,
+                    featured: p.featured,
+                    hidden: p.hidden,
+                    createdAt: p.createdAt,
+                  })),
+                  `sultiai-community-posts-${new Date().toISOString().split('T')[0]}.csv`
+                )
+              }
+              className={ghostBtn}
+            >
+              Export Posts
+            </button>
+          )
+        }
+      />
 
-      <div className="inline-flex gap-0.5 rounded-lg border border-line bg-surface-2 p-0.5">
+      <div className={tabStrip} role="tablist" aria-label="Community views">
         {(['posts', 'reports'] as Tab[]).map((t) => (
           <button
             key={t}
             type="button"
+            role="tab"
+            aria-selected={tab === t}
             onClick={() => setTab(t)}
-            className={`inline-flex items-center rounded-md px-3.5 py-1.5 text-sm font-medium capitalize transition-colors ${
-              tab === t ? 'bg-surface text-ink shadow-card' : 'text-ink-soft hover:text-ink'
-            }`}
+            className={tabStripBtn(tab === t)}
           >
-            {t}
-            {t === 'reports' && reports.data && (
-              <span className="ml-1.5 rounded-full bg-danger-soft px-1.5 text-[10px] font-semibold tabular-nums text-danger">
-                {reports.data.filter((r) => r.status === 'open').length}
-              </span>
+            <span className="capitalize">{t}</span>
+            {t === 'posts' && posts.data && posts.data.length > 0 && (
+              <CountPill value={posts.data.length} />
+            )}
+            {t === 'reports' && openReports > 0 && (
+              <CountPill value={openReports} tone="critical" />
             )}
           </button>
         ))}
@@ -172,29 +181,48 @@ function PostsTable({
       </Card>
     );
   }
+
   return (
-    <Card className="overflow-hidden">
+    <Card>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[760px] text-left text-sm">
           <thead>
-            <tr className="border-b border-line bg-surface-2 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
-              <th className="px-5 py-3">Post</th>
-              <th className="px-5 py-3">Category</th>
-              <th className="px-5 py-3">Engagement</th>
-              <th className="px-5 py-3">Reports</th>
-              <th className="px-5 py-3">Status</th>
-              <th className="px-5 py-3 text-right">Actions</th>
+            <tr className="border-b border-line text-[11px] font-semibold tracking-wider text-ink-faint uppercase">
+              <th scope="col" className="px-5 py-3">
+                Post
+              </th>
+              <th scope="col" className="px-5 py-3">
+                Category
+              </th>
+              <th scope="col" className="px-5 py-3">
+                Engagement
+              </th>
+              <th scope="col" className="px-5 py-3">
+                Reports
+              </th>
+              <th scope="col" className="px-5 py-3">
+                Status
+              </th>
+              <th scope="col" className="px-5 py-3 text-right">
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody>
             {data.map((p) => (
               <tr
                 key={p.id}
-                className={`border-b border-line transition-colors last:border-0 ${p.hidden ? 'bg-danger-soft/40' : 'hover:bg-surface-2/60'}`}
+                className={`border-b border-line transition-colors last:border-0 ${
+                  p.hidden ? 'bg-danger-soft/25' : 'hover:bg-surface-2/50'
+                }`}
               >
                 <td className="px-5 py-3.5">
                   <p className="max-w-[260px] truncate font-medium text-ink">
-                    {p.featured && <span className="mr-1 text-warning">★</span>}
+                    {p.featured && (
+                      <span aria-hidden="true" className="mr-1 text-chart-5">
+                        ★
+                      </span>
+                    )}
                     {p.title}
                   </p>
                   <p className="mt-0.5 flex items-center gap-1.5 text-xs text-ink-faint">
@@ -208,7 +236,7 @@ function PostsTable({
                 </td>
                 <td className="px-5 py-3.5">
                   {p.reports > 0 ? (
-                    <span className="rounded-md bg-danger-soft px-2 py-0.5 text-[11px] font-semibold tabular-nums text-danger">
+                    <span className="rounded-md bg-danger-soft px-2 py-0.5 text-[11px] font-semibold tabular-nums text-danger ring-1 ring-danger/25 ring-inset">
                       {p.reports}
                     </span>
                   ) : (
@@ -227,10 +255,10 @@ function PostsTable({
                     <button
                       type="button"
                       onClick={() => onFeature(p)}
-                      className={`rounded-md px-2.5 py-1.5 text-xs font-semibold transition-colors ${
+                      className={`press rounded-md px-2.5 py-1.5 text-xs font-semibold ${
                         p.featured
-                          ? 'bg-surface-2 text-ink-soft hover:bg-line'
-                          : 'bg-warning-soft text-warning hover:bg-warning-fill hover:text-on-brand'
+                          ? 'bg-surface-2 text-ink-soft ring-1 ring-line-strong/30 ring-inset hover:bg-line'
+                          : 'bg-warning-soft text-warning ring-1 ring-warning/25 ring-inset hover:bg-warning-fill hover:text-on-brand'
                       }`}
                     >
                       {p.featured ? 'Unfeature' : 'Feature'}
@@ -282,25 +310,38 @@ function ReportsTable({
       </Card>
     );
   }
+
   return (
-    <Card className="overflow-hidden">
+    <Card>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[640px] text-left text-sm">
           <thead>
-            <tr className="border-b border-line bg-surface-2 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
-              <th className="px-5 py-3">ID</th>
-              <th className="px-5 py-3">Post</th>
-              <th className="px-5 py-3">Reported by</th>
-              <th className="px-5 py-3">Reason</th>
-              <th className="px-5 py-3">Status</th>
-              <th className="px-5 py-3 text-right">Actions</th>
+            <tr className="border-b border-line text-[11px] font-semibold tracking-wider text-ink-faint uppercase">
+              <th scope="col" className="px-5 py-3">
+                ID
+              </th>
+              <th scope="col" className="px-5 py-3">
+                Post
+              </th>
+              <th scope="col" className="px-5 py-3">
+                Reported by
+              </th>
+              <th scope="col" className="px-5 py-3">
+                Reason
+              </th>
+              <th scope="col" className="px-5 py-3">
+                Status
+              </th>
+              <th scope="col" className="px-5 py-3 text-right">
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody>
             {data.map((r) => (
               <tr
                 key={r.id}
-                className="border-b border-line transition-colors last:border-0 hover:bg-surface-2/60"
+                className="border-b border-line transition-colors last:border-0 hover:bg-surface-2/50"
               >
                 <td className="px-5 py-3.5 font-medium tabular-nums text-ink">#{r.id}</td>
                 <td className="px-5 py-3.5 text-xs text-ink-soft">Post #{r.postId}</td>

@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import type { LessonModule, ModuleDifficulty } from '@/types';
 import { ConfirmModal } from '@/components/ConfirmModal';
+import { PageHeader } from '@/components/PageHeader';
+import { ProgressBar } from '@/components/ProgressRing';
 import { useToast } from '@/components/Toast';
 import { useAsync } from '@/hooks/useAsync';
 import { api } from '@/lib/api';
@@ -22,9 +24,9 @@ import {
 import { downloadCsv } from '@/lib/export';
 
 const difficultyTone: Record<ModuleDifficulty, string> = {
-  beginner: 'text-success bg-success-soft',
-  intermediate: 'text-brand bg-brand-soft',
-  advanced: 'text-warning bg-warning-soft',
+  beginner: 'text-success bg-success-soft ring-success/25',
+  intermediate: 'text-brand-ink bg-brand-soft ring-brand/25',
+  advanced: 'text-warning bg-warning-soft ring-warning/25',
 };
 
 export default function AdminLessonsPage() {
@@ -49,41 +51,53 @@ export default function AdminLessonsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight text-ink">Lessons</h1>
-          <p className="mt-1 text-sm text-ink-soft">{data?.length ?? 0} learning modules</p>
-        </div>
-        <div className="flex items-center gap-3">
-          {data && data.length > 0 && (
-            <button
-              type="button"
-              onClick={() =>
-                downloadCsv(
-                  data.map((l) => ({
-                    id: l.id,
-                    title: l.title,
-                    difficulty: l.difficulty,
-                    language: l.language,
-                    lessons: l.lessons,
-                    completions: l.completions,
-                    avgCompletionPercent: l.avgCompletionPercent,
-                    published: l.published,
-                    updatedAt: l.updatedAt,
-                  })),
-                  `sultiai-lessons-${new Date().toISOString().split('T')[0]}.csv`
-                )
-              }
-              className={ghostBtn}
-            >
-              Export CSV
+      <PageHeader
+        eyebrow="Curriculum"
+        title="Lessons"
+        description="Build and publish the modules learners move through."
+        meta={
+          <p className="text-sm text-ink-soft">
+            {data?.length ?? 0} module{data?.length === 1 ? '' : 's'}
+            {data && data.filter((l) => l.published).length > 0 && (
+              <span className="text-ink-faint">
+                {' '}
+                · {data.filter((l) => l.published).length} published
+              </span>
+            )}
+          </p>
+        }
+        actions={
+          <>
+            {data && data.length > 0 && (
+              <button
+                type="button"
+                onClick={() =>
+                  downloadCsv(
+                    data.map((l) => ({
+                      id: l.id,
+                      title: l.title,
+                      difficulty: l.difficulty,
+                      language: l.language,
+                      lessons: l.lessons,
+                      completions: l.completions,
+                      avgCompletionPercent: l.avgCompletionPercent,
+                      published: l.published,
+                      updatedAt: l.updatedAt,
+                    })),
+                    `sultiai-lessons-${new Date().toISOString().split('T')[0]}.csv`
+                  )
+                }
+                className={ghostBtn}
+              >
+                Export CSV
+              </button>
+            )}
+            <button type="button" onClick={() => setEditing('new')} className={primaryBtn}>
+              + New module
             </button>
-          )}
-          <button type="button" className={primaryBtn} onClick={() => setEditing('new')}>
-            + New lesson module
-          </button>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       {loading ? (
         <LoadingState />
@@ -93,29 +107,43 @@ export default function AdminLessonsPage() {
         <Card>
           <EmptyState
             title="No lesson modules yet"
-            description="Create your first module to get started."
+            description="Create your first module to give learners a path to follow."
           />
         </Card>
       ) : (
-        <Card className="overflow-hidden">
+        <Card>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[720px] text-left text-sm">
               <thead>
-                <tr className="border-b border-line bg-surface-2 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
-                  <th className="px-5 py-3.5 font-semibold">Module</th>
-                  <th className="px-5 py-3.5 font-semibold">Difficulty</th>
-                  <th className="px-5 py-3.5 font-semibold">Lessons</th>
-                  <th className="px-5 py-3.5 font-semibold">Completions</th>
-                  <th className="px-5 py-3.5 font-semibold">Avg completion</th>
-                  <th className="px-5 py-3.5 font-semibold">Status</th>
-                  <th className="px-5 py-3.5 text-right font-semibold">Actions</th>
+                <tr className="border-b border-line text-[11px] font-semibold tracking-wider text-ink-faint uppercase">
+                  <th scope="col" className="px-5 py-3.5">
+                    Module
+                  </th>
+                  <th scope="col" className="px-5 py-3.5">
+                    Difficulty
+                  </th>
+                  <th scope="col" className="px-5 py-3.5 text-right">
+                    Lessons
+                  </th>
+                  <th scope="col" className="px-5 py-3.5 text-right">
+                    Completions
+                  </th>
+                  <th scope="col" className="px-5 py-3.5">
+                    Avg completion
+                  </th>
+                  <th scope="col" className="px-5 py-3.5">
+                    Status
+                  </th>
+                  <th scope="col" className="px-5 py-3.5 text-right">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {data.map((lesson) => (
                   <tr
                     key={lesson.id}
-                    className="border-b border-line transition-colors last:border-0 hover:bg-surface-2/60"
+                    className="border-b border-line transition-colors last:border-0 hover:bg-surface-2/50"
                   >
                     <td className="px-5 py-3.5">
                       <p className="font-semibold text-ink">{lesson.title}</p>
@@ -123,23 +151,24 @@ export default function AdminLessonsPage() {
                     </td>
                     <td className="px-5 py-3.5">
                       <span
-                        className={`rounded-full px-2.5 py-1 text-xs font-semibold capitalize ${difficultyTone[lesson.difficulty]}`}
+                        className={`rounded-full px-2.5 py-1 text-xs font-semibold capitalize ring-1 ring-inset ${difficultyTone[lesson.difficulty]}`}
                       >
                         {lesson.difficulty}
                       </span>
                     </td>
-                    <td className="px-5 py-3.5 tabular-nums text-ink-soft">{lesson.lessons}</td>
-                    <td className="px-5 py-3.5 tabular-nums text-ink-soft">
+                    <td className="px-5 py-3.5 text-right tabular-nums text-ink-soft">
+                      {lesson.lessons}
+                    </td>
+                    <td className="px-5 py-3.5 text-right tabular-nums text-ink-soft">
                       {lesson.completions.toLocaleString()}
                     </td>
                     <td className="px-5 py-3.5">
-                      <div className="flex items-center gap-2">
-                        <div className="h-1.5 w-20 overflow-hidden rounded-full bg-line-strong">
-                          <div
-                            className="h-full rounded-full bg-success-fill"
-                            style={{ width: `${lesson.avgCompletionPercent}%` }}
-                          />
-                        </div>
+                      <div className="flex items-center gap-2.5">
+                        <ProgressBar
+                          value={lesson.avgCompletionPercent}
+                          label={`${lesson.title} average completion`}
+                          className="w-24"
+                        />
                         <span className="text-xs font-semibold tabular-nums text-ink-soft">
                           {lesson.avgCompletionPercent}%
                         </span>
@@ -153,21 +182,21 @@ export default function AdminLessonsPage() {
                         <button
                           type="button"
                           onClick={() => handleTogglePublish(lesson)}
-                          className={softBtn}
+                          className={`${softBtn} px-2.5 py-1.5 text-xs`}
                         >
                           {lesson.published ? 'Unpublish' : 'Publish'}
                         </button>
                         <button
                           type="button"
                           onClick={() => setEditing(lesson)}
-                          className={softBtn}
+                          className={`${softBtn} px-2.5 py-1.5 text-xs`}
                         >
                           Edit
                         </button>
                         <button
                           type="button"
                           onClick={() => setDeleteTarget(lesson)}
-                          className={dangerSoftBtn}
+                          className={`${dangerSoftBtn} px-2.5 py-1.5 text-xs`}
                         >
                           Delete
                         </button>
@@ -253,21 +282,27 @@ function LessonModal({
 
   return (
     <div
-      className="fixed inset-0 z-[80] flex items-center justify-center bg-overlay p-4"
-      onClick={onClose}
+      className="fixed inset-0 z-[80] flex items-center justify-center bg-overlay p-4 backdrop-blur-sm"
+      onClick={busy ? undefined : onClose}
     >
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-lg rounded-xl border border-line bg-surface p-6"
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="lesson-modal-title"
+        className="anim-pop glass-3 glass-sheen glass-shadow w-full max-w-lg rounded-hero p-6"
       >
-        <h3 className="text-lg font-bold text-ink">
+        <h3 id="lesson-modal-title" className="text-lg font-semibold tracking-tight text-ink">
           {lesson ? 'Edit module' : 'New lesson module'}
         </h3>
         <div className="mt-5 space-y-4">
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-ink">Title</label>
+            <label htmlFor="lesson-title" className="mb-1.5 block text-sm font-medium text-ink">
+              Title
+            </label>
             <input
+              id="lesson-title"
               className={`${inputCls} ${errors.title ? 'border-danger' : ''}`}
               placeholder="e.g. Greetings & Introductions"
               value={form.title}
@@ -278,11 +313,18 @@ function LessonModal({
             />
             {errors.title && <p className="mt-1 text-xs text-danger">{errors.title}</p>}
           </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-ink">Difficulty</label>
+              <label
+                htmlFor="lesson-difficulty"
+                className="mb-1.5 block text-sm font-medium text-ink"
+              >
+                Difficulty
+              </label>
               <select
-                className={selectCls}
+                id="lesson-difficulty"
+                className={`${selectCls} w-full`}
                 value={form.difficulty}
                 onChange={(e) =>
                   setForm({ ...form, difficulty: e.target.value as ModuleDifficulty })
@@ -294,8 +336,11 @@ function LessonModal({
               </select>
             </div>
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-ink">Number of lessons</label>
+              <label htmlFor="lesson-count" className="mb-1.5 block text-sm font-medium text-ink">
+                Number of lessons
+              </label>
               <input
+                id="lesson-count"
                 type="number"
                 min={1}
                 className={`${inputCls} ${errors.lessons ? 'border-danger' : ''}`}
@@ -308,6 +353,7 @@ function LessonModal({
               {errors.lessons && <p className="mt-1 text-xs text-danger">{errors.lessons}</p>}
             </div>
           </div>
+
           <label className="flex items-center gap-2.5 text-sm text-ink">
             <input
               type="checkbox"
@@ -318,6 +364,7 @@ function LessonModal({
             Publish immediately
           </label>
         </div>
+
         <div className="mt-7 flex justify-end gap-3">
           <button type="button" className={ghostBtn} onClick={onClose} disabled={busy}>
             Cancel

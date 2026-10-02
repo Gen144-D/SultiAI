@@ -26,16 +26,20 @@ export function BarChart({
     <div>
       <div className="flex items-end gap-2" style={{ height }}>
         {data.map((d) => (
-          <div key={d.label} className="flex h-full flex-1 flex-col items-center justify-end gap-2">
+          <div key={d.label} className="flex h-full flex-1 flex-col items-center justify-end">
             <div
-              className="w-full rounded-t-sm"
-              style={{ height: `${Math.round((d.value / max) * 100)}%`, backgroundColor: color }}
+              className="w-full rounded-t-[5px] opacity-85 transition-opacity duration-300 hover:opacity-100"
+              style={{
+                height: `${Math.max(Math.round((d.value / max) * 100), d.value > 0 ? 3 : 0)}%`,
+                background: `linear-gradient(180deg, ${color}, color-mix(in srgb, ${color} 35%, transparent))`,
+                boxShadow: `0 0 18px -6px ${color}`,
+              }}
               title={`${d.label}: ${d.value.toLocaleString()}`}
             />
           </div>
         ))}
       </div>
-      <div className="mt-2 flex gap-2">
+      <div className="mt-3 flex gap-2">
         {data.map((d) => (
           <span
             key={d.label}
@@ -83,10 +87,12 @@ export function LineChart({
         className="w-full"
         preserveAspectRatio="none"
         style={{ height }}
+        role="img"
+        aria-label={lineAriaLabel(data)}
       >
         <defs>
           <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={color} stopOpacity="0.18" />
+            <stop offset="0%" stopColor={color} stopOpacity="0.28" />
             <stop offset="100%" stopColor={color} stopOpacity="0" />
           </linearGradient>
         </defs>
@@ -106,14 +112,14 @@ export function LineChart({
             cx={p.x}
             cy={p.y}
             r="3"
-            fill="var(--surface)"
+            fill="var(--bg-raise)"
             stroke={color}
             strokeWidth="2"
             vectorEffect="non-scaling-stroke"
           />
         ))}
       </svg>
-      <div className="mt-2 flex">
+      <div className="mt-3 flex">
         {data.map((d) => (
           <span
             key={d.label}
@@ -125,6 +131,15 @@ export function LineChart({
       </div>
     </div>
   );
+}
+
+/** Summarises the series so the trend is available without reading the plot. */
+function lineAriaLabel(data: SeriesPoint[]): string {
+  if (data.length === 0) return 'No data';
+  const first = data[0];
+  const last = data[data.length - 1];
+  const trend = last.value > first.value ? 'rising' : last.value < first.value ? 'falling' : 'flat';
+  return `Trend over ${data.length} days, ${trend} from ${first.value.toLocaleString()} to ${last.value.toLocaleString()}`;
 }
 
 export function DonutChart({
@@ -158,13 +173,13 @@ export function DonutChart({
   return (
     <div className="flex flex-col items-center gap-5 sm:flex-row">
       <div className="relative shrink-0" style={{ width: size, height: size }}>
-        <svg width={size} height={size} className="-rotate-90">
+        <svg width={size} height={size} className="-rotate-90" aria-hidden="true">
           <circle
             cx={size / 2}
             cy={size / 2}
             r={radius}
             fill="none"
-            stroke="var(--surface-2)"
+            stroke="var(--line-strong)"
             strokeWidth={thickness}
           />
           {segments.map((seg) => (

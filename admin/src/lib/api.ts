@@ -1,3 +1,4 @@
+import { getAccessToken } from '@/lib/session';
 import type {
   AdminSettings,
   AdminUser,
@@ -19,21 +20,8 @@ import type {
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? '';
 
-function getToken(): string {
-  if (typeof window === 'undefined') return '';
-  try {
-    const raw = localStorage.getItem('sultiai_admin_session');
-    if (!raw) return '';
-    const session = JSON.parse(raw);
-    return session.token || '';
-  } catch (e) {
-    console.warn('[AdminAPI] Failed to parse session token:', e);
-    return '';
-  }
-}
-
 async function http<T>(method: string, path: string, body?: unknown): Promise<T> {
-  const token = getToken();
+  const token = getAccessToken();
   const res = await fetch(`${API_BASE}${path}`, {
     method,
     headers: {
@@ -109,7 +97,7 @@ export const api = {
     http('PATCH', `/api/admin/community/posts/${id}`, { toggleFeatured: true }),
 
   setPostHidden: (id: number, hidden: boolean): Promise<CommunityPost> =>
-    http('PATCH', `/api/admin/community/posts/${id}`, { hidden }),
+    http('PATCH', `/api/admin/community/posts/${id}/visibility`, { hidden }),
 
   deletePost: (id: number): Promise<void> => http('DELETE', `/api/admin/community/posts/${id}`),
 

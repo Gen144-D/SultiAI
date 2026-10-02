@@ -79,6 +79,7 @@ export interface AdminUser {
   joinedAt: string;
   lastActive: string;
   country?: string;
+  authProvider?: string;
 }
 
 export interface UserListResponse {

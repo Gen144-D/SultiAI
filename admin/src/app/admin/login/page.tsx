@@ -2,10 +2,12 @@
 
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { CosmicBackground } from '@/components/background/CosmicBackground';
 import { useToast } from '@/components/Toast';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { SultiMark } from '@/components/sulti/SultiOrb';
 import { inputCls, primaryBtn } from '@/components/ui';
-import { sessionMock } from '@/lib/mock/session';
+import { adminSession } from '@/lib/session';
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -35,42 +37,50 @@ export default function AdminLoginPage() {
     setBusy(true);
     setError('');
     try {
-      await sessionMock.signIn(email.trim(), password);
+      await adminSession.signIn(email.trim(), password);
       toast.push('success', 'Signed in as Admin.');
       router.push('/admin');
-    } catch (err: any) {
+    } catch (err) {
       setError(
-        err?.message ||
-          'Failed to sign in. Check your credentials and ensure the server is running.'
+        err instanceof Error
+          ? err.message
+          : 'Failed to sign in. Check your credentials and ensure the server is running.'
       );
       setBusy(false);
     }
   }
 
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-brand-soft to-bg px-4">
+    <div className="relative flex min-h-screen flex-col items-center justify-center px-4 py-16">
+      <CosmicBackground variant="focused" />
+
       <div className="absolute top-4 right-4">
         <ThemeToggle />
       </div>
-      <div className="w-full max-w-sm rounded-xl border border-line bg-surface p-8 shadow-card">
+
+      <div className="anim-enter glass-3 glass-sheen glass-shadow w-full max-w-sm rounded-hero p-7 sm:p-8">
         <div className="text-center">
-          <span className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-brand-solid text-base font-semibold text-on-brand">
-            S
-          </span>
-          <h1 className="mt-5 text-base font-semibold tracking-tight text-ink">SultiAI Admin</h1>
+          <SultiMark className="mx-auto" />
+          <h1 className="mt-6 text-lg font-semibold tracking-tight text-ink">SultiAI Admin</h1>
           <p className="mt-1.5 text-sm text-ink-soft">Sign in to manage the platform.</p>
         </div>
 
         {error && (
-          <div className="mt-5 rounded-lg border border-danger/30 bg-danger-soft px-3.5 py-2.5 text-sm text-danger">
+          <div
+            role="alert"
+            className="anim-rise mt-6 rounded-control bg-danger-soft px-3.5 py-2.5 text-sm text-danger ring-1 ring-danger/25 ring-inset"
+          >
             {error}
           </div>
         )}
 
-        <form onSubmit={handleSignIn} className="mt-6 space-y-4">
+        <form onSubmit={handleSignIn} className="mt-7 space-y-4">
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-ink">Email</label>
+            <label htmlFor="admin-email" className="mb-1.5 block text-sm font-medium text-ink">
+              Email
+            </label>
             <input
+              id="admin-email"
               type="email"
               value={email}
               onChange={(e) => {
@@ -83,17 +93,21 @@ export default function AdminLoginPage() {
               disabled={busy}
             />
           </div>
+
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-ink">Password</label>
+            <label htmlFor="admin-password" className="mb-1.5 block text-sm font-medium text-ink">
+              Password
+            </label>
             <div className="relative">
               <input
+                id="admin-password"
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => {
                   setPassword(e.target.value);
                   setError('');
                 }}
-                className={`${inputCls} pr-10`}
+                className={`${inputCls} pr-11`}
                 placeholder="Min 6 characters"
                 autoComplete="current-password"
                 disabled={busy}
@@ -101,13 +115,13 @@ export default function AdminLoginPage() {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-faint hover:text-ink"
-                tabIndex={-1}
+                className="press absolute right-2.5 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-ink-faint hover:bg-surface-2 hover:text-ink"
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
               >
                 {showPassword ? (
                   <svg
-                    width="18"
-                    height="18"
+                    width="17"
+                    height="17"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
@@ -120,8 +134,8 @@ export default function AdminLoginPage() {
                   </svg>
                 ) : (
                   <svg
-                    width="18"
-                    height="18"
+                    width="17"
+                    height="17"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
@@ -136,6 +150,7 @@ export default function AdminLoginPage() {
               </button>
             </div>
           </div>
+
           <button type="submit" disabled={busy} className={`${primaryBtn} mt-2 w-full py-2.5`}>
             {busy ? 'Signing in...' : 'Sign in'}
           </button>

@@ -1,6 +1,9 @@
 'use client';
 
 import { DonutChart, LineChart, chartColor } from '@/components/ChartCard';
+import { PageHeader } from '@/components/PageHeader';
+import { ProgressBar } from '@/components/ProgressRing';
+import { Stagger, StaggerItem } from '@/components/motion';
 import { StatCard } from '@/components/StatCard';
 import { Card, CardHeader, ErrorState, LoadingState, ghostBtn } from '@/components/ui';
 import { useAsync } from '@/hooks/useAsync';
@@ -14,95 +17,130 @@ export default function AdminAiPage() {
   if (error || !data)
     return <ErrorState message={error ?? 'Failed to load AI usage'} onRetry={reload} />;
 
-  const failureRate =
-    Math.round(
-      (data.failedRequests /
-        (data.conversations + data.voiceRequests + data.tutorRequests + data.whisperRequests)) *
-        1000
-    ) / 10;
+  const totalRequests =
+    data.conversations + data.voiceRequests + data.tutorRequests + data.whisperRequests;
+  const failureRate = Math.round((data.failedRequests / (totalRequests || 1)) * 1000) / 10;
+  const slowest = [...data.providers].sort(
+    (a, b) => b.failed / (b.requests || 1) - a.failed / (a.requests || 1)
+  )[0];
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight text-ink">AI Usage</h1>
-          <p className="mt-1 text-sm text-ink-soft">Model traffic, failures, and performance.</p>
-        </div>
-        <button
-          type="button"
-          onClick={() =>
-            downloadCsv(
-              data.providers.map((p) => ({
-                provider: p.name,
-                requests: p.requests,
-                failed: p.failed,
-                failureRate: `${((p.failed / p.requests) * 100).toFixed(1)}%`,
-              })),
-              `sultiai-ai-usage-${new Date().toISOString().split('T')[0]}.csv`
-            )
-          }
-          className={ghostBtn}
-        >
-          Export CSV
-        </button>
-      </div>
+    <div className="space-y-8">
+      <PageHeader
+        eyebrow="AI console"
+        title="AI Usage"
+        description="Model traffic, failures, and response latency across every Sulti service."
+        actions={
+          <button
+            type="button"
+            onClick={() =>
+              downloadCsv(
+                data.providers.map((p) => ({
+                  provider: p.name,
+                  requests: p.requests,
+                  failed: p.failed,
+                  failureRate: `${((p.failed / (p.requests || 1)) * 100).toFixed(1)}%`,
+                })),
+                `sultiai-ai-usage-${new Date().toISOString().split('T')[0]}.csv`
+              )
+            }
+            className={ghostBtn}
+          >
+            Export CSV
+          </button>
+        }
+      />
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="AI conversations" value={data.conversations.toLocaleString()} icon="💬" />
-        <StatCard
-          label="Tutor requests"
-          value={data.tutorRequests.toLocaleString()}
-          tone="green"
-          icon="🤖"
-        />
-        <StatCard
-          label="Voice requests"
-          value={data.voiceRequests.toLocaleString()}
-          tone="amber"
-          icon="🎙"
-        />
-        <StatCard
-          label="Whisper requests"
-          value={data.whisperRequests.toLocaleString()}
-          tone="violet"
-          icon="🔉"
-        />
-      </div>
+      {/* Request mix, leading with the figure that gates learner experience. */}
+      <Stagger className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" step={0.06}>
+        <StaggerItem index={0}>
+          <StatCard
+            label="Total AI requests"
+            value={totalRequests.toLocaleString()}
+            delta={`${failureRate}% failure rate`}
+            tone={failureRate > 5 ? 'red' : 'brand'}
+            icon="✦"
+            emphasis
+          />
+        </StaggerItem>
+        <StaggerItem index={1}>
+          <StatCard
+            label="Avg response time"
+            value={`${data.avgResponseMs} ms`}
+            delta={data.avgResponseMs < 1000 ? 'Within the 1s target' : 'Above the 1s target'}
+            tone={data.avgResponseMs < 1000 ? 'green' : 'amber'}
+            icon="◷"
+          />
+        </StaggerItem>
+        <StaggerItem index={2}>
+          <StatCard
+            label="Failed requests"
+            value={data.failedRequests.toLocaleString()}
+            delta={slowest ? `Most failures: ${slowest.name}` : 'No failures recorded'}
+            tone={data.failedRequests > 0 ? 'red' : 'green'}
+            icon="!"
+          />
+        </StaggerItem>
+        <StaggerItem index={3}>
+          <StatCard
+            label="Tokens (estimated)"
+            value={data.totalTokens.toLocaleString()}
+            delta="30-day estimate"
+            tone="violet"
+            icon="▦"
+          />
+        </StaggerItem>
+      </Stagger>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        <StatCard
-          label="Failed requests"
-          value={data.failedRequests.toLocaleString()}
-          delta={`${failureRate}% of total`}
-          tone="red"
-          icon="⚠️"
-        />
-        <StatCard
-          label="Avg response time"
-          value={`${data.avgResponseMs} ms`}
-          delta="Target: < 1000ms"
-          tone="green"
-          icon="⏱"
-        />
-        <StatCard
-          label="Tokens (est.)"
-          value={data.totalTokens.toLocaleString()}
-          delta="30-day estimate"
-          icon="🧮"
-        />
-      </div>
+      <Stagger className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" step={0.06}>
+        <StaggerItem index={0}>
+          <StatCard
+            label="AI conversations"
+            value={data.conversations.toLocaleString()}
+            delta="Contextual two-way chat"
+            icon="◎"
+          />
+        </StaggerItem>
+        <StaggerItem index={1}>
+          <StatCard
+            label="Tutor requests"
+            value={data.tutorRequests.toLocaleString()}
+            delta="Structured tutoring flow"
+            tone="green"
+            icon="✧"
+          />
+        </StaggerItem>
+        <StaggerItem index={2}>
+          <StatCard
+            label="Voice requests"
+            value={data.voiceRequests.toLocaleString()}
+            delta="Live conversation sessions"
+            tone="amber"
+            icon="◍"
+          />
+        </StaggerItem>
+        <StaggerItem index={3}>
+          <StatCard
+            label="Whisper requests"
+            value={data.whisperRequests.toLocaleString()}
+            delta="Speech recognition"
+            tone="violet"
+            icon="◑"
+          />
+        </StaggerItem>
+      </Stagger>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
+        <Card className="p-6">
           <CardHeader title="Requests by provider" subtitle="Distribution across AI services" />
-          <div className="p-6">
+          <div className="pt-6">
             <DonutChart data={data.providers.map((p) => ({ label: p.name, value: p.requests }))} />
           </div>
         </Card>
 
-        <Card>
+        <Card className="p-6">
           <CardHeader title="Daily request volume" subtitle="Last 7 days" />
-          <div className="p-6">
+          <div className="pt-6">
             <LineChart data={data.trend} color={chartColor(0)} gradientId="ai-volume" />
           </div>
         </Card>
@@ -111,39 +149,51 @@ export default function AdminAiPage() {
       <Card>
         <CardHeader title="Provider breakdown" subtitle="Requests and failures per service" />
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[520px] text-left text-sm">
+          <table className="w-full min-w-[560px] text-left text-sm">
             <thead>
-              <tr className="border-b border-line bg-surface-2 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
-                <th className="px-6 py-3.5 font-semibold">Provider</th>
-                <th className="px-6 py-3.5 font-semibold">Requests</th>
-                <th className="px-6 py-3.5 font-semibold">Failed</th>
-                <th className="px-6 py-3.5 font-semibold">Failure rate</th>
+              <tr className="border-b border-line text-[11px] font-semibold tracking-wider text-ink-faint uppercase">
+                <th scope="col" className="px-6 py-3.5">
+                  Provider
+                </th>
+                <th scope="col" className="px-6 py-3.5 text-right">
+                  Requests
+                </th>
+                <th scope="col" className="px-6 py-3.5 text-right">
+                  Failed
+                </th>
+                <th scope="col" className="px-6 py-3.5">
+                  Failure rate
+                </th>
               </tr>
             </thead>
             <tbody>
-              {data.providers.map((p) => (
-                <tr key={p.name} className="border-b border-line last:border-0">
-                  <td className="px-6 py-3.5 font-semibold text-ink">{p.name}</td>
-                  <td className="px-6 py-3.5 tabular-nums text-ink-soft">
-                    {p.requests.toLocaleString()}
-                  </td>
-                  <td className="px-6 py-3.5 tabular-nums text-ink-soft">{p.failed}</td>
-                  <td className="px-6 py-3.5">
-                    <div className="flex items-center gap-2">
-                      <div className="h-1.5 w-24 overflow-hidden rounded-full bg-line-strong">
-                        <div
-                          className={`h-full rounded-full ${p.failed / p.requests > 0.02 ? 'bg-danger-fill' : 'bg-success-fill'}`}
-
-                          style={{ width: `${Math.min(100, (p.failed / p.requests) * 100)}%` }}
+              {data.providers.map((p) => {
+                const rate = (p.failed / (p.requests || 1)) * 100;
+                return (
+                  <tr key={p.name} className="border-b border-line last:border-0">
+                    <td className="px-6 py-3.5 font-semibold text-ink">{p.name}</td>
+                    <td className="px-6 py-3.5 text-right tabular-nums text-ink-soft">
+                      {p.requests.toLocaleString()}
+                    </td>
+                    <td className="px-6 py-3.5 text-right tabular-nums text-ink-soft">
+                      {p.failed.toLocaleString()}
+                    </td>
+                    <td className="px-6 py-3.5">
+                      <div className="flex items-center gap-3">
+                        <ProgressBar
+                          value={Math.min(100, rate)}
+                          tone={rate > 2 ? 'var(--danger-fill)' : 'var(--success-fill)'}
+                          label={`${p.name} failure rate`}
+                          className="w-32"
                         />
+                        <span className="text-xs tabular-nums text-ink-soft">
+                          {rate.toFixed(1)}%
+                        </span>
                       </div>
-                      <span className="text-xs tabular-nums text-ink-soft">
-                        {((p.failed / p.requests) * 100).toFixed(1)}%
-                      </span>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

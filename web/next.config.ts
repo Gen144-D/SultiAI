@@ -1,16 +1,17 @@
 import path from 'node:path';
 import type { NextConfig } from 'next';
 
+const isExport = Boolean(process.env.NETLIFY);
+
 const nextConfig: NextConfig = {
-  // Configured for Netlify static export ('export'), Vercel (undefined), or Docker/Server ('standalone')
-  output: process.env.NETLIFY ? 'export' : (process.env.VERCEL ? undefined : 'standalone'),
+  output: isExport ? 'export' : (process.env.VERCEL ? undefined : 'standalone'),
   images: {
-    unoptimized: true, // Required by Next.js when outputting static export for Netlify
+    unoptimized: true,
   },
   turbopack: {
     root: path.join(__dirname),
   },
-  headers: async () => [
+  headers: isExport ? undefined : async () => [
     {
       source: '/api/:path*',
       headers: [

@@ -1,0 +1,82 @@
+# Netlify build configuration for the marketing site (web/).
+#
+# The repo root is a mixed workspace, not a deployable site:
+#   - root  -> Expo / React Native app (App.js, src/, android/)
+#   - web/  -> Next.js marketing site (this is what we deploy)
+#   - admin/ -> Next.js admin dashboard (deployed separately, if at all)
+#
+# This file pins the build to web/ so the site no longer depends on the
+# "Base directory" / "Publish directory" values set in the Netlify UI. A
+# base directory in a root-level netlify.toml overrides the UI setting, so
+# committing this is enough -- no dashboard change required.
+#
+# `publish` is resolved relative to `base`, i.e. web/.next.
+
+[build]
+  base = "web"
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  # Matches the node:22-alpine base image in web/Dockerfile. Next 16.3 requires
+  # Node >= 20.9.0 (see next/package.json "engines").
+  NODE_VERSION = "22"
+  NEXT_TELEMETRY_DISABLED = "1"
+  # Netlify sets this on its own builders; stating it explicitly keeps every
+  # context consistent, and scripts/deploy-web.mjs sets it so a local deploy
+  # builds the same way the remote one does.
+  #
+  # IMPORTANT: this only selects the "not standalone" branch of
+  # web/next.config.ts, which assumes the Netlify Next.js adapter serves SSR
+  # from .next (hence publish = ".next" above). origin/main's last four commits
+  # switch that file to a full static export instead (`output: "export"` when
+  # NETLIFY is set), which writes to out/ rather than .next -- publish would
+  # then have to be "out", and the `dynamic = "force-dynamic"` handler in
+  # web/src/app/api/apk/latest/route.ts could not be exported at all. Pick one
+  # strategy before the first deploy; the two cannot both be true.
+  NETLIFY = "true"
+
+# Build-time variables the site reads. They all have safe fallbacks, so the
+# build succeeds without them -- set real values in the Netlify UI (or with
+# `netlify env:set`) to get correct canonical URLs and APK downloads.
+# Mirrors web/.env.example.
+#
+#   NEXT_PUBLIC_SITE_URL = "https://sultiai.com"
+#   SUPABASE_URL         = "https://<project>.supabase.co"
+#   APK_BUCKET           = "releases"
+#   NEXT_PUBLIC_API_URL  = ""   # base URL of the Express API in server/
+#
+# Note: /api/apk/latest reads the release manifest at request time, so the
+# filesystem must be writable/populated. Netlify's filesystem is immutable, so
+# the manifest has to come from Supabase Storage (as web/.env.example says).
+#
+# Deploying
+# ---------
+# From the repo root:
+#
+#   npm run deploy:web            Netlify rebuilds it, deploys to production
+#   npm run deploy:web:preview    same, but to a draft URL
+#   npm run deploy:web:local      build on this machine and upload
+#
+# Both shell out to scripts/deploy-web.mjs, which wraps `netlify deploy`. Three
+# things it handles that are easy to get wrong:
+#
+#   - The build must be Netlify's. It is what turns .next into functions via
+#     Netlify's Next.js adapter, so never build by hand and pass --no-build;
+#     every dynamic route would 404 in production.
+#   - --context must be passed explicitly. `netlify deploy` defaults to the
+#     `dev` context, which silently ignores env vars scoped only to Production
+#     in the Netlify UI -- the build then falls back to its defaults and bakes
+#     the wrong canonical URLs into the sitemap.
+#   - --local is refused inside OneDrive. The plugin ends a local build by
+#     renaming .next, which OneDrive blocks with EPERM; the script fails fast
+#     with that explanation instead.
+#
+# This file must stay committed: it is the only thing that pins base/publish,
+# and without it Netlify falls back to UI settings that build nothing (which is
+# why the project 404'd).
+#
+# netlify-cli is not a dependency of this repo: adding it to the root
+# package.json reshuffles ~1500 package-lock.json entries, which is a lot of
+# churn in an Expo workspace for a deploy convenience. Install it once with
+# `npm i -g netlify-cli`; the script finds a global or local install.

@@ -78,3 +78,6 @@ voice-server/__pycache__/
 
 # Windows NUL device
 nul
+
+# Local Netlify folder
+.netlify

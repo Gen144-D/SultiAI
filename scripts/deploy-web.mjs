@@ -49,7 +49,7 @@
  * on netlifyBin(). Install it once with `npm i -g netlify-cli`.
  */
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
@@ -277,6 +277,58 @@ function checkLocalBuildIsPossible() {
 }
 
 /**
+ * Netlify Functions run on Linux, always. Anything with a compiled binary is
+ * therefore platform-specific, and a local build ships the binary for the
+ * machine it was built on. Next pulls in sharp for image optimisation, so a
+ * Windows build bundles `@img/sharp-win32-x64` into
+ * ___netlify-server-handler.zip; on Netlify's Linux runtime that .node file
+ * cannot load, the server handler dies on cold start, and *every* route falls
+ * through to Netlify's stock "Not Found" page.
+ *
+ * That failure looks nothing like its cause -- the deploy reports state "ready",
+ * the function is listed as available, the file count looks right, and the
+ * dashboard shows no error -- so it is worth refusing up front. Verified on this
+ * repo: the win32 zip really did contain sharp-win32-x64-0.35.3.node.
+ *
+ * Only checked for --local; a triggered build runs on Netlify's own Linux
+ * builders and cannot have this problem.
+ */
+function checkLocalNativeModules() {
+  if (process.platform !== 'win32') return;
+
+  const modules = path.join(ROOT, 'web', 'node_modules');
+  if (!existsSync(modules)) return;
+
+  const found = [];
+  // One level of scoping: node_modules/<pkg> and node_modules/@scope/<pkg>.
+  for (const entry of readdirSync(modules, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+
+    if (entry.name.startsWith('@')) {
+      const scope = path.join(modules, entry.name);
+      for (const scoped of readdirSync(scope, { withFileTypes: true })) {
+        if (scoped.isDirectory() && scoped.name.includes('-win32-')) {
+          found.push(`${entry.name}/${scoped.name}`);
+        }
+      }
+    } else if (entry.name.includes('-win32-')) {
+      found.push(entry.name);
+    }
+  }
+
+  if (found.length === 0) return;
+
+  fail(
+    'a local build on Windows cannot produce a working Netlify Function.',
+    `web/node_modules contains ${found.join(', ')} -- a Windows-only compiled binary.\n` +
+      '  Netlify Functions run on Linux, so the bundled server handler cannot load it,\n' +
+      "  dies on cold start, and every route 404s with Netlify's default page -- while\n" +
+      '  the deploy itself still reports success.\n\n' +
+      '  Drop --local and let Netlify build it on its own Linux builders.'
+  );
+}
+
+/**
  * `--trigger` asks Netlify to rebuild from the pushed commit, which needs the
  * project to still be connected to Git. A disconnected project 404s with a
  * vague "Project not found", so translate it.
@@ -380,6 +432,7 @@ async function main() {
   checkAuthAndLink(bin);
   checkLocalEnvLeak();
   if (buildLocally) checkLocalBuildIsPossible();
+  if (buildLocally) checkLocalNativeModules();
 
   const args = ['deploy'];
   args.push('--context', isPreview ? 'deploy-preview' : 'production');
